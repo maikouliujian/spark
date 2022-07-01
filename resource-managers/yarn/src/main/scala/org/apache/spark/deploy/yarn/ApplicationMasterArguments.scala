@@ -21,6 +21,7 @@ import scala.collection.mutable.ArrayBuffer
 
 class ApplicationMasterArguments(val args: Array[String]) {
   var userJar: String = null
+  //todo 用于自定义main class
   var userClass: String = null
   var primaryPyFile: String = null
   var primaryRFile: String = null

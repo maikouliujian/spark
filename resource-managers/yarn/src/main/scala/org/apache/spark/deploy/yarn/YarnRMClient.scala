@@ -57,6 +57,7 @@ private[spark] class YarnRMClient extends Logging {
       sparkConf: SparkConf,
       uiAddress: Option[String],
       uiHistoryAddress: String): Unit = {
+    //todo 核心对象
     amClient = AMRMClient.createAMRMClient()
     amClient.init(conf)
     amClient.start()

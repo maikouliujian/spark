@@ -435,6 +435,7 @@ class SparkSubmitCommandBuilder extends AbstractCommandBuilder {
       this.errorOnUnknownArgs = errorOnUnknownArgs;
     }
 
+    //todo 实际解析逻辑
     @Override
     protected boolean handle(String opt, String value) {
       switch (opt) {
@@ -465,6 +466,7 @@ class SparkSubmitCommandBuilder extends AbstractCommandBuilder {
           checkArgument(setConf.length == 2, "Invalid argument to %s: %s", CONF, value);
           conf.put(setConf[0], setConf[1]);
           break;
+          //todo 获取主启动类
         case CLASS:
           // The special classes require some special command line handling, since they allow
           // mixing spark-submit arguments with arguments that should be propagated to the shell

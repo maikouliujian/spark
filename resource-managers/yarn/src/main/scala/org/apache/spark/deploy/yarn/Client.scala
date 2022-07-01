@@ -68,7 +68,7 @@ private[spark] class Client(
 
   import Client._
   import YarnSparkHadoopUtil._
-
+  //todo 核心类 yarnClient
   private val yarnClient = YarnClient.createYarnClient
   private val hadoopConf = new YarnConfiguration(SparkHadoopUtil.newConfiguration(sparkConf))
 
@@ -168,6 +168,7 @@ private[spark] class Client(
     var appId: ApplicationId = null
     try {
       launcherBackend.connect()
+      //todo 启动yarnclient
       yarnClient.init(hadoopConf)
       yarnClient.start()
 
@@ -177,6 +178,7 @@ private[spark] class Client(
       // Get a new application from our RM
       val newApp = yarnClient.createApplication()
       val newAppResponse = newApp.getNewApplicationResponse()
+      //todo 获取appid
       appId = newAppResponse.getApplicationId()
 
       // The app staging dir based on the STAGING_DIR configuration if configured
@@ -193,11 +195,13 @@ private[spark] class Client(
       verifyClusterResources(newAppResponse)
 
       // Set up the appropriate contexts to launch our AM
+      //todo containerContext中包含了启动ApplicationMaster的命令
       val containerContext = createContainerLaunchContext(newAppResponse)
       val appContext = createApplicationSubmissionContext(newApp, containerContext)
 
       // Finally, submit and monitor the application
       logInfo(s"Submitting application $appId to ResourceManager")
+      //todo 向yarn提交appContext
       yarnClient.submitApplication(appContext)
       launcherBackend.setAppId(appId.toString)
       reportLauncherState(SparkAppHandle.State.SUBMITTED)
@@ -254,6 +258,7 @@ private[spark] class Client(
     logDebug(s"AM resources: $amResources")
     val appContext = newApp.getApplicationSubmissionContext
     appContext.setApplicationName(sparkConf.get("spark.app.name", "Spark"))
+    //todo 设置队列
     appContext.setQueue(sparkConf.get(QUEUE_NAME))
     appContext.setAMContainerSpec(containerContext)
     appContext.setApplicationType("SPARK")
@@ -874,7 +879,7 @@ private[spark] class Client(
 
     val launchEnv = setupLaunchEnv(stagingDirPath, pySparkArchives)
     val localResources = prepareLocalResources(stagingDirPath, pySparkArchives)
-
+    //todo 初始化ContainerLaunchContext对象
     val amContainer = Records.newRecord(classOf[ContainerLaunchContext])
     amContainer.setLocalResources(localResources.asJava)
     amContainer.setEnvironment(launchEnv.asJava)
@@ -969,12 +974,14 @@ private[spark] class Client(
       } else {
         Nil
       }
-    val primaryRFile =
+    val primaryRFile = {
       if (args.primaryRFile != null) {
         Seq("--primary-r-file", args.primaryRFile)
       } else {
         Nil
       }
+    }
+    //todo ApplicationMaster 主类 ApplicationMaster
     val amClass =
       if (isClusterMode) {
         Utils.classForName("org.apache.spark.deploy.yarn.ApplicationMaster").getName
@@ -996,6 +1003,7 @@ private[spark] class Client(
         buildPath(Environment.PWD.$$(), LOCALIZED_CONF_DIR, DIST_CACHE_CONF_FILE))
 
     // Command for the ApplicationMaster
+    //todo 组装启动ApplicationMaster命令
     val commands = prefixEnv ++
       Seq(Environment.JAVA_HOME.$$() + "/bin/java", "-server") ++
       javaOpts ++ amArgs ++
@@ -1574,6 +1582,7 @@ private object Client extends Logging {
   }
 }
 
+//todo spark on yarn入口
 private[spark] class YarnClusterApplication extends SparkApplication {
 
   override def start(args: Array[String], conf: SparkConf): Unit = {
@@ -1581,7 +1590,7 @@ private[spark] class YarnClusterApplication extends SparkApplication {
     // so remove them from sparkConf here for yarn mode.
     conf.remove(JARS)
     conf.remove(FILES)
-
+    //todo 调用client的run方法
     new Client(new ClientArguments(args), conf, null).run()
   }
 

@@ -105,6 +105,7 @@ private[deploy] class SparkSubmitArguments(args: Seq[String], env: Map[String, S
   }
 
   // Set parameters from command line arguments
+  //todo 解析参数
   parse(args.asJava)
 
   // Populate `sparkProperties` map from properties file
@@ -112,6 +113,7 @@ private[deploy] class SparkSubmitArguments(args: Seq[String], env: Map[String, S
   // Remove keys that don't start with "spark." from `sparkProperties`.
   ignoreNonSparkProperties()
   // Use `sparkProperties` map along with env vars to fill in any missing parameters
+  //todo 赋值
   loadEnvironmentArguments()
 
   useRest = sparkProperties.getOrElse("spark.master.rest.enabled", "false").toBoolean
@@ -224,6 +226,7 @@ private[deploy] class SparkSubmitArguments(args: Seq[String], env: Map[String, S
     }
 
     // Action should be SUBMIT unless otherwise specified
+    //todo 给action默认设置为SUBMIT
     action = Option(action).getOrElse(SUBMIT)
   }
 

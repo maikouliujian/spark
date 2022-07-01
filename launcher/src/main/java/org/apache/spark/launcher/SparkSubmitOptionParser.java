@@ -160,6 +160,7 @@ class SparkSubmitOptionParser {
           idx++;
           value = args.get(idx);
         }
+        //todo OptionParser::handle
         if (!handle(name, value)) {
           break;
         }

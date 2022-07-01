@@ -95,7 +95,7 @@ private[spark] class ApplicationMaster(
       new MutableURLClassLoader(urls, Utils.getContextOrSparkClassLoader)
     }
   }
-
+  //todo 核心类
   private val client = new YarnRMClient()
 
   // Default to twice the number of executors (twice the maximum number of executors if dynamic
@@ -261,6 +261,7 @@ private[spark] class ApplicationMaster(
       }
 
       if (isClusterMode) {
+        //todo 启动driver
         runDriver()
       } else {
         runExecutorLauncher()
@@ -489,6 +490,7 @@ private[spark] class ApplicationMaster(
 
   private def runDriver(): Unit = {
     addAmIpFilter(None, System.getenv(ApplicationConstants.APPLICATION_WEB_PROXY_BASE_ENV))
+    //todo 启动用户类
     userClassThread = startUserApplication()
 
     // This a bit hacky, but we need to wait until the spark.driver.port property has
@@ -496,6 +498,7 @@ private[spark] class ApplicationMaster(
     logInfo("Waiting for spark context initialization...")
     val totalWaitTime = sparkConf.get(AM_MAX_WAIT_TIME)
     try {
+      //todo 阻塞等待用户代码的main方法执行起来
       val sc = ThreadUtils.awaitResult(sparkContextPromise.future,
         Duration(totalWaitTime, TimeUnit.MILLISECONDS))
       if (sc != null) {
@@ -715,6 +718,7 @@ private[spark] class ApplicationMaster(
       // TODO(davies): add R dependencies here
     }
 
+    //todo 找到main方法
     val mainMethod = userClassLoader.loadClass(args.userClass)
       .getMethod("main", classOf[Array[String]])
 
@@ -725,6 +729,7 @@ private[spark] class ApplicationMaster(
             logError(s"Could not find static main method in object ${args.userClass}")
             finish(FinalApplicationStatus.FAILED, ApplicationMaster.EXIT_EXCEPTION_USER_CLASS)
           } else {
+            //todo 启动main方法
             mainMethod.invoke(null, userArgs.toArray)
             finish(FinalApplicationStatus.SUCCEEDED, ApplicationMaster.EXIT_SUCCESS)
             logDebug("Done running user class")
@@ -756,6 +761,7 @@ private[spark] class ApplicationMaster(
     }
     userThread.setContextClassLoader(userClassLoader)
     userThread.setName("Driver")
+    //todo 启动加载用户程序的线程
     userThread.start()
     userThread
   }
@@ -841,6 +847,7 @@ object ApplicationMaster extends Logging {
 
   def main(args: Array[String]): Unit = {
     SignalUtils.registerLogger(log)
+    //todo ApplicationMaster的启动参数
     val amArgs = new ApplicationMasterArguments(args)
     val sparkConf = new SparkConf()
     if (amArgs.propertiesFile != null) {
@@ -858,6 +865,7 @@ object ApplicationMaster extends Logging {
     }
 
     val yarnConf = new YarnConfiguration(SparkHadoopUtil.newConfiguration(sparkConf))
+    //todo 初始化ApplicationMaster
     master = new ApplicationMaster(amArgs, sparkConf, yarnConf)
 
     val ugi = sparkConf.get(PRINCIPAL) match {
@@ -889,6 +897,7 @@ object ApplicationMaster extends Logging {
     }
 
     ugi.doAs(new PrivilegedExceptionAction[Unit]() {
+      //todo 启动master
       override def run(): Unit = System.exit(master.run())
     })
   }
