@@ -60,8 +60,9 @@ private sealed abstract class MessageLoop(dispatcher: Dispatcher) extends Loggin
     threadpool.awaitTermination(Long.MaxValue, TimeUnit.MILLISECONDS)
   }
 
+  //todo 将inbox添加到队列中
   protected final def setActive(inbox: Inbox): Unit = active.offer(inbox)
-
+  //todo backend中的轮训方法，不停的接收inbox queue中的消息
   private def receiveLoop(): Unit = {
     try {
       while (true) {
@@ -72,6 +73,7 @@ private sealed abstract class MessageLoop(dispatcher: Dispatcher) extends Loggin
             setActive(MessageLoop.PoisonPill)
             return
           }
+          //todo 处理消息
           inbox.process(dispatcher)
         } catch {
           case NonFatal(e) => logError(e.getMessage, e)
@@ -154,16 +156,16 @@ private class SharedMessageLoop(
 }
 
 /**
- * A message loop that is dedicated to a single RPC endpoint.
+ * A message loop that is dedicated【dedicated:献身的; 专用的; 专心致志的; 一心一意的】 to a single RPC endpoint.
  */
 private class DedicatedMessageLoop(
     name: String,
     endpoint: IsolatedRpcEndpoint,
     dispatcher: Dispatcher)
   extends MessageLoop(dispatcher) {
-
+  //todo 收件箱
   private val inbox = new Inbox(name, endpoint)
-
+  //todo 线程池
   override protected val threadpool = if (endpoint.threadCount() > 1) {
     ThreadUtils.newDaemonCachedThreadPool(s"dispatcher-$name", endpoint.threadCount())
   } else {
@@ -171,6 +173,7 @@ private class DedicatedMessageLoop(
   }
 
   (1 to endpoint.threadCount()).foreach { _ =>
+    //todo 启动loop
     threadpool.submit(receiveLoopRunnable)
   }
 
@@ -179,6 +182,7 @@ private class DedicatedMessageLoop(
 
   override def post(endpointName: String, message: InboxMessage): Unit = {
     require(endpointName == name)
+    //todo 添加到inbox中
     inbox.post(message)
     setActive(inbox)
   }

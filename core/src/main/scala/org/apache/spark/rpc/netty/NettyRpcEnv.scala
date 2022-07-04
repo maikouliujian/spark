@@ -103,6 +103,7 @@ private[netty] class NettyRpcEnv(
    * A map for [[RpcAddress]] and [[Outbox]]. When we are connecting to a remote [[RpcAddress]],
    * we just put messages to its [[Outbox]] to implement a non-blocking `send` method.
    */
+   //todo 向其他节点发送数据，一个要发送的节点对应一个Outbox
   private val outboxes = new ConcurrentHashMap[RpcAddress, Outbox]()
 
   /**
@@ -157,6 +158,7 @@ private[netty] class NettyRpcEnv(
 
   private def postToOutbox(receiver: NettyRpcEndpointRef, message: OutboxMessage): Unit = {
     if (receiver.client != null) {
+      //todo 将message发送出去
       message.sendWith(receiver.client)
     } else {
       require(receiver.address != null,
@@ -180,6 +182,7 @@ private[netty] class NettyRpcEnv(
         outboxes.remove(receiver.address)
         targetOutbox.stop()
       } else {
+        //todo 将message发送出去
         targetOutbox.send(message)
       }
     }
@@ -234,6 +237,7 @@ private[netty] class NettyRpcEnv(
 
     try {
       if (remoteAddr == address) {
+        //todo 异步定义
         val p = Promise[Any]()
         p.future.onComplete {
           case Success(response) => onSuccess(response)
@@ -245,6 +249,7 @@ private[netty] class NettyRpcEnv(
           onFailure,
           (client, response) => onSuccess(deserialize[Any](client, response)))
         rpcMsg = Option(rpcMessage)
+        //todo 添加到Outbox中
         postToOutbox(message.receiver, rpcMessage)
         promise.future.failed.foreach {
           case _: TimeoutException => rpcMessage.onTimeout()
@@ -674,6 +679,7 @@ private[netty] class NettyRpcHandler(
       message: ByteBuffer,
       callback: RpcResponseCallback): Unit = {
     val messageToDispatch = internalReceive(client, message)
+    //todo 交由dispatcher处理
     dispatcher.postRemoteMessage(messageToDispatch, callback)
   }
 

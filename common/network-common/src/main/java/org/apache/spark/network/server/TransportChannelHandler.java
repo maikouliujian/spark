@@ -134,8 +134,10 @@ public class TransportChannelHandler extends SimpleChannelInboundHandler<Message
     }
   }
 
+  //todo 最终调用的地方
   @Override
   public void channelRead0(ChannelHandlerContext ctx, Message request) throws Exception {
+    //todo 通过netty收到了要读的数据
     if (request instanceof RequestMessage) {
       requestHandler.handle((RequestMessage) request);
     } else if (request instanceof ResponseMessage) {

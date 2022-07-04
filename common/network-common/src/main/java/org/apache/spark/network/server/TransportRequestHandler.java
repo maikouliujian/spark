@@ -54,6 +54,7 @@ public class TransportRequestHandler extends MessageHandler<RequestMessage> {
   private final TransportClient reverseClient;
 
   /** Handles all RPC messages. */
+  //todo 处理rpc消息
   private final RpcHandler rpcHandler;
 
   /** Returns each chunk part of a stream. */
@@ -106,6 +107,7 @@ public class TransportRequestHandler extends MessageHandler<RequestMessage> {
     if (request instanceof ChunkFetchRequest) {
       chunkFetchRequestHandler.processFetchRequest(channel, (ChunkFetchRequest) request);
     } else if (request instanceof RpcRequest) {
+      //todo 处理rpc请求
       processRpcRequest((RpcRequest) request);
     } else if (request instanceof OneWayMessage) {
       processOneWayMessage((OneWayMessage) request);
@@ -156,6 +158,7 @@ public class TransportRequestHandler extends MessageHandler<RequestMessage> {
 
   private void processRpcRequest(final RpcRequest req) {
     try {
+      //todo 接收rpc请求
       rpcHandler.receive(reverseClient, req.body().nioByteBuffer(), new RpcResponseCallback() {
         @Override
         public void onSuccess(ByteBuffer response) {

@@ -88,6 +88,7 @@ public final class MessageEncoder extends MessageToMessageEncoder<Message> {
     if (body != null) {
       // We transfer ownership of the reference on in.body() to MessageWithHeader.
       // This reference will be freed when MessageWithHeader.deallocate() is called.
+      //todo 添加body
       out.add(new MessageWithHeader(in.body(), header, body, bodyLength));
     } else {
       out.add(header);

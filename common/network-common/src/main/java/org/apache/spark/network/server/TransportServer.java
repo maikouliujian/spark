@@ -81,6 +81,7 @@ public class TransportServer implements Closeable {
 
     boolean shouldClose = true;
     try {
+      //todo 初始化netty server
       init(hostToBind, portToBind);
       shouldClose = false;
     } finally {
@@ -140,6 +141,7 @@ public class TransportServer implements Closeable {
         for (TransportServerBootstrap bootstrap : bootstraps) {
           rpcHandler = bootstrap.doBootstrap(ch, rpcHandler);
         }
+        //todo 添加handler
         context.initializePipeline(ch, rpcHandler);
       }
     });
