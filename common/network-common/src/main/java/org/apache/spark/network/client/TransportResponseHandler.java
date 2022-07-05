@@ -157,6 +157,7 @@ public class TransportResponseHandler extends MessageHandler<ResponseMessage> {
     }
   }
 
+  //todo 处理响应
   @Override
   public void handle(ResponseMessage message) throws Exception {
     if (message instanceof ChunkFetchSuccess) {
@@ -183,6 +184,7 @@ public class TransportResponseHandler extends MessageHandler<ResponseMessage> {
           "Failure while fetching " + resp.streamChunkId + ": " + resp.errorString));
       }
     } else if (message instanceof RpcResponse) {
+      //todo 处理rpc响应
       RpcResponse resp = (RpcResponse) message;
       RpcResponseCallback listener = outstandingRpcs.get(resp.requestId);
       if (listener == null) {
@@ -192,6 +194,7 @@ public class TransportResponseHandler extends MessageHandler<ResponseMessage> {
       } else {
         outstandingRpcs.remove(resp.requestId);
         try {
+          //todo 处理请求的回调，RpcOutboxMessage的92行
           listener.onSuccess(resp.body().nioByteBuffer());
         } finally {
           resp.body().release();

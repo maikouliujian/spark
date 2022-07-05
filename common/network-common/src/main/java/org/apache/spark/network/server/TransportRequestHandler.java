@@ -107,7 +107,7 @@ public class TransportRequestHandler extends MessageHandler<RequestMessage> {
     if (request instanceof ChunkFetchRequest) {
       chunkFetchRequestHandler.processFetchRequest(channel, (ChunkFetchRequest) request);
     } else if (request instanceof RpcRequest) {
-      //todo 处理rpc请求
+      //todo 读取处理rpc请求
       processRpcRequest((RpcRequest) request);
     } else if (request instanceof OneWayMessage) {
       processOneWayMessage((OneWayMessage) request);
@@ -162,11 +162,13 @@ public class TransportRequestHandler extends MessageHandler<RequestMessage> {
       rpcHandler.receive(reverseClient, req.body().nioByteBuffer(), new RpcResponseCallback() {
         @Override
         public void onSuccess(ByteBuffer response) {
+          //todo 接收请求后的响应逻辑，将数据通过netty写出去
           respond(new RpcResponse(req.requestId, new NioManagedBuffer(response)));
         }
 
         @Override
         public void onFailure(Throwable e) {
+          //todo 接收请求后的响应逻辑，将数据通过netty写出去
           respond(new RpcFailure(req.requestId, Throwables.getStackTraceAsString(e)));
         }
       });
