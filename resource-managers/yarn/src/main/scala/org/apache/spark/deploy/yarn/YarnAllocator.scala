@@ -109,7 +109,7 @@ private[yarn] class YarnAllocator(
 
   private val allocatorBlacklistTracker =
     new YarnAllocatorBlacklistTracker(sparkConf, amClient, failureTracker)
-
+  //todo 设置targetNumExecutors
   @volatile private var targetNumExecutors =
     SchedulerBackendUtils.getInitialTargetExecutorNumber(sparkConf)
 
@@ -258,7 +258,7 @@ private[yarn] class YarnAllocator(
     // Poll the ResourceManager. This doubles as a heartbeat if there are no pending container
     // requests.
     val allocateResponse = amClient.allocate(progressIndicator)
-
+     //todo 获取被分配的containers
     val allocatedContainers = allocateResponse.getAllocatedContainers()
     allocatorBlacklistTracker.setNumClusterNodes(allocateResponse.getNumClusterNodes)
 
@@ -270,7 +270,7 @@ private[yarn] class YarnAllocator(
           runningExecutors.size,
           numExecutorsStarting.get,
           allocateResponse.getAvailableResources))
-
+      //todo 处理可分配的容器
       handleAllocatedContainers(allocatedContainers.asScala)
     }
 
@@ -477,7 +477,7 @@ private[yarn] class YarnAllocator(
         internalReleaseContainer(container)
       }
     }
-
+    //todo 运行已经分配好的容器
     runAllocatedContainers(containersToUse)
 
     logInfo("Received %d containers from YARN, launching executors on %d of them."
@@ -555,8 +555,9 @@ private[yarn] class YarnAllocator(
         if (launchContainers) {
           launcherPool.execute(() => {
             try {
+              //todo 启动container
               new ExecutorRunnable(
-                Some(container),
+                Some(container), //todo container中包含nodeid信息
                 conf,
                 sparkConf,
                 driverUrl,

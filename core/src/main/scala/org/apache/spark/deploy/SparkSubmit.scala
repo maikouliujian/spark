@@ -553,6 +553,7 @@ private[spark] class SparkSubmit extends Logging {
 
     // A list of rules to map each argument to system properties or command-line options in
     // each deploy mode; we iterate through these below
+    //todo 对启动参数做(k=>v)赋值，存放在sparkConf中
     val options = List[OptionAssigner](
 
       // All cluster managers
@@ -597,6 +598,7 @@ private[spark] class SparkSubmit extends Logging {
         mergeFn = Some(mergeFileLists(_, _))),
 
       // Other options
+      //todo numExecutors
       OptionAssigner(args.numExecutors, YARN | KUBERNETES, ALL_DEPLOY_MODES,
         confKey = EXECUTOR_INSTANCES.key),
       OptionAssigner(args.executorCores, STANDALONE | YARN | KUBERNETES, ALL_DEPLOY_MODES,
@@ -650,6 +652,7 @@ private[spark] class SparkSubmit extends Logging {
     }
 
     // Map all arguments to command-line options or system properties for our chosen mode
+    //todo 把启动参数都设置到childArgs和sparkConf中
     for (opt <- options) {
       if (opt.value != null &&
           (deployMode & opt.deployMode) != 0 &&
@@ -872,7 +875,7 @@ private[spark] class SparkSubmit extends Logging {
    * running cluster deploy mode or python applications.
    */
   private def runMain(args: SparkSubmitArguments, uninitLog: Boolean): Unit = {
-    //todo 提交环境准备：yarn的主类："org.apache.spark.deploy.yarn.YarnClusterApplication"
+    //todo 提交环境准备【解析启动参数配置】：yarn的主类："org.apache.spark.deploy.yarn.YarnClusterApplication"
     val (childArgs, childClasspath, sparkConf, childMainClass) = prepareSubmitEnvironment(args)
     // Let the main class re-initialize the logging system once it starts.
     if (uninitLog) {
@@ -931,7 +934,7 @@ private[spark] class SparkSubmit extends Logging {
     }
 
     try {
-      //todo 调用org.apache.spark.deploy.yarn.YarnClusterApplication的start方法
+      //todo 调用org.apache.spark.deploy.yarn.YarnClusterApplication的start方法,childArgs里面包含所有的启动参数配置
       app.start(childArgs.toArray, sparkConf)
     } catch {
       case t: Throwable =>

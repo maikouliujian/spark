@@ -72,6 +72,7 @@ private[netty] class Dispatcher(nettyEnv: NettyRpcEnv, numUsableCores: Int) exte
       try {
         messageLoop = endpoint match {
           case e: IsolatedRpcEndpoint =>
+            //todo 创建DedicatedMessageLoop
             new DedicatedMessageLoop(name, e, this)
           case _ =>
             sharedLoop.register(name, endpoint)
@@ -129,10 +130,12 @@ private[netty] class Dispatcher(nettyEnv: NettyRpcEnv, numUsableCores: Int) exte
   }
 
   /** Posts a message sent by a remote endpoint. */
+    //todo 将remote endpoint发送的消息加入到inbox中
   def postRemoteMessage(message: RequestMessage, callback: RpcResponseCallback): Unit = {
     val rpcCallContext =
       new RemoteNettyRpcCallContext(nettyEnv, callback, message.senderAddress)
     val rpcMessage = RpcMessage(message.senderAddress, message.content, rpcCallContext)
+    //todo postMessage
     postMessage(message.receiver.name, rpcMessage, (e) => callback.onFailure(e))
   }
 
@@ -168,6 +171,7 @@ private[netty] class Dispatcher(nettyEnv: NettyRpcEnv, numUsableCores: Int) exte
       } else if (loop == null) {
         Some(new SparkException(s"Could not find $endpointName."))
       } else {
+        //todo 加入到inbox中
         loop.post(endpointName, message)
         None
       }

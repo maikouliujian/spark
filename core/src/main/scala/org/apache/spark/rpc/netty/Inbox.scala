@@ -76,6 +76,7 @@ private[netty] class Inbox(val endpointName: String, val endpoint: RpcEndpoint)
 
   // OnStart should be the first message to process
   inbox.synchronized {
+    //todo 添加inbox中的第一个事件
     messages.add(OnStart)
   }
 
@@ -98,8 +99,10 @@ private[netty] class Inbox(val endpointName: String, val endpoint: RpcEndpoint)
     while (true) {
       safelyCall(endpoint) {
         message match {
+          //todo RpcMessage是要求有回复的
           case RpcMessage(_sender, content, context) =>
             try {
+              //todo 执行receiveAndReply
               endpoint.receiveAndReply(context).applyOrElse[Any, Unit](content, { msg =>
                 throw new SparkException(s"Unsupported message $message from ${_sender}")
               })
@@ -112,11 +115,13 @@ private[netty] class Inbox(val endpointName: String, val endpoint: RpcEndpoint)
             }
 
           case OneWayMessage(_sender, content) =>
+            //todo 执行receive 方法
             endpoint.receive.applyOrElse[Any, Unit](content, { msg =>
               throw new SparkException(s"Unsupported message $message from ${_sender}")
             })
 
           case OnStart =>
+            //todo 启动CoarseGrainedExecutorBackend.onStart()
             endpoint.onStart()
             if (!endpoint.isInstanceOf[ThreadSafeRpcEndpoint]) {
               inbox.synchronized {

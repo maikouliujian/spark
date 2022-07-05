@@ -193,12 +193,14 @@ private[netty] class NettyRpcEnv(
     if (remoteAddr == address) {
       // Message to a local RPC endpoint.
       try {
+        //TODO 发送给自己，则发送到inbox
         dispatcher.postOneWayMessage(message)
       } catch {
         case e: RpcEnvStoppedException => logDebug(e.getMessage)
       }
     } else {
       // Message to a remote RPC endpoint.
+      //todo 发送给别人，则发送到outbox
       postToOutbox(message.receiver, OneWayOutboxMessage(message.serialize(this)))
     }
   }
@@ -222,9 +224,11 @@ private[netty] class NettyRpcEnv(
       }
     }
 
+    //todo 最终回调到这个地方
     def onSuccess(reply: Any): Unit = reply match {
       case RpcFailure(e) => onFailure(e)
       case rpcReply =>
+        //todo 调用270行
         if (!promise.trySuccess(rpcReply)) {
           logWarning(s"Ignored message: $reply")
         }
@@ -247,23 +251,27 @@ private[netty] class NettyRpcEnv(
       } else {
         val rpcMessage = RpcOutboxMessage(message.serialize(this),
           onFailure,
+          //todo 成功响应的逻辑
           (client, response) => onSuccess(deserialize[Any](client, response)))
         rpcMsg = Option(rpcMessage)
         //todo 添加到Outbox中
         postToOutbox(message.receiver, rpcMessage)
+        //todo 失败的回调
         promise.future.failed.foreach {
           case _: TimeoutException => rpcMessage.onTimeout()
           case _ =>
         }(ThreadUtils.sameThread)
       }
 
-      val timeoutCancelable = timeoutScheduler.schedule(new Runnable {
+      val timeoutCancelable: ScheduledFuture[_] = timeoutScheduler.schedule(new Runnable {
         override def run(): Unit = {
           onFailure(new TimeoutException(s"Cannot receive any reply from ${remoteAddr} " +
             s"in ${timeout.duration}"))
         }
       }, timeout.duration.toNanos, TimeUnit.NANOSECONDS)
+      //todo promise.complete的回调,success和failed都会走这
       promise.future.onComplete { v =>
+        //todo 取消通知失败的线程运行
         timeoutCancelable.cancel(true)
       }(ThreadUtils.sameThread)
     } catch {
@@ -679,7 +687,7 @@ private[netty] class NettyRpcHandler(
       message: ByteBuffer,
       callback: RpcResponseCallback): Unit = {
     val messageToDispatch = internalReceive(client, message)
-    //todo 交由dispatcher处理
+    //todo 读取数据交由dispatcher处理
     dispatcher.postRemoteMessage(messageToDispatch, callback)
   }
 

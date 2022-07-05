@@ -63,6 +63,7 @@ private[netty] case class RpcOutboxMessage(
 
   override def sendWith(client: TransportClient): Unit = {
     this.client = client
+    //todo 通过netty 发送出去
     this.requestId = client.sendRpc(content, this)
   }
 
@@ -82,10 +83,12 @@ private[netty] case class RpcOutboxMessage(
     removeRpcRequest()
   }
 
+  //todo failure的回调
   override def onFailure(e: Throwable): Unit = {
     _onFailure(e)
   }
 
+  //todo success的回调
   override def onSuccess(response: ByteBuffer): Unit = {
     _onSuccess(client, response)
   }
@@ -127,6 +130,7 @@ private[netty] class Outbox(nettyEnv: NettyRpcEnv, val address: RpcAddress) {
       if (stopped) {
         true
       } else {
+        //todo 将消息添加到队列中
         messages.add(message)
         false
       }
@@ -172,6 +176,7 @@ private[netty] class Outbox(nettyEnv: NettyRpcEnv, val address: RpcAddress) {
       try {
         val _client = synchronized { client }
         if (_client != null) {
+          //todo 发送message
           message.sendWith(_client)
         } else {
           assert(stopped)

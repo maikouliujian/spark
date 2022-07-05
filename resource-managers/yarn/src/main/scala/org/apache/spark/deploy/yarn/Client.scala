@@ -62,7 +62,7 @@ import org.apache.spark.util.{CallerContext, Utils}
 
 private[spark] class Client(
     val args: ClientArguments,
-    val sparkConf: SparkConf,
+    val sparkConf: SparkConf, //todo sparkConf里有所有的启动配置
     val rpcEnv: RpcEnv)
   extends Logging {
 

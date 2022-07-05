@@ -462,7 +462,7 @@ private[spark] class ApplicationMaster(
         ResourceProfile.DEFAULT_RESOURCE_PROFILE_ID)
       dummyRunner.launchContextDebugInfo()
     }
-
+    //todo 创建yarn资源分配器【_sparkConf里有所有的启动参数配置】
     allocator = client.createAllocator(
       yarnConf,
       _sparkConf,
@@ -476,7 +476,7 @@ private[spark] class ApplicationMaster(
     // that when the driver sends an initial executor request (e.g. after an AM restart),
     // the allocator is ready to service requests.
     rpcEnv.setupEndpoint("YarnAM", new AMEndpoint(rpcEnv, driverRef))
-
+    //todo 申请可分配的资源
     allocator.allocateResources()
     val ms = MetricsSystem.createMetricsSystem(MetricsSystemInstances.APPLICATION_MASTER,
       sparkConf, securityMgr)
@@ -507,11 +507,13 @@ private[spark] class ApplicationMaster(
         val userConf = sc.getConf
         val host = userConf.get(DRIVER_HOST_ADDRESS)
         val port = userConf.get(DRIVER_PORT)
+        //todo 向resourcemanager注册applicationmaste，目的是为了申请资源
         registerAM(host, port, userConf, sc.ui.map(_.webUrl), appAttemptId)
 
         val driverRef = rpcEnv.setupEndpointRef(
           RpcAddress(host, port),
           YarnSchedulerBackend.ENDPOINT_NAME)
+        //todo 创建分配器
         createAllocator(driverRef, userConf, rpcEnv, appAttemptId, distCacheConf)
       } else {
         // Sanity check; should never happen in normal operation, since sc should only be null

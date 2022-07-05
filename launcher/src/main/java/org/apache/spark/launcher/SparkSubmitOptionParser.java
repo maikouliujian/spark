@@ -72,6 +72,7 @@ class SparkSubmitOptionParser {
   protected final String ARCHIVES = "--archives";
   protected final String EXECUTOR_CORES = "--executor-cores";
   protected final String KEYTAB = "--keytab";
+  //todo 设置num-executors数量
   protected final String NUM_EXECUTORS = "--num-executors";
   protected final String PRINCIPAL = "--principal";
   protected final String QUEUE = "--queue";

@@ -40,6 +40,7 @@ import org.apache.spark.util.{ShutdownHookManager, Utils}
  *
  * Optionally requires SASL authentication in order to read. See [[SecurityManager]].
  */
+//todo spark ExternalShuffleService
 private[deploy]
 class ExternalShuffleService(sparkConf: SparkConf, securityManager: SecurityManager)
   extends Logging {
@@ -105,6 +106,7 @@ class ExternalShuffleService(sparkConf: SparkConf, securityManager: SecurityMana
         Nil
       }
     transportContext = new TransportContext(transportConf, blockHandler, true)
+    //todo 创建netty server
     server = transportContext.createServer(port, bootstraps.asJava)
 
     shuffleServiceSource.registerMetricSet(server.getAllMetrics)

@@ -62,6 +62,7 @@ private[yarn] class ExecutorRunnable(
 
   def run(): Unit = {
     logDebug("Starting Executor Container")
+    //todo 创建nodemanager client，用来启动container
     nmClient = NMClient.createNMClient()
     nmClient.init(conf)
     nmClient.start()
@@ -97,7 +98,7 @@ private[yarn] class ExecutorRunnable(
     val dob = new DataOutputBuffer()
     credentials.writeTokenStorageToStream(dob)
     ctx.setTokens(ByteBuffer.wrap(dob.getData()))
-
+    //TODO 组装启动的命令行 启动类:YarnCoarseGrainedExecutorBackend
     val commands = prepareCommand()
 
     ctx.setCommands(commands.asJava)
@@ -122,6 +123,7 @@ private[yarn] class ExecutorRunnable(
 
     // Send the start request to the ContainerManager
     try {
+      //todo 通过nodemanager client启动Container【container中含有nodeid】
       nmClient.startContainer(container.get, ctx)
     } catch {
       case ex: Exception =>
@@ -204,6 +206,7 @@ private[yarn] class ExecutorRunnable(
     val commands = prefixEnv ++
       Seq(Environment.JAVA_HOME.$$() + "/bin/java", "-server") ++
       javaOpts ++
+    //TODO 启动类 YarnCoarseGrainedExecutorBackend
       Seq("org.apache.spark.executor.YarnCoarseGrainedExecutorBackend",
         "--driver-url", masterAddress,
         "--executor-id", executorId,
@@ -225,7 +228,7 @@ private[yarn] class ExecutorRunnable(
     Client.populateClasspath(null, conf, sparkConf, env, sparkConf.get(EXECUTOR_CLASS_PATH))
 
     System.getenv().asScala.filterKeys(_.startsWith("SPARK"))
-      .foreach { case (k, v) => env(k) = v }
+      .foreach {case (k, v) => env(k) = v }
 
     sparkConf.getExecutorEnv.foreach { case (key, value) =>
       if (key == Environment.CLASSPATH.name()) {

@@ -90,11 +90,12 @@ private[spark] class CoarseGrainedExecutorBackend(
     rpcEnv.asyncSetupEndpointRefByURI(driverUrl).flatMap { ref =>
       // This is a very fast action so we can use "ThreadUtils.sameThread"
       driver = Some(ref)
+      //todo executor向driver发送RegisterExecutor请求，去driver[CoarseGrainedSchedulerBackend.DriverEndpoint]中找RegisterExecutor
       ref.ask[Boolean](RegisterExecutor(executorId, self, hostname, cores, extractLogUrls,
         extractAttributes, _resources, resourceProfile.id))
     }(ThreadUtils.sameThread).onComplete {
       case Success(_) =>
-        self.send(RegisteredExecutor)
+        self.send(RegisteredExecutor) //todo 调用149行
       case Failure(e) =>
         exitExecutor(1, s"Cannot register with driver: $driverUrl", e, notifyDriver = false)
     }(ThreadUtils.sameThread)
@@ -148,6 +149,7 @@ private[spark] class CoarseGrainedExecutorBackend(
     case RegisteredExecutor =>
       logInfo("Successfully registered with driver")
       try {
+        //todo 注册Executor成功后，启动Executor
         executor = new Executor(executorId, hostname, env, userClassPath, isLocal = false,
           resources = _resources)
         driver.get.send(LaunchedExecutor(executorId))
@@ -337,10 +339,13 @@ private[spark] object CoarseGrainedExecutorBackend extends Logging {
       }
 
       driverConf.set(EXECUTOR_ID, arguments.executorId)
+      //todo 创建env
       val env = SparkEnv.createExecutorEnv(driverConf, arguments.executorId, arguments.bindAddress,
         arguments.hostname, arguments.cores, cfg.ioEncryptionKey, isLocal = false)
 
+      //todo 创建 CoarseGrainedExecutorBackend
       val backend = backendCreateFn(env.rpcEnv, arguments, env, cfg.resourceProfile)
+      //todo 通过nettyrpcenv注册为Executor
       env.rpcEnv.setupEndpoint("Executor", backend)
       arguments.workerUrl.foreach { url =>
         env.rpcEnv.setupEndpoint("WorkerWatcher",
