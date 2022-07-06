@@ -270,6 +270,7 @@ class SparkContext(config: SparkConf) extends Logging {
       conf: SparkConf,
       isLocal: Boolean,
       listenerBus: LiveListenerBus): SparkEnv = {
+    //todo Create a SparkEnv for the driver.
     SparkEnv.createDriverEnv(conf, isLocal, listenerBus, SparkContext.numDriverCores(master, conf))
   }
 
@@ -446,6 +447,7 @@ class SparkContext(config: SparkConf) extends Logging {
     listenerBus.addToStatusQueue(_statusStore.listener.get)
 
     // Create the Spark execution environment (cache, map output tracker, etc)
+    //todo 创建sparkenv
     _env = createSparkEnv(_conf, isLocal, listenerBus)
     SparkEnv.set(_env)
 

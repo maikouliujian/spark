@@ -204,6 +204,7 @@ private[netty] class Outbox(nettyEnv: NettyRpcEnv, val address: RpcAddress) {
 
       override def call(): Unit = {
         try {
+          //todo 创建netty client
           val _client = nettyEnv.createClient(address)
           outbox.synchronized {
             client = _client

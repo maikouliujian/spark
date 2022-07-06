@@ -209,6 +209,7 @@ public class TransportClientFactory implements Closeable {
     return createClient(address);
   }
 
+  //todo 创建netty client
   /** Create a completely new {@link TransportClient} to the remote address. */
   private TransportClient createClient(InetSocketAddress address)
       throws IOException, InterruptedException {
