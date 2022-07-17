@@ -143,7 +143,7 @@ private[spark] class TaskSchedulerImpl(
   var backend: SchedulerBackend = null
 
   val mapOutputTracker = SparkEnv.get.mapOutputTracker.asInstanceOf[MapOutputTrackerMaster]
-
+  //todo 调度器，本质上是对于rootPool封装
   private var schedulableBuilder: SchedulableBuilder = null
   // default scheduler is FIFO
   private val schedulingModeConf = conf.get(SCHEDULER_MODE)
@@ -154,7 +154,7 @@ private[spark] class TaskSchedulerImpl(
       case e: java.util.NoSuchElementException =>
         throw new SparkException(s"Unrecognized $SCHEDULER_MODE_PROPERTY: $schedulingModeConf")
     }
-
+  //todo task调度的核心类，主要对taskset进行排序
   val rootPool: Pool = new Pool("", schedulingMode, 0, 0)
 
   // This is a var so that we can reset it for testing purposes.
@@ -181,6 +181,7 @@ private[spark] class TaskSchedulerImpl(
 
   def initialize(backend: SchedulerBackend): Unit = {
     this.backend = backend
+    //todo 调度器
     schedulableBuilder = {
       schedulingMode match {
         case SchedulingMode.FIFO =>
@@ -211,11 +212,12 @@ private[spark] class TaskSchedulerImpl(
   override def postStartHook(): Unit = {
     waitBackendReady()
   }
-
+  //todo 提交tasks
   override def submitTasks(taskSet: TaskSet): Unit = {
     val tasks = taskSet.tasks
     logInfo("Adding task set " + taskSet.id + " with " + tasks.length + " tasks")
     this.synchronized {
+      //todo 创建taskSetManager
       val manager = createTaskSetManager(taskSet, maxTaskFailures)
       val stage = taskSet.stageId
       val stageTaskSets =
@@ -234,6 +236,7 @@ private[spark] class TaskSchedulerImpl(
         ts.isZombie = true
       }
       stageTaskSets(taskSet.stageAttemptId) = manager
+      //todo 向调度器中添加TaskSetManager，会在TaskSchedulerImpl411行取出
       schedulableBuilder.addTaskSetManager(manager, manager.taskSet.properties)
 
       if (!isLocal && !hasReceivedTask) {
@@ -251,6 +254,7 @@ private[spark] class TaskSchedulerImpl(
       }
       hasReceivedTask = true
     }
+    //todo 通过SchedulerBackend来调度tasks
     backend.reviveOffers()
   }
 
@@ -331,24 +335,32 @@ private[spark] class TaskSchedulerImpl(
       s" ${manager.parent.name}")
   }
 
+  //todo 这个方法就是对所有可用的executor进行一轮round-robin方式的分配，
+  // 一轮分配中，每个executor最多只能得到一个任务，这样做是为了尽量将任务“打散”，均匀第“撒到”所有executor上。
   private def resourceOfferSingleTaskSet(
       taskSet: TaskSetManager,
       maxLocality: TaskLocality,
       shuffledOffers: Seq[WorkerOffer],
       availableCpus: Array[Int],
       availableResources: Array[Map[String, Buffer[String]]],
-      tasks: IndexedSeq[ArrayBuffer[TaskDescription]],
+      tasks: IndexedSeq[ArrayBuffer[TaskDescription]],//todo 每一个executor中的task，会有多个，这是一个空seq
       addressesWithDescs: ArrayBuffer[(String, TaskDescription)]) : Boolean = {
     var launchedTask = false
     // nodes and executors that are blacklisted for the entire application have already been
     // filtered out by this point
+    //todo 轮询每一个executor，分别为其分配一个Task
     for (i <- 0 until shuffledOffers.size) {
       val execId = shuffledOffers(i).executorId
       val host = shuffledOffers(i).host
+      //todo  检查这个executor上的cpu资源是否够用
       if (availableCpus(i) >= CPUS_PER_TASK &&
         resourcesMeetTaskRequirements(availableResources(i))) {
         try {
+          //todo 根据最大允许的本地性级别取出能够在这个executor上执行的任务，只有一个返回值
           for (task <- taskSet.resourceOffer(execId, host, maxLocality, availableResources(i))) {
+            // todo 如果能够找出一个可以在这个executor上运行的符合本地性要求的任务，
+            // todo 将这个任务加入传进来的集合中
+            // todo i代表executor的index
             tasks(i) += task
             val tid = task.taskId
             taskIdToTaskSetManager.put(tid, taskSet)
@@ -368,6 +380,7 @@ private[spark] class TaskSchedulerImpl(
               // The executor address is expected to be non empty.
               addressesWithDescs += (shuffledOffers(i).address.get -> task)
             }
+            //todo launchedTask = true 说明外层还需要继续循环给executor分配task
             launchedTask = true
           }
         } catch {
@@ -395,10 +408,22 @@ private[spark] class TaskSchedulerImpl(
    * sets for tasks in order of priority. We fill each node with tasks in a round-robin manner so
    * that tasks are balanced across the cluster.
    */
+    //todo 给executor分配task
+
+  /***
+   * // 这个方法由调度后端调用，调度后端会将可用的executor资源告诉TaskSchedulerImpl，
+     // TaskSchedulerImpl根据TaskSet优先级（调度池），黑名单，本地性等因素给出要实际运行的任务。
+     // 我们使用round-robin的方式将任务分配到各个executor上，以使得计算资源的 使用更均衡。
+   */
   def resourceOffers(offers: IndexedSeq[WorkerOffer]): Seq[Seq[TaskDescription]] = synchronized {
     // Mark each slave as alive and remember its hostname
     // Also track if new executor is added
+    // todo 标记是否有新的可用executor加入
     var newExecAvail = false
+    //todo var newExecAvail = false
+    // 这个循环主要目的是两个：
+    // 1. 更新一些簿记量，如物理节点和executor的相互映射关系，机架和host的映射关系，host和executor上运行的任务信息等等
+    // 2. 检查是否有新的可用executor加入
     for (o <- offers) {
       if (!hostToExecutors.contains(o.host)) {
         hostToExecutors(o.host) = new HashSet[String]()
@@ -419,25 +444,34 @@ private[spark] class TaskSchedulerImpl(
     // Before making any offers, remove any nodes from the blacklist whose blacklist has expired. Do
     // this here to avoid a separate thread and added synchronization overhead, and also because
     // updating the blacklist is only relevant when task offers are being made.
+    //todo // 触发黑名单的超时检查，被加入黑明单的节点或executor是由一定超时时间的，
+    // 在超时时间内不能像他们提交任务，而过了超时时间，这些资源将被重新投入使用
     blacklistTrackerOpt.foreach(_.applyBlacklistTimeout())
 
+    // todo 根据最新的黑名单过滤掉在黑名单中的计算资源，包括host和executor
     val filteredOffers = blacklistTrackerOpt.map { blacklistTracker =>
       offers.filter { offer =>
         !blacklistTracker.isNodeBlacklisted(offer.host) &&
           !blacklistTracker.isExecutorBlacklisted(offer.executorId)
       }
     }.getOrElse(offers)
-
+   //todo 对资源进行混洗，使得分配更加均匀，使用scala库的Random进行混洗
     val shuffledOffers = shuffleOffers(filteredOffers)
     // Build a list of tasks to assign to each worker.
+    // todo 每个executor能分配多少个任务，cores / CPUS_PER_TASK
     val tasks = shuffledOffers.map(o => new ArrayBuffer[TaskDescription](o.cores / CPUS_PER_TASK))
     val availableResources = shuffledOffers.map(_.resources).toArray
+    //todo 每个executor提供的cpu核数
     val availableCpus = shuffledOffers.map(o => o.cores).toArray
+      //todo 从rootPool中取出要调度的taskset list
+    //todo 通过调度池对所有的任务集按优先级进行排序，获取排序后的任务集
     val sortedTaskSets = rootPool.getSortedTaskSetQueue.filterNot(_.isZombie)
     for (taskSet <- sortedTaskSets) {
       logDebug("parentName: %s, name: %s, runningTasks: %s".format(
         taskSet.parent.name, taskSet.name, taskSet.runningTasks))
+      //todo 有新的executor加入
       if (newExecAvail) {
+        //todo 重新计算本地化级别
         taskSet.executorAdded()
       }
     }
@@ -445,6 +479,7 @@ private[spark] class TaskSchedulerImpl(
     // Take each TaskSet in our scheduling order, and then offer it each node in increasing order
     // of locality levels so that it gets a chance to launch local tasks on all of them.
     // NOTE: the preferredLocality order: PROCESS_LOCAL, NODE_LOCAL, NO_PREF, RACK_LOCAL, ANY
+    //todo 对于每一个任务集，为其分配资源
     for (taskSet <- sortedTaskSets) {
       // we only need to calculate available slots if using barrier scheduling, otherwise the
       // value is -1
@@ -469,9 +504,14 @@ private[spark] class TaskSchedulerImpl(
         var launchedAnyTask = false
         // Record all the executor IDs assigned barrier tasks on.
         val addressesWithDescs = ArrayBuffer[(String, TaskDescription)]()
+        //todo myLocalityLevels 计算本地化等级，为每一个等级匹配task
         for (currentMaxLocality <- taskSet.myLocalityLevels) {
           var launchedTaskAtCurrentMaxLocality = false
           do {
+            //todo  每个本地性级别会进行多轮分配，
+            //    每一轮依次轮询每个executor，每个executor分配一个任务，
+            //    这样一轮下来每个executor都会分配到一个任务，显然大多数情况下，executor的资源是不会被占满的
+            //    没关系，我们会接着进行第二轮分配，直到没有资源或者在当前的本地性级别下任务被分配完了，就跳出循环
             launchedTaskAtCurrentMaxLocality = resourceOfferSingleTaskSet(taskSet,
               currentMaxLocality, shuffledOffers, availableCpus,
               availableResources, tasks, addressesWithDescs)

@@ -196,11 +196,12 @@ class SparkContext(config: SparkConf) extends Logging {
    | of them to some neutral value ahead of time, so that calling "stop()" while the       |
    | constructor is still running is safe.                                                 |
    * ------------------------------------------------------------------------------------- */
-
+  //todo spark启动配置
   private var _conf: SparkConf = _
   private var _eventLogDir: Option[URI] = None
   private var _eventLogCodec: Option[String] = None
   private var _listenerBus: LiveListenerBus = _
+  //todo spark运行环境
   private var _env: SparkEnv = _
   private var _statusTracker: SparkStatusTracker = _
   private var _progressBar: Option[ConsoleProgressBar] = None
@@ -209,8 +210,10 @@ class SparkContext(config: SparkConf) extends Logging {
   private var _executorMemory: Int = _
   //todo SchedulerBackend
   private var _schedulerBackend: SchedulerBackend = _
+  //todo 任务调度器
   private var _taskScheduler: TaskScheduler = _
   private var _heartbeatReceiver: RpcEndpointRef = _
+  //todo stage调度器
   @volatile private var _dagScheduler: DAGScheduler = _
   private var _applicationId: String = _
   private var _applicationAttemptId: Option[String] = None
@@ -299,6 +302,7 @@ class SparkContext(config: SparkConf) extends Logging {
    * @note As it will be reused in all Hadoop RDDs, it's better not to modify it unless you
    * plan to set some global configurations for all Hadoop RDDs.
    */
+    //todo sparkcontext中对于hadoop的配置设置
   def hadoopConfiguration: Configuration = _hadoopConfiguration
 
   private[spark] def executorMemory: Int = _executorMemory
@@ -2100,6 +2104,7 @@ class SparkContext(config: SparkConf) extends Logging {
    * partitions of the target RDD, e.g. for operations like `first()`
    * @param resultHandler callback to pass each result to
    */
+    //todo 运行作业
   def runJob[T, U: ClassTag](
       rdd: RDD[T],
       func: (TaskContext, Iterator[T]) => U,
@@ -2114,6 +2119,7 @@ class SparkContext(config: SparkConf) extends Logging {
     if (conf.getBoolean("spark.logLineage", false)) {
       logInfo("RDD's recursive dependencies:\n" + rdd.toDebugString)
     }
+      //todo 由dagScheduler启动runjob
     dagScheduler.runJob(rdd, cleanedFunc, partitions, callSite, resultHandler, localProperties.get)
     progressBar.foreach(_.finishAll())
     rdd.doCheckpoint()

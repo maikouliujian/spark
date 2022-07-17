@@ -238,6 +238,7 @@ private[spark] class Executor(
 
   private[executor] def numRunningTasks: Int = runningTasks.size()
 
+  //todo 启动task
   def launchTask(context: ExecutorBackend, taskDescription: TaskDescription): Unit = {
     val tr = new TaskRunner(context, taskDescription)
     runningTasks.put(taskDescription.taskId, tr)
@@ -397,6 +398,7 @@ private[spark] class Executor(
       (accums, accUpdates)
     }
 
+    //todo 运行task
     override def run(): Unit = {
       threadId = Thread.currentThread.getId
       Thread.currentThread.setName(threadName)
@@ -421,6 +423,7 @@ private[spark] class Executor(
         Executor.taskDeserializationProps.set(taskDescription.properties)
 
         updateDependencies(taskDescription.addedFiles, taskDescription.addedJars)
+        //todo 获取task
         task = ser.deserialize[Task[Any]](
           taskDescription.serializedTask, Thread.currentThread.getContextClassLoader)
         task.localProperties = taskDescription.properties
@@ -456,6 +459,7 @@ private[spark] class Executor(
         } else 0L
         var threwException = true
         val value = Utils.tryWithSafeFinally {
+          //todo 运行task
           val res = task.run(
             taskAttemptId = taskId,
             attemptNumber = taskDescription.attemptNumber,

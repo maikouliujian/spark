@@ -49,6 +49,7 @@ import org.apache.spark.util._
  *
  * All public methods of this class are thread-safe.
  */
+//todo 一个ShuffleStatus包含多个MapStatus
 private class ShuffleStatus(numPartitions: Int) {
 
   private val (readLock, writeLock) = {
@@ -84,6 +85,7 @@ private class ShuffleStatus(numPartitions: Int) {
    * for each output.
    */
   // Exposed for testing
+  //todo 记录每个分区【每个task】的shuffle结果
   val mapStatuses = new Array[MapStatus](numPartitions)
 
   /**

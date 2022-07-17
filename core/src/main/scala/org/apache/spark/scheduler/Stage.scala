@@ -55,13 +55,13 @@ import org.apache.spark.util.CallSite
  */
 private[scheduler] abstract class Stage(
     val id: Int,
-    val rdd: RDD[_],
+    val rdd: RDD[_],//todo 当前stage中的最后一个rdd
     val numTasks: Int,
     val parents: List[Stage],
     val firstJobId: Int,
     val callSite: CallSite)
   extends Logging {
-
+  //todo 当前stage中的最后一个rdd的分区数
   val numPartitions = rdd.partitions.length
 
   /** Set of jobs that this stage belongs to. */

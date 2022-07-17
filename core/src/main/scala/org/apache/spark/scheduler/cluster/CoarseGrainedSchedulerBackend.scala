@@ -165,7 +165,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
                 s"from unknown executor with ID $executorId")
           }
         }
-
+        //todo 调度task
       case ReviveOffers =>
         makeOffers()
 
@@ -288,9 +288,12 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     // Make fake resource offers on all executors
     private def makeOffers(): Unit = {
       // Make sure no executor is killed while some task is launching on it
+      //todo 返回TaskDescription
       val taskDescs = withLock {
         // Filter out executors under killing
+        // todo 过滤掉正在被杀死的executor
         val activeExecutors = executorDataMap.filterKeys(isExecutorActive)
+        //todo 获取executor资源
         val workOffers = activeExecutors.map {
           case (id, executorData) =>
             new WorkerOffer(id, executorData.executorHost, executorData.freeCores,
@@ -299,9 +302,15 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
                 (rName, rInfo.availableAddrs.toBuffer)
               })
         }.toIndexedSeq
+        //todo 给executor分配task【这是ask调度最重要的一个方法，逻辑比较复杂】
+        //todo  把这些可用的资源交给TaskSchedulerImpl进行调度
+        // TaskSchedulerImpl会综合考虑任务本地性，黑名单，调度池的调度顺序等因素，返回TaskDescription集合
+        // TaskDescription对象是对一个Task的完整描述，
+        // 包括序列化的任务数据，任务在哪个executor上运行，依赖文件和jar包等信息
         scheduler.resourceOffers(workOffers)
       }
       if (taskDescs.nonEmpty) {
+        //todo 启动task
         launchTasks(taskDescs)
       }
     }
@@ -366,7 +375,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
 
           logDebug(s"Launching task ${task.taskId} on executor id: ${task.executorId} hostname: " +
             s"${executorData.executorHost}.")
-
+          //todo 发送给executor启动task
           executorData.executorEndpoint.send(LaunchTask(new SerializableBuffer(serializedTask)))
         }
       }
@@ -509,6 +518,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
   }
 
   override def reviveOffers(): Unit = {
+    //todo 向driver发送ReviveOffers
     driverEndpoint.send(ReviveOffers)
   }
 

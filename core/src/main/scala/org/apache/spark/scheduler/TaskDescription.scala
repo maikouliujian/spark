@@ -49,7 +49,7 @@ import org.apache.spark.util.{ByteBufferInputStream, ByteBufferOutputStream, Uti
 private[spark] class TaskDescription(
     val taskId: Long,
     val attemptNumber: Int,
-    val executorId: String,
+    val executorId: String, //todo task要发送到的executorid
     val name: String,
     val index: Int,    // Index within this task's TaskSet
     val partitionId: Int,

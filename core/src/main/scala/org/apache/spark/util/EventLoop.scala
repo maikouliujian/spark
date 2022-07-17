@@ -38,14 +38,17 @@ private[spark] abstract class EventLoop[E](name: String) extends Logging {
   private val stopped = new AtomicBoolean(false)
 
   // Exposed for testing.
+  //todo 启动轮训线程
   private[spark] val eventThread = new Thread(name) {
     setDaemon(true)
 
     override def run(): Unit = {
       try {
         while (!stopped.get) {
+          //todo 从队列中获取需要调度的事件
           val event = eventQueue.take()
           try {
+            //todo 子类实现接收
             onReceive(event)
           } catch {
             case NonFatal(e) =>

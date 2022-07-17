@@ -25,7 +25,7 @@ import java.util.Properties
  */
 private[spark] class TaskSet(
     val tasks: Array[Task[_]],
-    val stageId: Int,
+    val stageId: Int,//todo stageId
     val stageAttemptId: Int,
     val priority: Int,
     val properties: Properties) {

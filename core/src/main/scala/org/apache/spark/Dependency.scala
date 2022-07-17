@@ -30,6 +30,7 @@ import org.apache.spark.shuffle.{ShuffleHandle, ShuffleWriteProcessor}
  */
 @DeveloperApi
 abstract class Dependency[T] extends Serializable {
+  //todo Dependency中的rdd中当前rdd的parent rdd
   def rdd: RDD[T]
 }
 
@@ -81,6 +82,7 @@ class ShuffleDependency[K: ClassTag, V: ClassTag, C: ClassTag](
   if (mapSideCombine) {
     require(aggregator.isDefined, "Map-side combine without Aggregator specified!")
   }
+  //todo 当前依赖的上游rdd
   override def rdd: RDD[Product2[K, V]] = _rdd.asInstanceOf[RDD[Product2[K, V]]]
 
   private[spark] val keyClassName: String = reflect.classTag[K].runtimeClass.getName
@@ -89,7 +91,7 @@ class ShuffleDependency[K: ClassTag, V: ClassTag, C: ClassTag](
   // methods in PairRDDFunctions are used instead of combineByKeyWithClassTag.
   private[spark] val combinerClassName: Option[String] =
     Option(reflect.classTag[C]).map(_.runtimeClass.getName)
-
+  //todo shuffle的唯一标识
   val shuffleId: Int = _rdd.context.newShuffleId()
 
   val shuffleHandle: ShuffleHandle = _rdd.context.env.shuffleManager.registerShuffle(

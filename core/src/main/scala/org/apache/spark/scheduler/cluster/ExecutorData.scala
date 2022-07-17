@@ -33,7 +33,7 @@ import org.apache.spark.scheduler.ExecutorResourceInfo
  * @param registrationTs The registration timestamp of this executor
  */
 private[cluster] class ExecutorData(
-    val executorEndpoint: RpcEndpointRef,
+    val executorEndpoint: RpcEndpointRef,//todo executor的endpoint
     val executorAddress: RpcAddress,
     override val executorHost: String,
     var freeCores: Int,

@@ -36,12 +36,12 @@ import org.apache.spark.util.CallSite
  */
 private[spark] class ShuffleMapStage(
     id: Int,
-    rdd: RDD[_],
+    rdd: RDD[_], //todo 当前stage中的最后一个rdd
     numTasks: Int,
     parents: List[Stage],
     firstJobId: Int,
     callSite: CallSite,
-    val shuffleDep: ShuffleDependency[_, _, _],
+    val shuffleDep: ShuffleDependency[_, _, _], //todo 当前ShuffleMapStage和下游stage之间的依赖
     mapOutputTrackerMaster: MapOutputTrackerMaster)
   extends Stage(id, rdd, numTasks, parents, firstJobId, callSite) {
 

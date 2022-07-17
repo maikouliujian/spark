@@ -54,7 +54,7 @@ private[spark] class ShuffleMapTask(
     stageAttemptId: Int,
     taskBinary: Broadcast[Array[Byte]],
     partition: Partition,
-    @transient private var locs: Seq[TaskLocation],
+    @transient private var locs: Seq[TaskLocation],//todo task的本地化取决于对应分区的location
     localProperties: Properties,
     serializedTaskMetrics: Array[Byte],
     jobId: Option[Int] = None,
