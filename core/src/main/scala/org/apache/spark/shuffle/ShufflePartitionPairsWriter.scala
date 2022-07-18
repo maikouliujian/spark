@@ -30,10 +30,10 @@ import org.apache.spark.util.collection.PairsWriter
  * arbitrary partition writer instead of writing to local disk through the block manager.
  */
 private[spark] class ShufflePartitionPairsWriter(
-    partitionWriter: ShufflePartitionWriter,
+    partitionWriter: ShufflePartitionWriter, //todo 触发写数据的类
     serializerManager: SerializerManager,
     serializerInstance: SerializerInstance,
-    blockId: BlockId,
+    blockId: BlockId,//todo 一个分区需要写出去的blockId
     writeMetrics: ShuffleWriteMetricsReporter)
   extends PairsWriter with Closeable {
 
@@ -62,6 +62,7 @@ private[spark] class ShufflePartitionPairsWriter(
       partitionStream = partitionWriter.openStream
       timeTrackingStream = new TimeTrackingOutputStream(writeMetrics, partitionStream)
       wrappedStream = serializerManager.wrapStream(blockId, timeTrackingStream)
+      //todo 初始化写数据流
       objOut = serializerInstance.serializeStream(wrappedStream)
     } catch {
       case e: Exception =>

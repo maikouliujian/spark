@@ -192,6 +192,7 @@ private[spark] class DiskBlockObjectWriter(
       }
 
       val pos = channel.position()
+      //todo 创建FileSegment
       val fileSegment = new FileSegment(file, committedPosition, pos - committedPosition)
       committedPosition = pos
       // In certain compression codecs, more bytes are written after streams are closed
@@ -249,6 +250,7 @@ private[spark] class DiskBlockObjectWriter(
   /**
    * Writes a key-value pair.
    */
+    //todo 写k,v
   override def write(key: Any, value: Any): Unit = {
     if (!streamOpen) {
       open()

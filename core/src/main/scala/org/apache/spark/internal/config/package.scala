@@ -1249,7 +1249,7 @@ package object config {
         "memory usage.")
       .version("1.1.1")
       .bytesConf(ByteUnit.BYTE)
-      .createWithDefault(5 * 1024 * 1024)
+      .createWithDefault(5 * 1024 * 1024)//todo 5m
 
   private[spark] val SHUFFLE_SPILL_BATCH_SIZE =
     ConfigBuilder("spark.shuffle.spill.batchSize")

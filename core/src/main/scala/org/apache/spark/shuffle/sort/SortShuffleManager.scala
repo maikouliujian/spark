@@ -177,6 +177,7 @@ private[spark] class SortShuffleManager(conf: SparkConf) extends ShuffleManager 
           shuffleExecutorComponents)
       case other: BaseShuffleHandle[K @unchecked, V @unchecked, _] =>
         new SortShuffleWriter(
+          //todo mapId为context.taskAttemptId()
           shuffleBlockResolver, other, mapId, context, shuffleExecutorComponents)
     }
   }

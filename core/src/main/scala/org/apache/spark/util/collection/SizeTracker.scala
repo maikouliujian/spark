@@ -67,6 +67,7 @@ private[spark] trait SizeTracker {
   protected def afterUpdate(): Unit = {
     numUpdates += 1
     if (nextSampleNum == numUpdates) {
+      //todo 采样判断数组大小
       takeSample()
     }
   }
@@ -93,8 +94,10 @@ private[spark] trait SizeTracker {
   /**
    * Estimate the current size of the collection in bytes. O(1) time.
    */
+    //todo 预估数据的大小，不一定100%准确，是为了O(1)能达到数组大小
   def estimateSize(): Long = {
     assert(samples.nonEmpty)
+      //todo bytesPerUpdate：每条更新的平均大小
     val extrapolatedDelta = bytesPerUpdate * (numUpdates - samples.last.numUpdates)
     (samples.last.size + extrapolatedDelta).toLong
   }

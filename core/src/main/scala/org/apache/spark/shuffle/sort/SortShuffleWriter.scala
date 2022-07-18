@@ -27,7 +27,7 @@ import org.apache.spark.util.collection.ExternalSorter
 private[spark] class SortShuffleWriter[K, V, C](
     shuffleBlockResolver: IndexShuffleBlockResolver,
     handle: BaseShuffleHandle[K, V, C],
-    mapId: Long,
+    mapId: Long,//todo context.taskAttemptId()
     context: TaskContext,
     shuffleExecutorComponents: ShuffleExecutorComponents)
   extends ShuffleWriter[K, V] with Logging {
@@ -48,6 +48,7 @@ private[spark] class SortShuffleWriter[K, V, C](
   private val writeMetrics = context.taskMetrics().shuffleWriteMetrics
 
   /** Write a bunch of records to this task's output */
+    //todo 把该stage中一个task的计算结果写到磁盘，作为shufflemap的结果
   override def write(records: Iterator[Product2[K, V]]): Unit = {
     sorter = if (dep.mapSideCombine) {
       new ExternalSorter[K, V, C](
@@ -59,6 +60,7 @@ private[spark] class SortShuffleWriter[K, V, C](
       new ExternalSorter[K, V, V](
         context, aggregator = None, Some(dep.partitioner), ordering = None, dep.serializer)
     }
+      //todo 将records 合并+排序 写入文件中，可能会有多个文件，阈值大于5m会写出一个新文件
     sorter.insertAll(records)
 
     // Don't bother including the time to open the merged output file in the shuffle write time,
@@ -66,8 +68,11 @@ private[spark] class SortShuffleWriter[K, V, C](
     // (see SPARK-3570).
     val mapOutputWriter = shuffleExecutorComponents.createMapOutputWriter(
       dep.shuffleId, mapId, dep.partitioner.numPartitions)
+    //todo 将该stage中一个task写出的多个文件和内存中的数据
     sorter.writePartitionedMapOutput(dep.shuffleId, mapId, mapOutputWriter)
+      //todo 写索引文件，返回partitionLengths===>每个分区中数据条数
     val partitionLengths = mapOutputWriter.commitAllPartitions()
+      //todo 返回shuffle map结果的记录，用于reduce task拉取数据
     mapStatus = MapStatus(blockManager.shuffleServerId, partitionLengths, mapId)
   }
 

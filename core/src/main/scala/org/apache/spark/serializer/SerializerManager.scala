@@ -107,6 +107,7 @@ private[spark] class SerializerManager(
     }
   }
 
+  //todo 数据是否需要压缩
   private def shouldCompress(blockId: BlockId): Boolean = {
     blockId match {
       case _: ShuffleBlockId => compressShuffle

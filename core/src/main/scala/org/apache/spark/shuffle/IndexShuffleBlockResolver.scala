@@ -166,6 +166,7 @@ private[spark] class IndexShuffleBlockResolver(
       lengths: Array[Long],
       dataTmp: File): Unit = {
     val indexFile = getIndexFile(shuffleId, mapId)
+    //todo 获取索引文件
     val indexTmp = Utils.tempFileWith(indexFile)
     try {
       val dataFile = getDataFile(shuffleId, mapId)
@@ -183,11 +184,13 @@ private[spark] class IndexShuffleBlockResolver(
         } else {
           // This is the first successful attempt in writing the map outputs for this task,
           // so override any existing index and data files with the ones we wrote.
+          //todo 第一次写index文件
           val out = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(indexTmp)))
           Utils.tryWithSafeFinally {
             // We take in lengths of each block, need to convert it to offsets.
             var offset = 0L
             out.writeLong(offset)
+            //todo lengths===>partitionLengths每个分区中数据条数
             for (length <- lengths) {
               offset += length
               out.writeLong(offset)

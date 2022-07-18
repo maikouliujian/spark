@@ -71,7 +71,7 @@ object Partitioner {
     } else {
       None
     }
-
+    //todo 默认的defaultNumPartitions
     val defaultNumPartitions = if (rdd.context.conf.contains("spark.default.parallelism")) {
       rdd.context.defaultParallelism
     } else {

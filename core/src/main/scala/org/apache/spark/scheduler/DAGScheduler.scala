@@ -1273,6 +1273,9 @@ private[spark] class DAGScheduler(
     try {
       // For ShuffleMapTask, serialize and broadcast (rdd, shuffleDep).
       // For ResultTask, serialize and broadcast (rdd, func).
+      //todo 将task所需的重要数据广播出去，
+      // 1）对于ShuffleMapTask是当前stage的最后一个rdd和当前stage和下游stage之间的依赖
+      // 2）对于ResultTask是当前stage的最后一个rdd和func
       var taskBinaryBytes: Array[Byte] = null
       // taskBinaryBytes and partitions are both effected by the checkpoint status. We need
       // this synchronization in case another concurrent job is checkpointing this RDD, so we get a
@@ -1293,6 +1296,7 @@ private[spark] class DAGScheduler(
         logWarning(s"Broadcasting large task binary with size " +
           s"${Utils.bytesToString(taskBinaryBytes.length)}")
       }
+      //todo 广播重要信息
       taskBinary = sc.broadcast(taskBinaryBytes)
     } catch {
       // In the case of a failure during serialization, abort the stage.

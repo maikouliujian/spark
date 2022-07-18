@@ -28,8 +28,10 @@ import org.apache.spark.util.collection.WritablePartitionedPairCollection._
 private[spark] class PartitionedAppendOnlyMap[K, V]
   extends SizeTrackingAppendOnlyMap[(Int, K), V] with WritablePartitionedPairCollection[K, V] {
 
+  //todo 将array中的数据按照【分区不同按照分区升序排，分区相同按key升序排】进行排序，并返回包含数据的迭代器
   def partitionedDestructiveSortedIterator(keyComparator: Option[Comparator[K]])
     : Iterator[((Int, K), V)] = {
+    //todo 分区不同按照分区升序排，分区相同按key升序排
     val comparator = keyComparator.map(partitionKeyComparator).getOrElse(partitionComparator)
     destructiveSortedIterator(comparator)
   }

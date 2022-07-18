@@ -55,6 +55,7 @@ class AppendOnlyMap[K, V](initialCapacity: Int = 64)
 
   // Holds keys and values in the same array for memory locality; specifically, the order of
   // elements is key0, value0, key1, value1, key2, value2, etc.
+  //todo 数组模拟map，奇数位：key，偶数位：value
   private var data = new Array[AnyRef](2 * capacity)
 
   // Treat the null key differently so we can use nulls in "data" to represent empty items.
@@ -125,6 +126,7 @@ class AppendOnlyMap[K, V](initialCapacity: Int = 64)
    * Set the value for key to updateFunc(hadValue, oldValue), where oldValue will be the old value
    * for key, if any, or null otherwise. Returns the newly updated value.
    */
+    //todo key===>(partitionkey,key)
   def changeValue(key: K, updateFunc: (Boolean, V) => V): V = {
     assert(!destroyed, destructionMessage)
     val k = key.asInstanceOf[AnyRef]
@@ -147,6 +149,7 @@ class AppendOnlyMap[K, V](initialCapacity: Int = 64)
         incrementSize()
         return newValue
       } else if (k.eq(curKey) || k.equals(curKey)) {
+        //todo 如果遇到相同key，则对value进行合并，并更新value值
         val newValue = updateFunc(true, data(2 * pos + 1).asInstanceOf[V])
         data(2 * pos + 1) = newValue.asInstanceOf[AnyRef]
         return newValue
@@ -270,9 +273,9 @@ class AppendOnlyMap[K, V](initialCapacity: Int = 64)
       keyIndex += 1
     }
     assert(curSize == newIndex + (if (haveNullValue) 1 else 0))
-
+    //todo 底层是timSort
     new Sorter(new KVArraySortDataFormat[K, AnyRef]).sort(data, 0, newIndex, keyComparator)
-
+    //todo 将排好序的数据返回
     new Iterator[(K, V)] {
       var i = 0
       var nullValueReady = haveNullValue

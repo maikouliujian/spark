@@ -76,11 +76,12 @@ private[spark] abstract class Spillable[C](taskMemoryManager: TaskMemoryManager)
    * memory before spilling.
    *
    * @param collection collection to spill to disk
-   * @param currentMemory estimated size of the collection in bytes
+   * @param currentMemory estimated size of the collection in bytes【//todo 预估数据的大小，不一定100%准确，是为了O(1)能达到数组大小】
    * @return true if `collection` was spilled to disk; false otherwise
    */
   protected def maybeSpill(collection: C, currentMemory: Long): Boolean = {
     var shouldSpill = false
+    //todo 默认myMemoryThreshold 5m
     if (elementsRead % 32 == 0 && currentMemory >= myMemoryThreshold) {
       // Claim up to double our current memory from the shuffle memory pool
       val amountToRequest = 2 * currentMemory - myMemoryThreshold
@@ -95,6 +96,7 @@ private[spark] abstract class Spillable[C](taskMemoryManager: TaskMemoryManager)
     if (shouldSpill) {
       _spillCount += 1
       logSpillage(currentMemory)
+      //todo 溢写
       spill(collection)
       _elementsRead = 0
       _memoryBytesSpilled += currentMemory

@@ -74,8 +74,9 @@ class ShuffleDependency[K: ClassTag, V: ClassTag, C: ClassTag](
     val partitioner: Partitioner,
     val serializer: Serializer = SparkEnv.get.serializer,
     val keyOrdering: Option[Ordering[K]] = None,
-    val aggregator: Option[Aggregator[K, V, C]] = None,
+    val aggregator: Option[Aggregator[K, V, C]] = None,//todo 是否mapsidecombine
     val mapSideCombine: Boolean = false,
+    //todo shuffle写数据的核心组件
     val shuffleWriterProcessor: ShuffleWriteProcessor = new ShuffleWriteProcessor)
   extends Dependency[Product2[K, V]] {
 
@@ -93,7 +94,7 @@ class ShuffleDependency[K: ClassTag, V: ClassTag, C: ClassTag](
     Option(reflect.classTag[C]).map(_.runtimeClass.getName)
   //todo shuffle的唯一标识
   val shuffleId: Int = _rdd.context.newShuffleId()
-
+  //todo 获取shuffle handle
   val shuffleHandle: ShuffleHandle = _rdd.context.env.shuffleManager.registerShuffle(
     shuffleId, this)
 

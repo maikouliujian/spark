@@ -76,6 +76,7 @@ public class LocalDiskShuffleMapOutputWriter implements ShuffleMapOutputWriter {
         package$.MODULE$.SHUFFLE_UNSAFE_FILE_OUTPUT_BUFFER_SIZE()) * 1024;
     this.partitionLengths = new long[numPartitions];
     this.outputFile = blockResolver.getDataFile(shuffleId, mapId);
+    //todo shufflemap task写出数据的文件
     this.outputTempFile = null;
   }
 
@@ -86,6 +87,7 @@ public class LocalDiskShuffleMapOutputWriter implements ShuffleMapOutputWriter {
     }
     lastPartitionId = reducePartitionId;
     if (outputTempFile == null) {
+      //todo shufflemap task写出数据的文件
       outputTempFile = Utils.tempFileWith(outputFile);
     }
     if (outputFileChannel != null) {
@@ -114,6 +116,8 @@ public class LocalDiskShuffleMapOutputWriter implements ShuffleMapOutputWriter {
     File resolvedTmp = outputTempFile != null && outputTempFile.isFile() ? outputTempFile : null;
     log.debug("Writing shuffle index file for mapId {} with length {}", mapId,
         partitionLengths.length);
+    //todo 写索引文件,partitionLengths每个分区中数据条数
+    //todo 索引文件中存储着每一个分区数据的offset
     blockResolver.writeIndexFileAndCommit(shuffleId, mapId, partitionLengths, resolvedTmp);
     return partitionLengths;
   }
