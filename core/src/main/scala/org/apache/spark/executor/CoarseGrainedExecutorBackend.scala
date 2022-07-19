@@ -223,6 +223,7 @@ private[spark] class CoarseGrainedExecutorBackend(
       taskResources.remove(taskId)
     }
     driver match {
+      //todo 将StatusUpdate信息发送给driver
       case Some(driverRef) => driverRef.send(msg)
       case None => logWarning(s"Drop $msg because has not yet connected to driver")
     }

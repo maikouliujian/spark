@@ -147,7 +147,9 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     }
 
     override def receive: PartialFunction[Any, Unit] = {
+          //todo 更新mapstatus信息
       case StatusUpdate(executorId, taskId, state, data, resources) =>
+        //todo 上报更新mapstatus信息
         scheduler.statusUpdate(taskId, state, data.value)
         if (TaskState.isFinished(state)) {
           executorDataMap.get(executorId) match {

@@ -59,6 +59,7 @@ private[spark] class ShuffleWriteProcessor extends Serializable with Logging {
       writer.write(
         //todo 从当前stage的最后一个rdd的分区partition开始进行触发迭代器计算
         rdd.iterator(partition, context).asInstanceOf[Iterator[_ <: Product2[Any, Any]]])
+      //todo 返回mapstatus
       writer.stop(success = true).get
     } catch {
       case e: Exception =>

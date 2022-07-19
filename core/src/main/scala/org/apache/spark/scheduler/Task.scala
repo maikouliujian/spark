@@ -57,7 +57,7 @@ import org.apache.spark.util._
 private[spark] abstract class Task[T](
     val stageId: Int,
     val stageAttemptId: Int,
-    val partitionId: Int,
+    val partitionId: Int,//todo task对应的分区id
     @transient var localProperties: Properties = new Properties,
     // The default value is only used in tests.
     serializedTaskMetrics: Array[Byte] =

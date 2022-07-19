@@ -632,6 +632,7 @@ private[spark] class TaskSchedulerImpl(
     Random.shuffle(offers)
   }
 
+  //todo serializedData 是 mapstatus
   def statusUpdate(tid: Long, state: TaskState, serializedData: ByteBuffer): Unit = {
     var failedExecutor: Option[String] = None
     var reason: Option[ExecutorLossReason] = None
@@ -658,6 +659,7 @@ private[spark] class TaskSchedulerImpl(
             if (TaskState.isFinished(state)) {
               cleanupTaskState(tid)
               taskSet.removeRunningTask(tid)
+              //todo task finished
               if (state == TaskState.FINISHED) {
                 taskResultGetter.enqueueSuccessfulTask(taskSet, tid, serializedData)
               } else if (Set(TaskState.FAILED, TaskState.KILLED, TaskState.LOST).contains(state)) {
@@ -714,6 +716,7 @@ private[spark] class TaskSchedulerImpl(
       taskSetManager: TaskSetManager,
       tid: Long,
       taskResult: DirectTaskResult[_]): Unit = synchronized {
+    //todo handleSuccessfulTask
     taskSetManager.handleSuccessfulTask(tid, taskResult)
   }
 

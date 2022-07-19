@@ -263,6 +263,7 @@ private[spark] class DAGScheduler(
   /**
    * Called by the TaskSetManager to report task completions or failures.
    */
+    //todo 上报task end
   def taskEnded(
       task: Task[_],
       reason: TaskEndReason,
@@ -1571,6 +1572,7 @@ private[spark] class DAGScheduler(
           case smt: ShuffleMapTask =>
             val shuffleStage = stage.asInstanceOf[ShuffleMapStage]
             shuffleStage.pendingPartitions -= task.partitionId
+            //todo task对应的mapstatus
             val status = event.result.asInstanceOf[MapStatus]
             val execId = status.location.executorId
             logDebug("ShuffleMapTask finished on " + execId)
@@ -1581,6 +1583,7 @@ private[spark] class DAGScheduler(
               // The epoch of the task is acceptable (i.e., the task was launched after the most
               // recent failure we're aware of for the executor), so mark the task's output as
               // available.
+              //todo 通过MapOutputTrackerMaster注册mapstatus
               mapOutputTracker.registerMapOutput(
                 shuffleStage.shuffleDep.shuffleId, smt.partitionId, status)
             }
@@ -2318,6 +2321,7 @@ private[scheduler] class DAGSchedulerEventProcessLoop(dagScheduler: DAGScheduler
       dagScheduler.handleGetTaskResult(taskInfo)
 
     case completion: CompletionEvent =>
+      //todo 处理TaskCompletion事件，包含注册mapstatus
       dagScheduler.handleTaskCompletion(completion)
 
     case TaskSetFailed(taskSet, reason, exception) =>

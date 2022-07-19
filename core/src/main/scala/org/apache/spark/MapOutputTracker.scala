@@ -404,6 +404,7 @@ private[spark] class MapOutputTrackerMaster(
   // HashMap for storing shuffleStatuses in the driver.
   // Statuses are dropped only by explicit de-registering.
   // Exposed for testing
+  //todo shuffleid和ShuffleStatus的对应关系
   val shuffleStatuses = new ConcurrentHashMap[Int, ShuffleStatus]().asScala
 
   private val maxRpcMessageSize = RpcUtils.maxMessageSizeBytes(conf)
@@ -481,7 +482,9 @@ private[spark] class MapOutputTrackerMaster(
     }
   }
 
+  //todo 注册一个MapOutput，mapIndex为分区id
   def registerMapOutput(shuffleId: Int, mapIndex: Int, status: MapStatus): Unit = {
+    //todo 添加一个mapstatus
     shuffleStatuses(shuffleId).addMapOutput(mapIndex, status)
   }
 
@@ -789,6 +792,7 @@ private[spark] class MapOutputTrackerMaster(
  * MapOutputTrackerMaster directly (which is possible because the master and worker share a common
  * superclass).
  */
+
 private[spark] class MapOutputTrackerWorker(conf: SparkConf) extends MapOutputTracker(conf) {
 
   val mapStatuses: Map[Int, Array[MapStatus]] =
