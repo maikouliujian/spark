@@ -1293,6 +1293,8 @@ package object config {
       .intConf
       .createWithDefault(8)
 
+  //todo 获取数据后是否对数据进行校验，默认为true 一般不需要调整
+  //todo detectCorrupt:发现有缺陷的,有错误的
   private[spark] val SHUFFLE_DETECT_CORRUPT =
     ConfigBuilder("spark.shuffle.detectCorrupt")
       .doc("Whether to detect any corruption in fetched blocks.")
