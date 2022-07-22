@@ -2107,6 +2107,7 @@ class SparkContext(config: SparkConf) extends Logging {
     //todo 运行作业
   def runJob[T, U: ClassTag](
       rdd: RDD[T],
+      //todo resulttask要执行的func
       func: (TaskContext, Iterator[T]) => U,
       partitions: Seq[Int],
       resultHandler: (Int, U) => Unit): Unit = {
@@ -2114,6 +2115,7 @@ class SparkContext(config: SparkConf) extends Logging {
       throw new IllegalStateException("SparkContext has been shutdown")
     }
     val callSite = getCallSite
+      //todo resulttask要执行的func
     val cleanedFunc = clean(func)
     logInfo("Starting job: " + callSite.shortForm)
     if (conf.getBoolean("spark.logLineage", false)) {

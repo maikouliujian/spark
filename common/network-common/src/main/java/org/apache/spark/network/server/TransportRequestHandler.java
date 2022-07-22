@@ -111,6 +111,7 @@ public class TransportRequestHandler extends MessageHandler<RequestMessage> {
       processRpcRequest((RpcRequest) request);
     } else if (request instanceof OneWayMessage) {
       processOneWayMessage((OneWayMessage) request);
+      //todo 处理StreamRequest，如拉取shuffle block
     } else if (request instanceof StreamRequest) {
       processStreamRequest((StreamRequest) request);
     } else if (request instanceof UploadStream) {
@@ -145,6 +146,7 @@ public class TransportRequestHandler extends MessageHandler<RequestMessage> {
 
     if (buf != null) {
       streamManager.streamBeingSent(req.streamId);
+      //todo 响应
       respond(new StreamResponse(req.streamId, buf.size(), buf)).addListener(future -> {
         streamManager.streamSent(req.streamId);
       });

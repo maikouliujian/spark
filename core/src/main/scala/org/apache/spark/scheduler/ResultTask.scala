@@ -80,13 +80,18 @@ private[spark] class ResultTask[T, U](
       threadMXBean.getCurrentThreadCpuTime
     } else 0L
     val ser = SparkEnv.get.closureSerializer.newInstance()
+    //todo 反序列化出rdd和func【func是用户自定义的】
+    //todo 此时的rdd是shufflestage中的最后一个rdd，这个rdd通过spark的迭代器模式【调用iterator】最终会找到ShuffleRdd,
+    // 即shufflestage中的第一个rdd
+    //todo 所以shuffle中读取数据要从ShuffleRdd开始
     val (rdd, func) = ser.deserialize[(RDD[T], (TaskContext, Iterator[T]) => U)](
       ByteBuffer.wrap(taskBinary.value), Thread.currentThread.getContextClassLoader)
     _executorDeserializeTimeNs = System.nanoTime() - deserializeStartTimeNs
     _executorDeserializeCpuTime = if (threadMXBean.isCurrentThreadCpuTimeSupported) {
       threadMXBean.getCurrentThreadCpuTime - deserializeStartCpuTime
     } else 0L
-
+    //todo 通过func计算一个分区的数据
+    //todo rdd.iterator最终会调用shufflerdd的compute方法
     func(context, rdd.iterator(partition, context))
   }
 

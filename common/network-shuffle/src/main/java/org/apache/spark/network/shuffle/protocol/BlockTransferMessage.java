@@ -63,6 +63,7 @@ public abstract class BlockTransferMessage implements Encodable {
   public static class Decoder {
     /** Deserializes the 'type' byte followed by the message itself. */
     public static BlockTransferMessage fromByteBuffer(ByteBuffer msg) {
+      //todo nio--->netty
       ByteBuf buf = Unpooled.wrappedBuffer(msg);
       byte type = buf.readByte();
       switch (type) {
@@ -87,6 +88,7 @@ public abstract class BlockTransferMessage implements Encodable {
   public ByteBuffer toByteBuffer() {
     // Allow room for encoded message, plus the type byte
     ByteBuf buf = Unpooled.buffer(encodedLength() + 1);
+    //todo 类型标识
     buf.writeByte(type().id);
     encode(buf);
     assert buf.writableBytes() == 0 : "Writable bytes remain: " + buf.writableBytes();

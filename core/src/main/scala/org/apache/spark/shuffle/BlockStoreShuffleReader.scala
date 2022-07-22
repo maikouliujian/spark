@@ -30,6 +30,7 @@ import org.apache.spark.util.collection.ExternalSorter
  */
 private[spark] class BlockStoreShuffleReader[K, C](
     handle: BaseShuffleHandle[K, _, C],
+    //todo 获取对应分区[startPartition,endPartition)的block的信息(块位置,(块id,块大小,块对应的分区index)) list
     blocksByAddress: Iterator[(BlockManagerId, Seq[(BlockId, Long, Int)])],
     context: TaskContext,
     readMetrics: ShuffleReadMetricsReporter,
@@ -65,13 +66,17 @@ private[spark] class BlockStoreShuffleReader[K, C](
   }
 
   /** Read the combined key-values for this reduce task */
+    //todo 读取shuffle block数据的迭代器
   override def read(): Iterator[Product2[K, C]] = {
+    //todo 读取拉取shuffle block数据的迭代器
     val wrappedStreams = new ShuffleBlockFetcherIterator(
       context,
       blockManager.blockStoreClient,
       blockManager,
+      //todo (块位置,(块id,块大小,块对应的分区index)) list
       blocksByAddress,
       serializerManager.wrapStream,
+      //todo 可以调优的参数！！！！！！
       // Note: we use getSizeAsMb when no suffix is provided for backwards compatibility
       SparkEnv.get.conf.get(config.REDUCER_MAX_SIZE_IN_FLIGHT) * 1024 * 1024,
       SparkEnv.get.conf.get(config.REDUCER_MAX_REQS_IN_FLIGHT),
@@ -85,6 +90,7 @@ private[spark] class BlockStoreShuffleReader[K, C](
     val serializerInstance = dep.serializer.newInstance()
 
     // Create a key/value iterator for each stream
+    //todo 通过flatMap将多个迭代器转为一个迭代器recordIter，recordIter(k,v)可以读取所有元素数据
     val recordIter = wrappedStreams.flatMap { case (blockId, wrappedStream) =>
       // Note: the asKeyValueIterator below wraps a key/value iterator inside of a
       // NextIterator. The NextIterator makes sure that close() is called on the
@@ -104,6 +110,7 @@ private[spark] class BlockStoreShuffleReader[K, C](
     val interruptibleIter = new InterruptibleIterator[(Any, Any)](context, metricIter)
 
     val aggregatedIter: Iterator[Product2[K, C]] = if (dep.aggregator.isDefined) {
+      //todo 是否mapSideCombine
       if (dep.mapSideCombine) {
         // We are reading values that are already combined
         val combinedKeyValuesIterator = interruptibleIter.asInstanceOf[Iterator[(K, C)]]
@@ -121,10 +128,12 @@ private[spark] class BlockStoreShuffleReader[K, C](
 
     // Sort the output if there is a sort ordering defined.
     val resultIter = dep.keyOrdering match {
+      //todo 如果排序
       case Some(keyOrd: Ordering[K]) =>
         // Create an ExternalSorter to sort the data.
         val sorter =
           new ExternalSorter[K, C, C](context, ordering = Some(keyOrd), serializer = dep.serializer)
+        //todo 将aggregatedIter进行聚合【如果设置了shouldCombine】、【如果数据超过5m】溢写磁盘
         sorter.insertAll(aggregatedIter)
         context.taskMetrics().incMemoryBytesSpilled(sorter.memoryBytesSpilled)
         context.taskMetrics().incDiskBytesSpilled(sorter.diskBytesSpilled)
@@ -133,6 +142,7 @@ private[spark] class BlockStoreShuffleReader[K, C](
         context.addTaskCompletionListener[Unit](_ => {
           sorter.stop()
         })
+        //todo sorter.iterator 1、将磁盘中的多个文件和内存中的数据按照分区构建成多个迭代器；2、将多个迭代器合并成一个，使其能读取所有分区中的数据
         CompletionIterator[Product2[K, C], Iterator[Product2[K, C]]](sorter.iterator, sorter.stop())
       case None =>
         aggregatedIter

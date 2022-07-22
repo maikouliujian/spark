@@ -32,7 +32,9 @@ public class Encoders {
 
     public static void encode(ByteBuf buf, String s) {
       byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
+      //todo 长度
       buf.writeInt(bytes.length);
+      //todo 具体值
       buf.writeBytes(bytes);
     }
 

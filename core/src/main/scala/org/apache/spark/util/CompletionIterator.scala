@@ -43,6 +43,7 @@ abstract class CompletionIterator[ +A, +I <: Iterator[A]](sub: I) extends Iterat
 
 private[spark] object CompletionIterator {
   def apply[A, I <: Iterator[A]](sub: I, completionFunction: => Unit) : CompletionIterator[A, I] = {
+    //todo 创建CompletionIterator的是实现类
     new CompletionIterator[A, I](sub) {
       def completion(): Unit = completionFunction
     }

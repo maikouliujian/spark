@@ -185,6 +185,7 @@ private[spark] class ExternalSorter[K, V, C](
    */
   private[spark] def numSpills: Int = spills.size
 
+  //todo 将records进行聚合【如果设置了shouldCombine】、溢写磁盘【如果数据超过5m】
   def insertAll(records: Iterator[Product2[K, V]]): Unit = {
     // TODO: stop combining if we find that the reduction factor isn't high
     val shouldCombine = aggregator.isDefined
@@ -203,6 +204,7 @@ private[spark] class ExternalSorter[K, V, C](
         kv = records.next()
         //todo key存在就合并，否则返回null，map的key是(partitionkey,key)
         map.changeValue((getPartition(kv._1), kv._1), update)
+        //todo 是否溢写磁盘
         maybeSpillCollection(usingMap = true)
       }
     } else {
@@ -211,6 +213,7 @@ private[spark] class ExternalSorter[K, V, C](
         addElementsRead()
         val kv = records.next()
         buffer.insert(getPartition(kv._1), kv._1, kv._2.asInstanceOf[C])
+        //todo 是否溢写磁盘
         maybeSpillCollection(usingMap = false)
       }
     }
@@ -686,7 +689,7 @@ private[spark] class ExternalSorter[K, V, C](
    * support hierarchical merging.
    * Exposed for testing.
    */
-    //todo 返回值为(分区id,该分区中所有元素读取的迭代器【磁盘+内存】)
+    //todo 将磁盘中的多个文件和内存中数据按照分区构建为迭代器，返回值为(分区id,该分区中所有元素读取的迭代器【磁盘+内存】)
   def partitionedIterator: Iterator[(Int, Iterator[Product2[K, C]])] = {
     val usingMap = aggregator.isDefined
     val collection: WritablePartitionedPairCollection[K, C] = if (usingMap) map else buffer
@@ -804,7 +807,7 @@ private[spark] class ExternalSorter[K, V, C](
       }
     } else {
       // We must perform merge-sort; get an iterator by partition and write everything directly.
-      //todo partitionedIterator重点方法，返回值为(分区id,该分区中所有元素读取的迭代器【磁盘+内存】)
+      //todo partitionedIterator重点方法，返回值为(分区id,该分区中所有元素读取的迭代器【磁盘+内存】)===>shufflemap阶段调用
       for ((id, elements) <- this.partitionedIterator) {
         val blockId = ShuffleBlockId(shuffleId, mapId, id)
         var partitionWriter: ShufflePartitionWriter = null
@@ -821,6 +824,7 @@ private[spark] class ExternalSorter[K, V, C](
           if (elements.hasNext) {
             //todo 遍历当前分区中的所有元素
             for (elem <- elements) {
+              //todo 将数据写到磁盘
               partitionPairsWriter.write(elem._1, elem._2)
             }
           }

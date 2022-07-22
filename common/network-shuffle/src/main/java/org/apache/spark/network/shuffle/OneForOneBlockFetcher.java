@@ -55,6 +55,7 @@ public class OneForOneBlockFetcher {
   private final TransportClient client;
   private final BlockTransferMessage message;
   private final String[] blockIds;
+  //todo 拉取shuffle block的回调
   private final BlockFetchingListener listener;
   private final ChunkReceivedCallback chunkCallback;
   private final TransportConf transportConf;
@@ -74,7 +75,7 @@ public class OneForOneBlockFetcher {
 
   public OneForOneBlockFetcher(
       TransportClient client,
-      String appId,
+      String appId, //todo appid
       String execId,
       String[] blockIds,
       BlockFetchingListener listener,
@@ -90,6 +91,7 @@ public class OneForOneBlockFetcher {
     }
     if (!transportConf.useOldFetchProtocol() && isShuffleBlocks(blockIds)) {
       this.blockIds = new String[blockIds.length];
+      //todo 构建请求FetchShuffleBlocks message
       this.message = createFetchShuffleBlocksMsgAndBuildBlockIds(appId, execId, blockIds);
     } else {
       this.blockIds = blockIds;
@@ -207,12 +209,14 @@ public class OneForOneBlockFetcher {
     client.sendRpc(message.toByteBuffer(), new RpcResponseCallback() {
       @Override
       public void onSuccess(ByteBuffer response) {
+        //todo 拉取shuffleblock数据的影响回调，拉取逻辑在NettyBlockRpcServer的96行
         try {
           streamHandle = (StreamHandle) BlockTransferMessage.Decoder.fromByteBuffer(response);
           logger.trace("Successfully opened blocks {}, preparing to fetch chunks.", streamHandle);
 
           // Immediately request all chunks -- we expect that the total size of the request is
           // reasonable due to higher level chunking in [[ShuffleBlockFetcherIterator]].
+          //todo numChunks为block的数量
           for (int i = 0; i < streamHandle.numChunks; i++) {
             if (downloadFileManager != null) {
               client.stream(OneForOneStreamManager.genStreamChunkId(streamHandle.streamId, i),

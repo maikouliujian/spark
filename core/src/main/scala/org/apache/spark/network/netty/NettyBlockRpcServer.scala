@@ -66,7 +66,7 @@ class NettyBlockRpcServer(
           client.getChannel)
         logTrace(s"Registered streamId $streamId with $blocksNum buffers")
         responseContext.onSuccess(new StreamHandle(streamId, blocksNum).toByteBuffer)
-
+       //todo 拉取shuffleblock请求
       case fetchShuffleBlocks: FetchShuffleBlocks =>
         val blocks = fetchShuffleBlocks.mapIds.zipWithIndex.flatMap { case (mapId, index) =>
           if (!fetchShuffleBlocks.batchFetchEnabled) {
@@ -92,6 +92,7 @@ class NettyBlockRpcServer(
           fetchShuffleBlocks.reduceIds.map(_.length).sum
         }
 
+        //todo 注册Stream
         val streamId = streamManager.registerStream(appId, blocks.iterator.asJava,
           client.getChannel)
         logTrace(s"Registered streamId $streamId with $numBlockIds buffers")

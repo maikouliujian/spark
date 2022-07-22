@@ -99,11 +99,14 @@ class ShuffledRDD[K: ClassTag, V: ClassTag, C: ClassTag](
     tracker.getPreferredLocationsForShuffle(dep, partition.index)
   }
 
+  //todo shufflerdd读数据的入口,读取一个分区的shufflemap result数据，并返回可读取数据的迭代器
   override def compute(split: Partition, context: TaskContext): Iterator[(K, C)] = {
     val dep = dependencies.head.asInstanceOf[ShuffleDependency[K, V, C]]
     val metrics = context.taskMetrics().createTempShuffleReadMetrics()
+    //todo 读取一个分区的shufflemap result数据，并返回可读取数据的迭代器
     SparkEnv.get.shuffleManager.getReader(
       dep.shuffleHandle, split.index, split.index + 1, context, metrics)
+      //todo BlockStoreShuffleReader.read
       .read()
       .asInstanceOf[Iterator[(K, C)]]
   }

@@ -34,7 +34,7 @@ import org.apache.spark.util.Utils
  */
 private[spark] sealed trait MapStatus {
   /** Location where this task was run. */
-  def location: BlockManagerId
+  def location: BlockManagerId //todo task的执行位置
 
   /**
    * Estimated size for the reduce block, in bytes.

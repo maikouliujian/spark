@@ -33,7 +33,7 @@ import org.apache.spark.annotation.DeveloperApi
 @DeveloperApi
 sealed abstract class BlockId {
   /** A globally unique identifier for this Block. Can be used for ser/de. */
-  def name: String
+  def name: String //todo 数据块的唯一标识
 
   // convenience methods
   def asRDDId: Option[RDDBlockId] = if (isRDD) Some(asInstanceOf[RDDBlockId]) else None

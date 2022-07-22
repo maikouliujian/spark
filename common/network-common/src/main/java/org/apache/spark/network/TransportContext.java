@@ -61,11 +61,16 @@ import org.apache.spark.network.util.TransportFrameDecoder;
  * channel. As each TransportChannelHandler contains a TransportClient, this enables server
  * processes to send messages back to the client on an existing channel.
  */
+//todo netty rpc上下文类
+//todo spark netty rpc的上线文环境，包含了netty server和netty client，还包含了RpcHandler，这是一个重要的类，不同的rpc环境，拥有不同的RpcHandler；还包含了netty中pipeline中的各种handler；
+//todo spark中有两套TransportContext，
+//todo 一套是在NettyRpcEnv中，主要是节点之间通信用的；RpcHandler为NettyRpcHandler
+//todo 另一套是在NettyBlockTransferService中，主要是上报、读取数据块用的；RpcHandler为NettyBlockRpcServer
 public class TransportContext implements Closeable {
   private static final Logger logger = LoggerFactory.getLogger(TransportContext.class);
 
   private final TransportConf conf;
-  private final RpcHandler rpcHandler;
+  private final RpcHandler rpcHandler; //todo rpc处理器
   private final boolean closeIdleConnections;
   // Number of registered connections to the shuffle service
   private Counter registeredConnections = new Counter();

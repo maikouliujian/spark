@@ -29,8 +29,8 @@ import org.apache.spark.util.CallSite
  */
 private[spark] class ResultStage(
     id: Int,
-    rdd: RDD[_],
-    val func: (TaskContext, Iterator[_]) => _,
+    rdd: RDD[_],//todo 当前stage中的最后一个rdd
+    val func: (TaskContext, Iterator[_]) => _,//todo resulttask要执行的函数，会执行一个分区中的数据
     val partitions: Array[Int],
     parents: List[Stage],
     firstJobId: Int,

@@ -741,12 +741,14 @@ private[spark] class MapOutputTrackerMaster(
 
   // Get blocks sizes by executor Id. Note that zero-sized blocks are excluded in the result.
   // This method is only called in local-mode.
+  //todo 通过shuffleid和分区index，获取(块位置,(块id,块大小,块对应的分区index)) list
   def getMapSizesByExecutorId(
       shuffleId: Int,
       startPartition: Int,
       endPartition: Int)
   : Iterator[(BlockManagerId, Seq[(BlockId, Long, Int)])] = {
     logDebug(s"Fetching outputs for shuffle $shuffleId, partitions $startPartition-$endPartition")
+    //todo 一个shuffleId会对应多个mapstatus，找出对应分区的mapstatus
     shuffleStatuses.get(shuffleId) match {
       case Some (shuffleStatus) =>
         shuffleStatus.withMapStatuses { statuses =>
@@ -1022,13 +1024,16 @@ private[spark] object MapOutputTracker extends Logging {
     assert (statuses != null)
     val splitsByAddress = new HashMap[BlockManagerId, ListBuffer[(BlockId, Long, Int)]]
     val iter = statuses.iterator.zipWithIndex
+    //todo slice是前闭后开[)
     for ((status, mapIndex) <- iter.slice(startMapIndex, endMapIndex)) {
       if (status == null) {
         val errorMessage = s"Missing an output location for shuffle $shuffleId"
         logError(errorMessage)
         throw new MetadataFetchFailedException(shuffleId, startPartition, errorMessage)
       } else {
+        //todo 找到对应分区的mapstatus
         for (part <- startPartition until endPartition) {
+          //todo 获取块大小
           val size = status.getSizeForBlock(part)
           if (size != 0) {
             splitsByAddress.getOrElseUpdate(status.location, ListBuffer()) +=

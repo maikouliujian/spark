@@ -98,6 +98,7 @@ public class ExternalBlockHandler extends RpcHandler {
       try {
         int numBlockIds;
         long streamId;
+        //todo 拉取block数据
         if (msgObj instanceof FetchShuffleBlocks) {
           FetchShuffleBlocks msg = (FetchShuffleBlocks) msgObj;
           checkAuth(client, msg.appId);

@@ -71,11 +71,12 @@ final class ShuffleBlockFetcherIterator(
     context: TaskContext,
     shuffleClient: BlockStoreClient,
     blockManager: BlockManager,
+    //todo 获取对应分区[startPartition,endPartition)的block的信息(块位置,(块id,块大小,块对应的分区index)) list
     blocksByAddress: Iterator[(BlockManagerId, Seq[(BlockId, Long, Int)])],
     streamWrapper: (BlockId, InputStream) => InputStream,
-    maxBytesInFlight: Long,
+    maxBytesInFlight: Long, //todo 请求获取数据块的总大小
     maxReqsInFlight: Int,
-    maxBlocksInFlightPerAddress: Int,
+    maxBlocksInFlightPerAddress: Int,//todo 每个executor对于block个数请求限制
     maxReqSizeShuffleToMem: Long,
     detectCorrupt: Boolean,
     detectCorruptUseExtraMemory: Boolean,
@@ -117,6 +118,7 @@ final class ShuffleBlockFetcherIterator(
    * A queue to hold our results. This turns the asynchronous model provided by
    * [[org.apache.spark.network.BlockTransferService]] into a synchronous model (iterator).
    */
+    //todo 所有的数据块请求结果
   private[this] val results = new LinkedBlockingQueue[FetchResult]
 
   /**
@@ -129,21 +131,26 @@ final class ShuffleBlockFetcherIterator(
    * Queue of fetch requests to issue; we'll pull requests off this gradually to make sure that
    * the number of bytes in flight is limited to maxBytesInFlight.
    */
+    //todo remote分区请求
   private[this] val fetchRequests = new Queue[FetchRequest]
 
   /**
    * Queue of fetch requests which could not be issued the first time they were dequeued. These
    * requests are tried again when the fetch constraints are satisfied.
    */
+   //todo 第一次请求不满足条件,再次请求
   private[this] val deferredFetchRequests = new HashMap[BlockManagerId, Queue[FetchRequest]]()
 
   /** Current bytes in flight from our requests */
+  //todo 请求中块的数据大小
   private[this] var bytesInFlight = 0L
 
   /** Current number of requests in flight */
+    //todo 请求中的个数
   private[this] var reqsInFlight = 0
 
   /** Current number of blocks in flight per host:port */
+    //todo 每个Address请求的块的个数
   private[this] val numBlocksInFlightPerAddress = new HashMap[BlockManagerId, Int]()
 
   /**
@@ -167,7 +174,7 @@ final class ShuffleBlockFetcherIterator(
   private[this] val shuffleFilesSet = mutable.HashSet[DownloadFile]()
 
   private[this] val onCompleteCallback = new ShuffleFetchCompletionListener(this)
-
+  //todo 初始化
   initialize()
 
   // Decrements the buffer reference count.
@@ -229,6 +236,7 @@ final class ShuffleBlockFetcherIterator(
     }
   }
 
+  //todo 发送remote block请求
   private[this] def sendRequest(req: FetchRequest): Unit = {
     logDebug("Sending request for %d blocks (%s) from %s".format(
       req.blocks.size, Utils.bytesToString(req.size), req.address.hostPort))
@@ -242,7 +250,7 @@ final class ShuffleBlockFetcherIterator(
     val remainingBlocks = new HashSet[String]() ++= infoMap.keys
     val blockIds = req.blocks.map(_.blockId.toString)
     val address = req.address
-
+    //todo 最终拉取数据块的回调
     val blockFetchingListener = new BlockFetchingListener {
       override def onBlockFetchSuccess(blockId: String, buf: ManagedBuffer): Unit = {
         // Only add the buffer to results queue if the iterator is not zombie,
@@ -253,6 +261,7 @@ final class ShuffleBlockFetcherIterator(
             // This needs to be released after use.
             buf.retain()
             remainingBlocks -= blockId
+            //todo 拉取shuffle block的最终结果
             results.put(new SuccessFetchResult(BlockId(blockId), infoMap(blockId)._2,
               address, infoMap(blockId)._1, buf, remainingBlocks.isEmpty))
             logDebug("remainingBlocks: " + remainingBlocks)
@@ -270,6 +279,7 @@ final class ShuffleBlockFetcherIterator(
     // Fetch remote shuffle blocks to disk when the request is too large. Since the shuffle data is
     // already encrypted and compressed over the wire(w.r.t. the related configs), we can just fetch
     // the data and write it to file directly.
+    //todo req.size 请求数据量大于maxReqSizeShuffleToMem【默认200m】阈值
     if (req.size > maxReqSizeShuffleToMem) {
       shuffleClient.fetchBlocks(address.host, address.port, address.executorId, blockIds.toArray,
         blockFetchingListener, this)
@@ -285,6 +295,7 @@ final class ShuffleBlockFetcherIterator(
 
     // Partition to local, host-local and remote blocks. Remote blocks are further split into
     // FetchRequests of size at most maxBytesInFlight in order to limit the amount of data in flight
+    //todo 需要跨节点拉取block的请求
     val collectedRemoteRequests = new ArrayBuffer[FetchRequest]
     var localBlockBytes = 0L
     var hostLocalBlockBytes = 0L
@@ -292,15 +303,18 @@ final class ShuffleBlockFetcherIterator(
 
     val hostLocalDirReadingEnabled =
       blockManager.hostLocalDirManager != null && blockManager.hostLocalDirManager.isDefined
-
+    //todo 获取对应分区[startPartition,endPartition)的block的信息(块位置,iterator(块id,块大小,块对应的分区index)) list
     for ((address, blockInfos) <- blocksByAddress) {
+      //todo 1)同一个jvm,获得localBlocks
       if (address.executorId == blockManager.blockManagerId.executorId) {
         checkBlockSizes(blockInfos)
+        //todo 是否进行FetchBlockInfo的合并
         val mergedBlockInfos = mergeContinuousShuffleBlockIdsIfNeeded(
           blockInfos.map(info => FetchBlockInfo(info._1, info._2, info._3)), doBatchFetch)
         numBlocksToFetch += mergedBlockInfos.size
         localBlocks ++= mergedBlockInfos.map(info => (info.blockId, info.mapIndex))
         localBlockBytes += mergedBlockInfos.map(_.size).sum
+        //todo 2)同一个节点,获得hostLocalBlocks
       } else if (hostLocalDirReadingEnabled && address.host == blockManager.blockManagerId.host) {
         checkBlockSizes(blockInfos)
         val mergedBlockInfos = mergeContinuousShuffleBlockIdsIfNeeded(
@@ -312,6 +326,7 @@ final class ShuffleBlockFetcherIterator(
         hostLocalBlocks ++= blocksForAddress.map(info => (info._1, info._3))
         hostLocalBlockBytes += mergedBlockInfos.map(_.size).sum
       } else {
+        //todo 3)不同的节点
         remoteBlockBytes += blockInfos.map(_._2).sum
         collectFetchRequests(address, blockInfos, collectedRemoteRequests)
       }
@@ -367,6 +382,7 @@ final class ShuffleBlockFetcherIterator(
       blockInfos: Seq[(BlockId, Long, Int)],
       collectedRemoteRequests: ArrayBuffer[FetchRequest]): Unit = {
     val iterator = blockInfos.iterator
+    //todo 请求数据大小
     var curRequestSize = 0L
     var curBlocks = new ArrayBuffer[FetchBlockInfo]
 
@@ -408,12 +424,14 @@ final class ShuffleBlockFetcherIterator(
    * `ManagedBuffer`'s memory is allocated lazily when we create the input stream, so all we
    * track in-memory are the ManagedBuffer references themselves.
    */
+    //todo 拉同一个executor的块
   private[this] def fetchLocalBlocks(): Unit = {
     logDebug(s"Start fetching local blocks: ${localBlocks.mkString(", ")}")
     val iter = localBlocks.iterator
     while (iter.hasNext) {
       val (blockId, mapIndex) = iter.next()
       try {
+        //todo 拉同一个executor的块
         val buf = blockManager.getLocalBlockData(blockId)
         shuffleMetrics.incLocalBlocksFetched(1)
         shuffleMetrics.incLocalBytesRead(buf.size)
@@ -437,6 +455,7 @@ final class ShuffleBlockFetcherIterator(
     }
   }
 
+  //todo 拉同一个node的块
   private[this] def fetchHostLocalBlock(
       blockId: BlockId,
       mapIndex: Int,
@@ -462,6 +481,7 @@ final class ShuffleBlockFetcherIterator(
    * `ManagedBuffer`'s memory is allocated lazily when we create the input stream, so all we
    * track in-memory are the ManagedBuffer references themselves.
    */
+  //todo 拉同一个node的块
   private[this] def fetchHostLocalBlocks(hostLocalDirManager: HostLocalDirManager): Unit = {
     val cachedDirsByExec = hostLocalDirManager.getCachedHostLocalDirs()
     val (hostLocalBlocksWithCachedDirs, hostLocalBlocksWithMissingDirs) =
@@ -482,6 +502,7 @@ final class ShuffleBlockFetcherIterator(
         case Success(dirs) =>
           immutableHostLocalBlocksWithoutDirs.foreach { case (hostLocalBmId, blockInfos) =>
             blockInfos.takeWhile { case (blockId, _, mapIndex) =>
+              //todo 拉同一个node的块
               fetchHostLocalBlock(
                 blockId,
                 mapIndex,
@@ -519,24 +540,30 @@ final class ShuffleBlockFetcherIterator(
     context.addTaskCompletionListener(onCompleteCallback)
 
     // Partition blocks by the different fetch modes: local, host-local and remote blocks.
+    //todo 构建remote分区请求
     val remoteRequests = partitionBlocksByFetchMode()
     // Add the remote requests into our queue in a random order
+    //todo 打散remote分区请求
     fetchRequests ++= Utils.randomize(remoteRequests)
     assert ((0 == reqsInFlight) == (0 == bytesInFlight),
       "expected reqsInFlight = 0 but found reqsInFlight = " + reqsInFlight +
       ", expected bytesInFlight = 0 but found bytesInFlight = " + bytesInFlight)
 
     // Send out initial requests for blocks, up to our maxBytesInFlight
+    //todo 发送远程块请求;调用fetchUpToMaxBytes函数来发送获取数据块的请求，但获取数据块的总大小不能超过：maxBytesInFlight。
+    // 这样设计是为了防止内存溢出。参考:http://www.javashuo.com/article/p-qskjmuis-mu.html
     fetchUpToMaxBytes()
 
     val numFetches = remoteRequests.size - fetchRequests.size
     logInfo(s"Started $numFetches remote fetches in ${Utils.getUsedTimeNs(startTimeNs)}")
 
     // Get Local Blocks
+    //todo 拉同一个executor的块
     fetchLocalBlocks()
     logDebug(s"Got local blocks in ${Utils.getUsedTimeNs(startTimeNs)}")
 
     if (hostLocalBlocks.nonEmpty) {
+      //todo 拉同一个node的块
       blockManager.hostLocalDirManager.foreach(fetchHostLocalBlocks)
     }
   }
@@ -567,6 +594,7 @@ final class ShuffleBlockFetcherIterator(
     // For local shuffle block, throw FailureFetchResult for the first IOException.
     while (result == null) {
       val startFetchWait = System.nanoTime()
+      //todo 读取remote shuffle block数据
       result = results.take()
       val fetchWaitTime = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startFetchWait)
       shuffleMetrics.incFetchWaitTime(fetchWaitTime)
@@ -678,6 +706,7 @@ final class ShuffleBlockFetcherIterator(
         detectCorrupt && streamCompressedOrEncrypted))
   }
 
+  //todo 将自己包装成CompletionIterator
   def toCompletionIterator: Iterator[(BlockId, InputStream)] = {
     CompletionIterator[(BlockId, InputStream), this.type](this,
       onCompleteCallback.onComplete(context))
@@ -704,25 +733,31 @@ final class ShuffleBlockFetcherIterator(
     }
 
     // Process any regular fetch requests if possible.
+    //todo 获取数据块的大小没有超过限制
     while (isRemoteBlockFetchable(fetchRequests)) {
       val request = fetchRequests.dequeue()
+      //todo 请求地址
       val remoteAddress = request.address
+      //todo 判断是否大于每个executor的最大block请求
       if (isRemoteAddressMaxedOut(remoteAddress, request)) {
         logDebug(s"Deferring fetch request for $remoteAddress with ${request.blocks.size} blocks")
         val defReqQueue = deferredFetchRequests.getOrElse(remoteAddress, new Queue[FetchRequest]())
         defReqQueue.enqueue(request)
         deferredFetchRequests(remoteAddress) = defReqQueue
       } else {
+        //todo 向remoteAddress发送block请求request
         send(remoteAddress, request)
       }
     }
 
     def send(remoteAddress: BlockManagerId, request: FetchRequest): Unit = {
+      //todo 发送远程block请求
       sendRequest(request)
       numBlocksInFlightPerAddress(remoteAddress) =
         numBlocksInFlightPerAddress.getOrElse(remoteAddress, 0) + request.blocks.size
     }
 
+    //todo 获取数据块的大小没有超过限制
     def isRemoteBlockFetchable(fetchReqQueue: Queue[FetchRequest]): Boolean = {
       fetchReqQueue.nonEmpty &&
         (bytesInFlight == 0 ||

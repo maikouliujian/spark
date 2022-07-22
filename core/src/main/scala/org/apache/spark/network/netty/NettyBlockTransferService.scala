@@ -48,6 +48,7 @@ import org.apache.spark.util.Utils
 /**
  * A BlockTransferService that uses Netty to fetch a set of blocks at time.
  */
+//todo remote拉取block的组件
 private[spark] class NettyBlockTransferService(
     conf: SparkConf,
     securityManager: SecurityManager,
@@ -69,6 +70,7 @@ private[spark] class NettyBlockTransferService(
   private[this] var appId: String = _
 
   override def init(blockDataManager: BlockDataManager): Unit = {
+    //todo NettyBlockRpcServer
     val rpcHandler = new NettyBlockRpcServer(conf.getAppId, serializer, blockDataManager)
     var serverBootstrap: Option[TransportServerBootstrap] = None
     var clientBootstrap: Option[TransportClientBootstrap] = None
@@ -106,6 +108,7 @@ private[spark] class NettyBlockTransferService(
     }
   }
 
+  //todo 拉取block数据
   override def fetchBlocks(
       host: String,
       port: Int,
@@ -119,7 +122,9 @@ private[spark] class NettyBlockTransferService(
         override def createAndStart(blockIds: Array[String],
             listener: BlockFetchingListener): Unit = {
           try {
+            //todo 创建netty client
             val client = clientFactory.createClient(host, port)
+            //todo 触发拉取block
             new OneForOneBlockFetcher(client, appId, execId, blockIds, listener,
               transportConf, tempFileManager).start()
           } catch {

@@ -52,7 +52,7 @@ import org.apache.spark.rdd.RDD
 private[spark] class ShuffleMapTask(
     stageId: Int,
     stageAttemptId: Int,
-    taskBinary: Broadcast[Array[Byte]],
+    taskBinary: Broadcast[Array[Byte]],//todo rddAndDep
     partition: Partition,
     @transient private var locs: Seq[TaskLocation],//todo task的本地化取决于对应分区的location
     localProperties: Properties,

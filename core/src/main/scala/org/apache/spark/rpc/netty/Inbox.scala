@@ -102,7 +102,7 @@ private[netty] class Inbox(val endpointName: String, val endpoint: RpcEndpoint)
           //todo RpcMessage是要求有回复的
           case RpcMessage(_sender, content, context) =>
             try {
-              //todo 执行receiveAndReply
+              //todo 执行receiveAndReply,endpoint可以是不同的组件【比如DriverEndpoint、BlockManagerMasterEndpoint】等
               endpoint.receiveAndReply(context).applyOrElse[Any, Unit](content, { msg =>
                 throw new SparkException(s"Unsupported message $message from ${_sender}")
               })
