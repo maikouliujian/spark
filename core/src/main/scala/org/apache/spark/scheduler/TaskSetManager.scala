@@ -791,7 +791,7 @@ private[spark] class TaskSetManager(
     // "result.value()" in "TaskResultGetter.enqueueSuccessfulTask" before reaching here.
     // Note: "result.value()" only deserializes the value when it's called at the first time, so
     // here "result.value()" just returns the value and won't block other threads.
-    //todo 上报taskend信息，比如mapstatus信息注册等
+    //todo 上报taskend信息，比如【Shufflemaptask返回mapstatus,resulttask返回一个分区的运行结果】信息注册等
     sched.dagScheduler.taskEnded(tasks(index), Success, result.value(), result.accumUpdates,
       result.metricPeaks, info)
     maybeFinishTaskSet()

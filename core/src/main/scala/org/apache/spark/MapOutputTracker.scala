@@ -1031,9 +1031,9 @@ private[spark] object MapOutputTracker extends Logging {
         logError(errorMessage)
         throw new MetadataFetchFailedException(shuffleId, startPartition, errorMessage)
       } else {
-        //todo 找到对应分区的mapstatus
+        //todo 找到每一个mapstatus中对应分区的数据,part为reduceid
         for (part <- startPartition until endPartition) {
-          //todo 获取块大小
+          //todo 获取对应分区的数据段大小
           val size = status.getSizeForBlock(part)
           if (size != 0) {
             splitsByAddress.getOrElseUpdate(status.location, ListBuffer()) +=

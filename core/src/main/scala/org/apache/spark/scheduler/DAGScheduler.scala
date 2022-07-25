@@ -263,7 +263,7 @@ private[spark] class DAGScheduler(
   /**
    * Called by the TaskSetManager to report task completions or failures.
    */
-    //todo 上报task end
+    //todo 上报task end 【Shufflemaptask返回mapstatus,resulttask返回一个分区的运行结果】
   def taskEnded(
       task: Task[_],
       reason: TaskEndReason,
@@ -755,7 +755,7 @@ private[spark] class DAGScheduler(
       func: (TaskContext, Iterator[T]) => U,//todo resulttask要计算的func
       partitions: Seq[Int],
       callSite: CallSite,
-      resultHandler: (Int, U) => Unit,
+      resultHandler: (Int, U) => Unit,//todo 处理resulttask计算结果的逻辑
       properties: Properties): JobWaiter[U] = {
     // Check to make sure we are not launching a task on a partition that does not exist.
     val maxPartitions = rdd.partitions.length
@@ -787,6 +787,7 @@ private[spark] class DAGScheduler(
 
     assert(partitions.nonEmpty)
     val func2 = func.asInstanceOf[(TaskContext, Iterator[_]) => _]
+    //todo resultHandler 处理resulttask计算结果的函数
     val waiter = new JobWaiter[U](this, jobId, partitions.size, resultHandler)
     //todo 触发提交作业逻辑
     eventProcessLoop.post(JobSubmitted(
@@ -1524,6 +1525,7 @@ private[spark] class DAGScheduler(
 
         task match {
           case rt: ResultTask[_, _] =>
+            //todo 如果是result,则返回一个分区的运行结果
             // Cast to ResultStage here because it's part of the ResultTask
             // TODO Refactor this out to a function that accepts a ResultStage
             val resultStage = stage.asInstanceOf[ResultStage]
@@ -1559,6 +1561,7 @@ private[spark] class DAGScheduler(
                   // taskSucceeded runs some user code that might throw an exception. Make sure
                   // we are resilient against that.
                   try {
+                    //todo event.result为一个resulttask的运行结果
                     job.listener.taskSucceeded(rt.outputId, event.result)
                   } catch {
                     case e: Throwable if !Utils.isFatalError(e) =>
@@ -2322,7 +2325,7 @@ private[scheduler] class DAGSchedulerEventProcessLoop(dagScheduler: DAGScheduler
       dagScheduler.handleGetTaskResult(taskInfo)
 
     case completion: CompletionEvent =>
-      //todo 处理TaskCompletion事件，包含注册mapstatus
+      //todo 处理TaskCompletion事件，【Shufflemaptask返回mapstatus,resulttask返回一个分区的运行结果】
       dagScheduler.handleTaskCompletion(completion)
 
     case TaskSetFailed(taskSet, reason, exception) =>

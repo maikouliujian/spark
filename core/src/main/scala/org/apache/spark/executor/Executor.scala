@@ -459,7 +459,7 @@ private[spark] class Executor(
         } else 0L
         var threwException = true
         val value = Utils.tryWithSafeFinally {
-          //todo 运行task的入口,返回mapstatus
+          //todo 运行task的入口,Shufflemaptask返回mapstatus,resulttask返回一个分区的运行结果
           val res = task.run(
             taskAttemptId = taskId,
             attemptNumber = taskDescription.attemptNumber,
@@ -600,7 +600,7 @@ private[spark] class Executor(
 
         executorSource.SUCCEEDED_TASKS.inc(1L)
         setTaskFinishedAndClearInterruptStatus()
-        //todo 将serializedResult<===>mapstatus信息发送给driver
+        //todo 将serializedResult<===>【Shufflemaptask返回mapstatus,resulttask返回一个分区的运行结果】发送给driver
         //todo 上报mapstatus的入口
         execBackend.statusUpdate(taskId, TaskState.FINISHED, serializedResult)
       } catch {

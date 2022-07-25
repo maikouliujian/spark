@@ -31,6 +31,7 @@ private[spark] class JobWaiter[T](
     dagScheduler: DAGScheduler,
     val jobId: Int,
     totalTasks: Int,
+    //todo 处理result task 产生结果数据的逻辑
     resultHandler: (Int, T) => Unit)
   extends JobListener with Logging {
 
@@ -56,6 +57,7 @@ private[spark] class JobWaiter[T](
   override def taskSucceeded(index: Int, result: Any): Unit = {
     // resultHandler call must be synchronized in case resultHandler itself is not thread safe.
     synchronized {
+      //todo 初始化JobWaiter时，传入的函数
       resultHandler(index, result.asInstanceOf[T])
     }
     if (finishedTasks.incrementAndGet() == totalTasks) {

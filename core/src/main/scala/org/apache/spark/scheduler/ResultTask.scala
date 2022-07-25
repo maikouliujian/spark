@@ -92,6 +92,7 @@ private[spark] class ResultTask[T, U](
     } else 0L
     //todo 通过func计算一个分区的数据
     //todo rdd.iterator最终会调用shufflerdd的compute方法
+    //todo 返回一个分区的运行结果
     func(context, rdd.iterator(partition, context))
   }
 

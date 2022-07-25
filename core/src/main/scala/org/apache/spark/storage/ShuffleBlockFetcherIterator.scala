@@ -303,7 +303,7 @@ final class ShuffleBlockFetcherIterator(
 
     val hostLocalDirReadingEnabled =
       blockManager.hostLocalDirManager != null && blockManager.hostLocalDirManager.isDefined
-    //todo 获取对应分区[startPartition,endPartition)的block的信息(块位置,iterator(块id,块大小,块对应的分区index)) list
+    //todo 获取对应分区[startPartition,endPartition)的block的信息iterator(块位置,iterator(块id,块大小,块对应的分区index))
     for ((address, blockInfos) <- blocksByAddress) {
       //todo 1)同一个jvm,获得localBlocks
       if (address.executorId == blockManager.blockManagerId.executorId) {
@@ -696,6 +696,7 @@ final class ShuffleBlockFetcherIterator(
     }
 
     currentResult = result.asInstanceOf[SuccessFetchResult]
+    //todo 返回值
     (currentResult.blockId,
       new BufferReleasingInputStream(
         input,

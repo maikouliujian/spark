@@ -2110,6 +2110,7 @@ class SparkContext(config: SparkConf) extends Logging {
       //todo resulttask要执行的func
       func: (TaskContext, Iterator[T]) => U,
       partitions: Seq[Int],
+      //todo 处理resulttask计算结果的逻辑
       resultHandler: (Int, U) => Unit): Unit = {
     if (stopped.get()) {
       throw new IllegalStateException("SparkContext has been shutdown")

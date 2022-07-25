@@ -68,7 +68,7 @@ private[spark] class BlockStoreShuffleReader[K, C](
   /** Read the combined key-values for this reduce task */
     //todo 读取shuffle block数据的迭代器
   override def read(): Iterator[Product2[K, C]] = {
-    //todo 读取拉取shuffle block数据的迭代器
+    //todo 读取拉取shuffle block数据的迭代器【(blockId, wrappedStream)】
     val wrappedStreams = new ShuffleBlockFetcherIterator(
       context,
       blockManager.blockStoreClient,

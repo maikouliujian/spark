@@ -545,6 +545,7 @@ private[spark] class ExternalSorter[K, V, C](
         }
 
         val start = batchOffsets(batchId)
+        //todo 创建文件流
         fileStream = new FileInputStream(spill.file)
         fileStream.getChannel.position(start)
         batchId += 1

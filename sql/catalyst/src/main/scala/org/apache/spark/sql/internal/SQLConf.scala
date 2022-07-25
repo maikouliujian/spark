@@ -372,7 +372,7 @@ object SQLConf {
       .version("2.3.0")
       .booleanConf
       .createWithDefault(true)
-
+  //todo spark.sql.shuffle.partitions,默认200
   val SHUFFLE_PARTITIONS = buildConf("spark.sql.shuffle.partitions")
     .doc("The default number of partitions to use when shuffling data for joins or aggregations. " +
       "Note: For structured streaming, this configuration cannot be changed between query " +

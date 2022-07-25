@@ -632,7 +632,7 @@ private[spark] class TaskSchedulerImpl(
     Random.shuffle(offers)
   }
 
-  //todo serializedData 是 mapstatus
+  //todo serializedData 是 【Shufflemaptask返回mapstatus,resulttask返回一个分区的运行结果】
   def statusUpdate(tid: Long, state: TaskState, serializedData: ByteBuffer): Unit = {
     var failedExecutor: Option[String] = None
     var reason: Option[ExecutorLossReason] = None

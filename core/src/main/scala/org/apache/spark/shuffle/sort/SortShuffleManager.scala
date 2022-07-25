@@ -124,7 +124,7 @@ private[spark] class SortShuffleManager(conf: SparkConf) extends ShuffleManager 
       endPartition: Int,
       context: TaskContext,
       metrics: ShuffleReadMetricsReporter): ShuffleReader[K, C] = {
-    //todo 获取对应分区[startPartition,endPartition)的block的信息(块位置,(块id,块大小,块对应的分区index)) list
+    //todo 获取对应分区[startPartition,endPartition)的block的信息(块位置,Seq(块id,块大小,块对应的分区index)) list
     val blocksByAddress = SparkEnv.get.mapOutputTracker.getMapSizesByExecutorId(
       handle.shuffleId, startPartition, endPartition)
     new BlockStoreShuffleReader(
