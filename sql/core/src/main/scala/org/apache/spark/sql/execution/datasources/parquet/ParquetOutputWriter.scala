@@ -26,6 +26,7 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.execution.datasources.OutputWriter
 
 // NOTE: This class is instantiated and used on executor side only, no need to be serializable.
+//todo 真正触发parquet写的类
 class ParquetOutputWriter(path: String, context: TaskAttemptContext)
   extends OutputWriter {
 
@@ -34,6 +35,7 @@ class ParquetOutputWriter(path: String, context: TaskAttemptContext)
       override def getDefaultWorkFile(context: TaskAttemptContext, extension: String): Path = {
         new Path(path)
       }
+      //todo 获取RecordWriter
     }.getRecordWriter(context)
   }
 

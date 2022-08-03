@@ -156,6 +156,7 @@ class ParquetFileFormat
     }
   }
 
+  //todo 根据parquet文件来解析schema信息
   override def inferSchema(
       sparkSession: SparkSession,
       parameters: Map[String, String],
@@ -492,7 +493,7 @@ object ParquetFileFormat extends Logging {
       val converter = new ParquetToSparkSchemaConverter(
         assumeBinaryIsString = assumeBinaryIsString,
         assumeInt96IsTimestamp = assumeInt96IsTimestamp)
-
+      //todo 解析parquet schema的函数便是该方法
       readParquetFootersInParallel(conf, files, ignoreCorruptFiles)
         .map(ParquetFileFormat.readSchemaFromFooter(_, converter))
     }

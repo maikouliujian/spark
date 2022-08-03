@@ -51,6 +51,7 @@ import org.apache.spark.sql.types._
  * of this option is propagated to this class by the `init()` method and its Hadoop configuration
  * argument.
  */
+//todo spark写parquet的核心类
 class ParquetWriteSupport extends WriteSupport[InternalRow] with Logging {
   // A `ValueWriter` is responsible for writing a field of an `InternalRow` to the record consumer.
   // Here we are using `SpecializedGetters` rather than `InternalRow` so that we can directly access
@@ -131,6 +132,7 @@ class ParquetWriteSupport extends WriteSupport[InternalRow] with Logging {
     this.recordConsumer = recordConsumer
   }
 
+  //todo 写数据
   override def write(row: InternalRow): Unit = {
     consumeMessage {
       writeFields(row, schema, rootFieldWriters)

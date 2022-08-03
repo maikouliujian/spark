@@ -30,6 +30,7 @@ object ParquetUtils {
     val parquetOptions = new ParquetOptions(parameters, sparkSession.sessionState.conf)
 
     // Should we merge schemas from all Parquet part-files?
+    //todo 是否合并schema
     val shouldMergeSchemas = parquetOptions.mergeSchema
 
     val mergeRespectSummaries = sparkSession.sessionState.conf.isParquetSchemaRespectSummaries
@@ -104,6 +105,7 @@ object ParquetUtils {
           .orElse(filesByType.data.headOption)
           .toSeq
       }
+    //todo 合并schema
     ParquetFileFormat.mergeSchemasInParallel(parameters, filesToTouch, sparkSession)
   }
 

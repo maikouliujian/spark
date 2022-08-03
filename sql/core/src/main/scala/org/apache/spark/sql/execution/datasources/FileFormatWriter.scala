@@ -129,6 +129,7 @@ object FileFormatWriter extends Logging {
     val dataSchema = dataColumns.toStructType
     DataSourceUtils.verifySchema(fileFormat, dataSchema)
     // Note: prepareWrite has side effect. It sets "job".
+    //todo 由于这个fileFormat是ParquetFileFormat的实例，所以我们直接看ParquetFileFormat.prepareWrite方法：
     val outputWriterFactory =
       fileFormat.prepareWrite(sparkSession, job, caseInsensitiveOptions, dataSchema)
 

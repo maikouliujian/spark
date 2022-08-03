@@ -46,6 +46,7 @@ import org.apache.spark.sql.util.CaseInsensitiveStringMap
  *
  * @since 1.4.0
  */
+//todo dataframe写数据
 @Stable
 final class DataFrameWriter[T] private[sql](ds: Dataset[T]) {
 
@@ -292,6 +293,7 @@ final class DataFrameWriter[T] private[sql](ds: Dataset[T]) {
    *
    * @since 1.4.0
    */
+    //todo 保存数据
   def save(): Unit = {
     if (source.toLowerCase(Locale.ROOT) == DDLUtils.HIVE_PROVIDER) {
       throw new AnalysisException("Hive data source can only be used with tables, you can not " +
@@ -353,6 +355,7 @@ final class DataFrameWriter[T] private[sql](ds: Dataset[T]) {
               AppendData.byName(relation, df.logicalPlan, extraOptions.toMap)
             }
           } else {
+            //todo 写数据逻辑
             // Truncate the table. TableCapabilityCheck will throw a nice exception if this
             // isn't supported
             runCommand(df.sparkSession, "save") {
@@ -843,6 +846,7 @@ final class DataFrameWriter[T] private[sql](ds: Dataset[T]) {
    *
    * @since 1.4.0
    */
+    //todo 写parquet数据
   def parquet(path: String): Unit = {
     format("parquet").save(path)
   }
