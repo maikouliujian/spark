@@ -26,6 +26,7 @@ import org.apache.spark.unsafe.types.{CalendarInterval, UTF8String}
  * An abstract class for row used internally in Spark SQL, which only contains the columns as
  * internal types.
  */
+//todo sparksql===>RDD[InternalRow]
 abstract class InternalRow extends SpecializedGetters with Serializable {
 
   def numFields: Int

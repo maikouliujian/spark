@@ -86,6 +86,7 @@ case class CachedRDDBuilder(
 
   private def buildBuffers(): RDD[CachedBatch] = {
     val output = cachedPlan.output
+    //TODO 本质上是对rdd进行cache
     val cached = cachedPlan.execute().mapPartitionsInternal { rowIterator =>
       new Iterator[CachedBatch] {
         def next(): CachedBatch = {
@@ -147,6 +148,7 @@ object InMemoryRelation {
       child: SparkPlan,
       tableName: Option[String],
       optimizedPlan: LogicalPlan): InMemoryRelation = {
+    //todo 本质上执行的是rdd.cache
     val cacheBuilder = CachedRDDBuilder(useCompression, batchSize, storageLevel, child, tableName)
     val relation = new InMemoryRelation(child.output, cacheBuilder, optimizedPlan.outputOrdering)
     relation.statsOfPlanToCache = optimizedPlan.stats

@@ -72,6 +72,7 @@ class CacheManager extends Logging with AdaptiveSparkPlanHelper {
    * Unlike `RDD.cache()`, the default storage level is set to be `MEMORY_AND_DISK` because
    * recomputing the in-memory columnar representation of the underlying table is expensive.
    */
+    //todo cacheQuery
   def cacheQuery(
       query: Dataset[_],
       tableName: Option[String] = None,
@@ -82,6 +83,7 @@ class CacheManager extends Logging with AdaptiveSparkPlanHelper {
     } else {
       // Turn off AQE so that the outputPartitioning of the underlying plan can be leveraged.
       val sessionWithAqeOff = getOrCloneSessionWithAqeOff(query.sparkSession)
+      //todo 真正执行cache的逻辑InMemoryRelation
       val inMemoryRelation = sessionWithAqeOff.withActive {
         val qe = sessionWithAqeOff.sessionState.executePlan(planToCache)
         InMemoryRelation(
@@ -122,6 +124,7 @@ class CacheManager extends Logging with AdaptiveSparkPlanHelper {
    *                  plan; otherwise un-cache the given plan only.
    * @param blocking  Whether to block until all blocks are deleted.
    */
+
   def uncacheQuery(
       spark: SparkSession,
       plan: LogicalPlan,

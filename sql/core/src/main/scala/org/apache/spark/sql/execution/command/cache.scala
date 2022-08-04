@@ -37,6 +37,7 @@ case class CacheTableCommand(
 
   override def innerChildren: Seq[QueryPlan[_]] = plan.toSeq
 
+  //todo cmd的执行逻辑
   override def run(sparkSession: SparkSession): Seq[Row] = {
     plan.foreach { logicalPlan =>
       Dataset.ofRows(sparkSession, logicalPlan).createTempView(tableIdent.quotedString)

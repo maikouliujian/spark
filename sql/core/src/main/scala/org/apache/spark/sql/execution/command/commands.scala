@@ -67,6 +67,7 @@ case class ExecutedCommandExec(cmd: RunnableCommand) extends LeafExecNode {
    */
   protected[sql] lazy val sideEffectResult: Seq[InternalRow] = {
     val converter = CatalystTypeConverters.createToCatalystConverter(schema)
+    //todo 执行cmd
     cmd.run(sqlContext.sparkSession).map(converter(_).asInstanceOf[InternalRow])
   }
 
