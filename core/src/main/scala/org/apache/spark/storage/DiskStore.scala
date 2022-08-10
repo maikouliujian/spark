@@ -57,12 +57,14 @@ private[spark] class DiskStore(
    *
    * @throws IllegalStateException if the block already exists in the disk store.
    */
+    //todo 将 Block 写入磁盘，调用 DiskStore 的 put 方法。
   def put(blockId: BlockId)(writeFunc: WritableByteChannel => Unit): Unit = {
     if (contains(blockId)) {
       throw new IllegalStateException(s"Block $blockId is already present in the disk store")
     }
     logDebug(s"Attempting to put block $blockId")
     val startTimeNs = System.nanoTime()
+      //todo 获取文件
     val file = diskManager.getFile(blockId)
     val out = new CountingWritableChannel(openForWrite(file))
     var threwException: Boolean = true

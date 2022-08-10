@@ -672,6 +672,7 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
    *
    * Note that this traversal (numbering) order must be the same as [[getNodeNumbered]].
    */
+    //todo 打印ast
   def generateTreeString(
       depth: Int,
       lastChildren: Seq[Boolean],
@@ -695,6 +696,7 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product {
       if (printNodeId) {
         simpleStringWithNodeId()
       } else {
+        //todo 打印logical relation
         simpleString(maxFields)
       }
     }

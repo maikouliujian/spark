@@ -36,6 +36,7 @@ import org.apache.spark.util.BoundedPriorityQueue
 object QueryPlanningTracker {
 
   // Define a list of common phases here.
+  //todo 很明显，Apache Spark 的官方已经通过源码告诉了我们，Spark SQL 的工作流程就这 4 个阶段，这也是最标准的划分！
   val PARSING = "parsing"
   val ANALYSIS = "analysis"
   val OPTIMIZATION = "optimization"

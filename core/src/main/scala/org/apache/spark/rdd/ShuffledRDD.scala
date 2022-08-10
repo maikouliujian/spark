@@ -105,6 +105,7 @@ class ShuffledRDD[K: ClassTag, V: ClassTag, C: ClassTag](
     val metrics = context.taskMetrics().createTempShuffleReadMetrics()
     //todo 读取一个分区的shufflemap result数据，并返回可读取数据的迭代器
     SparkEnv.get.shuffleManager.getReader(
+      //todo 读取数据的区间[split.index,split.index+1)
       dep.shuffleHandle, split.index, split.index + 1, context, metrics)
       //todo BlockStoreShuffleReader.read
       .read()

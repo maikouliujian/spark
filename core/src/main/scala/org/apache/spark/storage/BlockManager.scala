@@ -1177,13 +1177,16 @@ private[spark] class BlockManager(
       makeIterator: () => Iterator[T]): Either[BlockResult, Iterator[T]] = {
     // Attempt to read the block from local or remote storage. If it's present, then we don't need
     // to go through the local-get-or-put path.
+    //todo 通过BlockManager从本地或者远程获取数据，如果获取到则直接返回
     get[T](blockId)(classTag) match {
       case Some(block) =>
+        //todo 能取到block数据直接返回
         return Left(block)
       case _ =>
         // Need to compute the block.
     }
     // Initially we hold no locks on this block.
+    //todo 通过BlockManager没有获取到数据时，通过makeIterator重新计算并持久化数据
     doPutIterator(blockId, makeIterator, level, classTag, keepReadLock = true) match {
       case None =>
         // doPut() didn't hand work back to us, so the block already existed or was successfully
@@ -1365,19 +1368,26 @@ private[spark] class BlockManager(
       var iteratorFromFailedMemoryStorePut: Option[PartiallyUnrolledIterator[T]] = None
       // Size of the block in bytes
       var size = 0L
+      //todo 如果用到内存，则首先将数据存储到内存，当内存存不下时，再写到磁盘上
       if (level.useMemory) {
         // Put it in memory first, even if it also has useDisk set to true;
         // We will drop it to disk later if the memory store can't hold it.
+        //todo 序列化和非序列化分开处理
         if (level.deserialized) {
+          //todo 通过memoryStore将数据存储到内存中
           memoryStore.putIteratorAsValues(blockId, iterator(), classTag) match {
+            //todo 写入内存成功，返回数据块大小
             case Right(s) =>
               size = s
             case Left(iter) =>
+              //todo 如果内存不够，则溢写到磁盘上
               // Not enough space to unroll this block; drop to disk if applicable
               if (level.useDisk) {
                 logWarning(s"Persisting block $blockId to disk instead.")
+                //todo 写磁盘
                 diskStore.put(blockId) { channel =>
                   val out = Channels.newOutputStream(channel)
+                  //todo 写数据
                   serializerManager.dataSerializeStream(blockId, out, iter)(classTag)
                 }
                 size = diskStore.getSize(blockId)
@@ -1405,6 +1415,7 @@ private[spark] class BlockManager(
         }
 
       } else if (level.useDisk) {
+        //todo 写入磁盘
         diskStore.put(blockId) { channel =>
           val out = Channels.newOutputStream(channel)
           serializerManager.dataSerializeStream(blockId, out, iterator())(classTag)
@@ -1416,12 +1427,14 @@ private[spark] class BlockManager(
       val blockWasSuccessfullyStored = putBlockStatus.storageLevel.isValid
       if (blockWasSuccessfullyStored) {
         // Now that the block is in either the memory or disk store, tell the master about it.
+        //todo 写入成功，向 Driver 上报元数据信息
         info.size = size
         if (tellMaster && info.tellMaster) {
           reportBlockStatus(blockId, putBlockStatus)
         }
         addUpdatedBlockStatusToTaskMetrics(blockId, putBlockStatus)
         logDebug(s"Put block $blockId locally took ${Utils.getUsedTimeNs(startTimeNs)}")
+        //todo // 如果需要创建副本，则复制到其他节点
         if (level.replication > 1) {
           val remoteStartTimeNs = System.nanoTime()
           val bytesToReplicate = doGetLocalBytes(blockId, info)

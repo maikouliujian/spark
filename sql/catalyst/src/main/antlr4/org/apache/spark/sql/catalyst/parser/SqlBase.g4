@@ -226,6 +226,7 @@ statement
     | unsupportedHiveNativeCommands .*?                                #failNativeCommand
     ;
 
+
 unsupportedHiveNativeCommands
     : kw1=CREATE kw2=ROLE
     | kw1=DROP kw2=ROLE

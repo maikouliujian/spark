@@ -192,21 +192,29 @@ private[spark] class MemoryStore(
     require(!contains(blockId), s"Block $blockId is already present in the MemoryStore")
 
     // Number of elements unrolled so far
+    //todo 内存中展开元素的数量
     var elementsUnrolled = 0
     // Whether there is still enough memory for us to continue unrolling this block
+    //todo 是否存在足够的内存用于继续展开该 Block
     var keepUnrolling = true
     // Initial per-task memory to request for unrolling blocks (bytes).
+    //todo 每个展开线程初始化内存大小，可由 spark.storage.unrollMemoryThreshold 配置
     val initialMemoryThreshold = unrollMemoryThreshold
     // How often to check whether we need to request more memory
+    //todo Block 在内存中展开，设置每经过给定的次数后检查是否需要申请内存，默认 16 次
     val memoryCheckPeriod = conf.get(UNROLL_MEMORY_CHECK_PERIOD)
     // Memory currently reserved by this task for this particular unrolling operation
+    //todo 记录展开操作保留的内存大小，初始为 initialMemoryThreshold
     var memoryThreshold = initialMemoryThreshold
     // Memory to request as a multiple of current vector size
+    //todo 内存增长因子
     val memoryGrowthFactor = conf.get(UNROLL_MEMORY_GROWTH_FACTOR)
     // Keep track of unroll memory used by this particular block / putIterator() operation
+    //todo 展开该 Block 已使用内存大小
     var unrollMemoryUsedByThisBlock = 0L
 
     // Request enough memory to begin unrolling
+    //todo Block unroll 前，尝试获取初始化内存
     keepUnrolling =
       reserveUnrollMemoryForThisTask(blockId, initialMemoryThreshold, memoryMode)
 
@@ -214,19 +222,24 @@ private[spark] class MemoryStore(
       logWarning(s"Failed to reserve initial memory threshold of " +
         s"${Utils.bytesToString(initialMemoryThreshold)} for computing block $blockId in memory.")
     } else {
+      //todo 获取成功
       unrollMemoryUsedByThisBlock += initialMemoryThreshold
     }
 
     // Unroll this block safely, checking whether we have exceeded our threshold periodically
+    //todo 在内存中迭代展开该 Block，定期判断是否超过分配内存大小
     while (values.hasNext && keepUnrolling) {
       valuesHolder.storeValue(values.next())
+      //todo 每 memoryCheckPeriod 进行一次检查，展开内存是否超过当前分配内存
       if (elementsUnrolled % memoryCheckPeriod == 0) {
         val currentSize = valuesHolder.estimatedSize()
         // If our vector's size has exceeded the threshold, request more memory
+        //todo // 不足，申请内存
         if (currentSize >= memoryThreshold) {
           val amountToRequest = (currentSize * memoryGrowthFactor - memoryThreshold).toLong
           keepUnrolling =
             reserveUnrollMemoryForThisTask(blockId, amountToRequest, memoryMode)
+          //todo // 申请成功，加入已使用内存
           if (keepUnrolling) {
             unrollMemoryUsedByThisBlock += amountToRequest
           }
@@ -240,6 +253,7 @@ private[spark] class MemoryStore(
     // Make sure that we have enough memory to store the block. By this point, it is possible that
     // the block's actual memory usage has exceeded the unroll memory by a small amount, so we
     // perform one final call to attempt to allocate additional memory if necessary.
+    //todo // 成功展开 Block
     if (keepUnrolling) {
       val entryBuilder = valuesHolder.getBuilder()
       val size = entryBuilder.preciseSize
@@ -254,6 +268,7 @@ private[spark] class MemoryStore(
       if (keepUnrolling) {
         val entry = entryBuilder.build()
         // Synchronize so that transfer is atomic
+        //todo 定义内部方法，先释放 Block 在内存展开的空间，然后再判断内存是否足够用于写入数据
         memoryManager.synchronized {
           releaseUnrollMemoryForThisTask(memoryMode, unrollMemoryUsedByThisBlock)
           val success = memoryManager.acquireStorageMemory(blockId, entry.size, memoryMode)
@@ -295,7 +310,7 @@ private[spark] class MemoryStore(
       classTag: ClassTag[T]): Either[PartiallyUnrolledIterator[T], Long] = {
 
     val valuesHolder = new DeserializedValuesHolder[T](classTag)
-
+    //todo 存储数据的逻辑
     putIterator(blockId, values, classTag, MemoryMode.ON_HEAP, valuesHolder) match {
       case Right(storedSize) => Right(storedSize)
       case Left(unrollMemoryUsedByThisBlock) =>

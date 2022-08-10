@@ -413,7 +413,7 @@ class ResolveSessionCatalog(
     case ShowCreateTableStatement(tbl, asSerde) if asSerde =>
       val v1TableName = parseV1Table(tbl, "SHOW CREATE TABLE AS SERDE")
       ShowCreateTableAsSerdeCommand(v1TableName.asTableIdentifier)
-
+    //todo 执行CacheTableStatement
     case CacheTableStatement(tbl, plan, isLazy, options) =>
       val name = if (plan.isDefined) {
         // CACHE TABLE ... AS SELECT creates a temp view with the input query.

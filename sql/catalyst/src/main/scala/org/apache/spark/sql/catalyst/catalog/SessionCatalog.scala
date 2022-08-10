@@ -450,6 +450,7 @@ class SessionCatalog(
     val table = formatTableName(name.table)
     requireDbExists(db)
     requireTableExists(TableIdentifier(table, Some(db)))
+    //todo externalCatalog===>HiveExternalCatalog
     externalCatalog.getTable(db, table)
   }
 

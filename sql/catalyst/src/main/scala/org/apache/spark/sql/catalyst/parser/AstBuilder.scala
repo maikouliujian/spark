@@ -65,8 +65,11 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
    * when the context has only one child. This is done because there is no generic method to
    * combine the results of the context children. In all other cases null is returned.
    */
+    //todo 覆盖所有访问方法的默认行为。只有当上下文只有一个子项时，才会返回非空结果。
+    //todo 之所以这样做，是因为没有通用方法来组合上下文子项的结果。在所有其他情况下，返回null。
   override def visitChildren(node: RuleNode): AnyRef = {
     if (node.getChildCount == 1) {
+       //todo QueryContext
       node.getChild(0).accept(this)
     } else {
       null
@@ -74,6 +77,7 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
   }
 
   override def visitSingleStatement(ctx: SingleStatementContext): LogicalPlan = withOrigin(ctx) {
+    //todo 查询逻辑ctx.statement返回的是QueryContext
     visit(ctx.statement).asInstanceOf[LogicalPlan]
   }
 
@@ -111,15 +115,23 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
   /* ********************************************************************************************
    * Plan parsing
    * ******************************************************************************************** */
+  //todo Plan parsing
   protected def plan(tree: ParserRuleContext): LogicalPlan = typedVisit(tree)
 
   /**
    * Create a top-level plan with Common Table Expressions.
    */
+    //todo AstBuilder.visitQuery 方法就是结合 QueryContext 的 3 个子节点
+    // QueryTermContext，QueryOrganizationContext，CtesContext 的信息进行包括 ORDER BY/SORT BY/CLUSTER BY/DISTRIBUTE BY/LIMIT/WINDOWS
+    // 子句 和 CTE 的处理，其中 QueryTermContext 是信息的主要承载方，默认是其子类 QueryTermDefaultContext 来实例化。
+    //————————————————
+    //版权声明：本文为CSDN博主「Shockang」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
+    //原文链接：https://blog.csdn.net/Shockang/article/details/122522780
   override def visitQuery(ctx: QueryContext): LogicalPlan = withOrigin(ctx) {
     val query = plan(ctx.queryTerm).optionalMap(ctx.queryOrganization)(withQueryResultClauses)
 
     // Apply CTEs
+    //todo Apply CTEs
     query.optionalMap(ctx.ctes)(withCTE)
   }
 
@@ -135,6 +147,7 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
       (namedQuery.alias, namedQuery)
     }
     // Check for duplicate names.
+    //todo 检查重复命名
     val duplicates = ctes.groupBy(_._1).filter(_._2.size > 1).keys
     if (duplicates.nonEmpty) {
       throw new ParseException(
@@ -538,12 +551,15 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
    * Add ORDER BY/SORT BY/CLUSTER BY/DISTRIBUTE BY/LIMIT/WINDOWS clauses to the logical plan. These
    * clauses determine the shape (ordering/partitioning/rows) of the query result.
    */
+
+  //todo 添加 ORDER BY/SORT BY/CLUSTER BY/DISTRIBUTE BY/LIMIT/WINDOWS 子句到逻辑计划中。子句决定了查询结果的 `shape` (ordering/partitioning/rows)
   private def withQueryResultClauses(
       ctx: QueryOrganizationContext,
       query: LogicalPlan): LogicalPlan = withOrigin(ctx) {
     import ctx._
 
     // Handle ORDER BY, SORT BY, DISTRIBUTE BY, and CLUSTER BY clause.
+    //todo 处理 ORDER BY, SORT BY, DISTRIBUTE BY 和 CLUSTER BY 子句。
     val withOrder = if (
       !order.isEmpty && sort.isEmpty && distributeBy.isEmpty && clusterBy.isEmpty) {
       // ORDER BY ...
@@ -606,8 +622,18 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
   override def visitRegularQuerySpecification(
       ctx: RegularQuerySpecificationContext): LogicalPlan = withOrigin(ctx) {
     val from = OneRowRelation().optional(ctx.fromClause) {
+      //todo 处理 FROM 子句
       visitFromClause(ctx.fromClause)
     }
+    //todo /**
+    //   * 向逻辑计划添加常规（SELECT）查询规范。
+    //   * 查询规范是逻辑计划的核心，就是寻源（FROM子句）、投影（SELECT）、聚合（GROUP BY…HAVING…）过滤
+    //   * （WHERE）。
+    //   * 请注意，查询 hints 会被忽略（解析器和生成器都会忽略）。
+    //   */
+    //————————————————
+    //版权声明：本文为CSDN博主「Shockang」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
+    //原文链接：https://blog.csdn.net/Shockang/article/details/122522780
     withSelectQuerySpecification(
       ctx,
       ctx.selectClause,
@@ -619,7 +645,7 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
       from
     )
   }
-
+  //todo 可以看到，SELECT 子句的处理结果就是一个命名表达式（NamedExpression）的集合
   override def visitNamedExpressionSeq(
       ctx: NamedExpressionSeqContext): Seq[Expression] = {
     Option(ctx).toSeq
@@ -711,9 +737,11 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
       windowClause: WindowClauseContext,
       relation: LogicalPlan): LogicalPlan = withOrigin(ctx) {
     // Add lateral views.
+    //todo 结合 FROM 子句和侧视图一起处理（在我们的例子中侧视图为空）
     val withLateralView = lateralView.asScala.foldLeft(relation)(withGenerate)
 
     // Add where.
+    //todo 流水线式的继续处理 WHERE 子句（在我们的例子中 WHERE 子句为空）
     val withFilter = withLateralView.optionalMap(whereClause)(withWhereClause)
 
     val expressions = visitNamedExpressionSeq(selectClause.namedExpressionSeq)
@@ -724,13 +752,15 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
     }
 
     def createProject() = if (namedExpressions.nonEmpty) {
+      //todo  将上面的处理结果封装到 Project 对象之中
       Project(namedExpressions, withFilter)
     } else {
       withFilter
     }
-
+    //todo 先处理 Project
     val withProject = if (aggregationClause == null && havingClause != null) {
       if (conf.getConf(SQLConf.LEGACY_HAVING_WITHOUT_GROUP_BY_AS_WHERE)) {
+        // todo 如果这个参数设置了，就把没有 GROUP BY 的 HAVING 当成 WHERE
         // If the legacy conf is set, treat HAVING without GROUP BY as WHERE.
         val predicate = expression(havingClause.booleanExpression) match {
           case p: Predicate => p
@@ -738,6 +768,7 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
         }
         Filter(predicate, createProject())
       } else {
+        //todo 根据 SQL 标准，没有 GROUP BY 的 HAVING 就意味着全局的聚合。
         // According to SQL standard, HAVING without GROUP BY means global aggregate.
         withHavingClause(havingClause, Aggregate(Nil, namedExpressions, withFilter))
       }
@@ -746,22 +777,26 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
       aggregate.optionalMap(havingClause)(withHavingClause)
     } else {
       // When hitting this branch, `having` must be null.
+      //todo 当命中这个分支的时候，HAVING 必须为 null。
       createProject()
     }
 
     // Distinct
+    //todo 接着处理 Distinct
     val withDistinct = if (
       selectClause.setQuantifier() != null &&
       selectClause.setQuantifier().DISTINCT() != null) {
+      //todo 可以看到，如果有 Distinct 就是将 Project 结果封装进 Distinct 对象之中
       Distinct(withProject)
     } else {
       withProject
     }
-
+    //todo 最后处理 Window
     // Window
     val withWindow = withDistinct.optionalMap(windowClause)(withWindowClause)
 
     // Hint
+    //todo 处理hint
     selectClause.hints.asScala.foldRight(withWindow)(withHints)
   }
 
@@ -782,12 +817,19 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
    * Create a logical plan for a given 'FROM' clause. Note that we support multiple (comma
    * separated) relations here, these get converted into a single plan by condition-less inner join.
    */
+    //todo 	/**
+    //	 * 为给定的“FROM”子句创建逻辑计划。
+    //	 * 请注意，我们在这里支持多个（逗号分隔）关系，这些关系通过无条件内部联接转换为单个计划。
+    //	 */
   override def visitFromClause(ctx: FromClauseContext): LogicalPlan = withOrigin(ctx) {
     val from = ctx.relation.asScala.foldLeft(null: LogicalPlan) { (left, relation) =>
+       //todo 继续调用子节点的访问方法
       val right = plan(relation.relationPrimary)
+      //todo join 处理
       val join = right.optionalMap(left)(Join(_, _, Inner, None, JoinHint.NONE))
       withJoinRelations(join, relation)
     }
+      //todo pivot （即行转列）处理
     if (ctx.pivotClause() != null) {
       if (!ctx.lateralView.isEmpty) {
         throw new ParseException("LATERAL cannot be used together with PIVOT in FROM clause", ctx)
@@ -962,6 +1004,16 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
    *   select * from t1 join (t2 cross join t3) on col1 = col2
    * }}}
    */
+
+    //todo  /**
+    //   * 创建FROM子句中引用的单个关系。join 条件的一部分被嵌套时会使用这个方法，例如：
+    //   * {{{
+    //   *   select * from t1 join (t2 cross join t3) on col1 = col2
+    //   * }}}
+    //   */
+    //————————————————
+    //版权声明：本文为CSDN博主「Shockang」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
+    //原文链接：https://blog.csdn.net/Shockang/article/details/122522780
   override def visitRelation(ctx: RelationContext): LogicalPlan = withOrigin(ctx) {
     withJoinRelations(plan(ctx.relationPrimary), ctx)
   }
@@ -1083,9 +1135,14 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
   /**
    * Create an aliased table reference. This is typically used in FROM clauses.
    */
+  /**
+   * 创建一个别名表引用。这通常用于FROM子句。
+   */
   override def visitTableName(ctx: TableNameContext): LogicalPlan = withOrigin(ctx) {
     val tableId = visitMultipartIdentifier(ctx.multipartIdentifier)
+    //todo 如果 FROM 子句中指定了别名，就会为逻辑计划创建子查询别名和列别名
     val table = mayApplyAliasPlan(ctx.tableAlias, UnresolvedRelation(tableId))
+    //todo 将样本添加到逻辑计划中
     table.optionalMap(ctx.sample)(withSample)
   }
 
@@ -1251,6 +1308,10 @@ class AstBuilder(conf: SQLConf) extends SqlBaseBaseVisitor[AnyRef] with Logging 
    * Create a star (i.e. all) expression; this selects all elements (in the specified object).
    * Both un-targeted (global) and targeted aliases are supported.
    */
+    //todo /**
+    //   * 创建一个星形（即全部）表达式；这将选择（指定对象中的）所有元素。
+    //   * 同时支持非目标（全局）别名和目标别名。
+    //   */
   override def visitStar(ctx: StarContext): Expression = withOrigin(ctx) {
     UnresolvedStar(Option(ctx.qualifiedName()).map(_.identifier.asScala.map(_.getText)))
   }

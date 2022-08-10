@@ -55,6 +55,7 @@ object SparkPlan {
  *
  * The naming convention is that physical operators end with "Exec" suffix, e.g. [[ProjectExec]].
  */
+//todo SparkPlan 物理执行计划
 abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializable {
 
   /**
@@ -173,6 +174,7 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
    *
    * Concrete implementations of SparkPlan should override `doExecute`.
    */
+    //todo 物理执行计划调用执行的方法
   final def execute(): RDD[InternalRow] = executeQuery {
     if (isCanonicalizedPlan) {
       throw new IllegalStateException("A canonicalized plan is not supposed to be executed.")

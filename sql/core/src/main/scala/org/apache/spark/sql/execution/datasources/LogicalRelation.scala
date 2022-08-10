@@ -62,7 +62,8 @@ case class LogicalRelation(
     case fs: HadoopFsRelation => fs.location.refresh()
     case _ =>  // Do nothing.
   }
-
+  //todo 打印逻辑计划
+  //Relation [addr#7,age#8L,name#9,sex#10] json
   override def simpleString(maxFields: Int): String = {
     s"Relation[${truncatedString(output, ",", maxFields)}] $relation"
   }

@@ -23,10 +23,13 @@ import org.apache.spark.sql.catalyst.trees.TreeNode
 abstract class Rule[TreeType <: TreeNode[_]] extends Logging {
 
   /** Name for this rule, automatically inferred based on class name. */
+  /** todo 当前规则的名称，根据类名自动推断 */
   val ruleName: String = {
     val className = getClass.getName
     if (className endsWith "$") className.dropRight(1) else className
   }
-
+  /** todo 最核心的应用函数 */
+  //todo 其中 TreeType 代表的是 TreeNode 的任意一个子类，而 TreeNode 则是 Spark SQL 中所有树型结构的父类，
+  // 像之前源码中的逻辑计划（LogicalPlan）就是它的一个子类。
   def apply(plan: TreeType): TreeType
 }

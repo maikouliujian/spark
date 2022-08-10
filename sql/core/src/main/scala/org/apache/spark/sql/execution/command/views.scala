@@ -89,7 +89,7 @@ case class CreateViewCommand(
     throw new AnalysisException(
       s"It is not allowed to add database prefix `$database` for the TEMPORARY view name.")
   }
-
+  //todo 执行命令
   override def run(sparkSession: SparkSession): Seq[Row] = {
     // If the plan cannot be analyzed, throw an exception and don't proceed.
     val qe = sparkSession.sessionState.executePlan(child)
@@ -103,12 +103,13 @@ case class CreateViewCommand(
         s"specified by CREATE VIEW (num: `${userSpecifiedColumns.length}`).")
     }
 
+    //todo // 获取到 SessionCatalog
     val catalog = sparkSession.sessionState.catalog
 
     // When creating a permanent view, not allowed to reference temporary objects.
     // This should be called after `qe.assertAnalyzed()` (i.e., `child` can be resolved)
     verifyTemporaryObjectsNotExists(catalog)
-
+    //todo 临时视图
     if (viewType == LocalTempView) {
       val aliasedPlan = aliasPlan(sparkSession, analyzedPlan)
       if (replace && catalog.getTempView(name.table).isDefined &&
@@ -116,7 +117,9 @@ case class CreateViewCommand(
         logInfo(s"Try to uncache ${name.quotedString} before replacing.")
         CommandUtils.uncacheTableOrView(sparkSession, name.quotedString)
       }
+      //todo // 调用 SessionCatalog 创建临时视图的方法，本质上是放在一个hashmap中
       catalog.createTempView(name.table, aliasedPlan, overrideIfExists = replace)
+      //todo 全局视图
     } else if (viewType == GlobalTempView) {
       val aliasedPlan = aliasPlan(sparkSession, analyzedPlan)
       if (replace && catalog.getGlobalTempView(name.table).isDefined &&
@@ -126,7 +129,9 @@ case class CreateViewCommand(
         logInfo(s"Try to uncache ${globalTempView.quotedString} before replacing.")
         CommandUtils.uncacheTableOrView(sparkSession, globalTempView.quotedString)
       }
+      //todo // 调用 SessionCatalog 创建全局视图的方法，本质上也是放在一个hashmap中
       catalog.createGlobalTempView(name.table, aliasedPlan, overrideIfExists = replace)
+      //todo // 如果是永久视图的话， SessionCatalog 的缓存中有这个视图名称
     } else if (catalog.tableExists(name)) {
       val tableMetadata = catalog.getTableMetadata(name)
       if (allowExisting) {
@@ -136,15 +141,19 @@ case class CreateViewCommand(
         throw new AnalysisException(s"$name is not a view")
       } else if (replace) {
         // Detect cyclic view reference on CREATE OR REPLACE VIEW.
+        //todo // 检测到循环的视图引用 CREATE OR REPLACE VIEW.
         val viewIdent = tableMetadata.identifier
         checkCyclicViewReference(analyzedPlan, Seq(viewIdent), viewIdent)
 
         // uncache the cached data before replacing an exists view
+        //todo // 在替换掉一个已经存在的视图的时候要把缓存给干掉
         logDebug(s"Try to uncache ${viewIdent.quotedString} before replacing.")
         CommandUtils.uncacheTableOrView(sparkSession, viewIdent.quotedString)
 
         // Handles `CREATE OR REPLACE VIEW v0 AS SELECT ...`
         // Nothing we need to retain from the old view, so just drop and create a new one
+        //todo // 处理这种类型的 SQL： `CREATE OR REPLACE VIEW v0 AS SELECT ...`
+        //        // 老的视图里面的信息我们什么都不管，把它直接干掉再创建一个新的
         catalog.dropTable(viewIdent, ignoreIfNotExists = false, purge = false)
         catalog.createTable(prepareTable(sparkSession, analyzedPlan), ignoreIfExists = false)
       } else {

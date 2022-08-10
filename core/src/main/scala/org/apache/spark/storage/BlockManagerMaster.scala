@@ -29,7 +29,7 @@ import org.apache.spark.util.{RpcUtils, ThreadUtils}
 
 private[spark]
 class BlockManagerMaster(
-    var driverEndpoint: RpcEndpointRef,
+    var driverEndpoint: RpcEndpointRef,//todo 这个driver不是spark运行时的driver,而是BlockManagerMasterEndpoint
     var driverHeartbeatEndPoint: RpcEndpointRef,
     conf: SparkConf,
     isDriver: Boolean)
@@ -90,6 +90,7 @@ class BlockManagerMaster(
   def getLocationsAndStatus(
       blockId: BlockId,
       requesterHost: String): Option[BlockLocationsAndStatus] = {
+    //todo driver记录了每个blockId的位置
     driverEndpoint.askSync[Option[BlockLocationsAndStatus]](
       GetLocationsAndStatus(blockId, requesterHost))
   }

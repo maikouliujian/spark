@@ -97,6 +97,7 @@ class BlockManagerMasterEndpoint(
     case RegisterBlockManager(id, localDirs, maxOnHeapMemSize, maxOffHeapMemSize, slaveEndpoint) =>
       context.reply(register(id, localDirs, maxOnHeapMemSize, maxOffHeapMemSize, slaveEndpoint))
 
+      //todo 更新block信息
     case _updateBlockInfo @
         UpdateBlockInfo(blockManagerId, blockId, storageLevel, deserializedSize, size) =>
       val isSuccess = updateBlockInfo(blockManagerId, blockId, storageLevel, deserializedSize, size)

@@ -719,6 +719,7 @@ private[spark] class HiveExternalCatalog(conf: SparkConf, hadoopConf: Configurat
     client.alterTable(updatedTable)
   }
 
+  //todo 通过hive catalog获取table
   override def getTable(db: String, table: String): CatalogTable = withClient {
     restoreTableMetadata(getRawTable(db, table))
   }

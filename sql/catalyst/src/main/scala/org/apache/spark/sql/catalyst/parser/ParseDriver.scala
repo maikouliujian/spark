@@ -78,8 +78,17 @@ abstract class AbstractSqlParser(conf: SQLConf) extends ParserInterface with Log
   }
 
   /** Creates LogicalPlan for a given SQL string. */
+    //todo 解析sql的入口
+    //todo 看起来比较简单的一段代码实际上包含下面 4 个流程阶段：
+    //    1、parse
+    //    2、生成解析树
+    //    3、生成 AST
+    //    4、结果处理                                      1、parse
   override def parsePlan(sqlText: String): LogicalPlan = parse(sqlText) { parser =>
+      //todo 2、parser.singleStatement() 生成解析树
+      //todo 3、astBuilder.visitSingleStateme 生成ast
     astBuilder.visitSingleStatement(parser.singleStatement()) match {
+      //todo 4、结果处理。就是判断生成的逻辑计划是不是合法的，合法的正常返回，非法的就抛出包含 SQL字符串、出错行号和起始位置的 ParseException 异常信息。
       case plan: LogicalPlan => plan
       case _ =>
         val position = Origin(None, None)
@@ -90,43 +99,59 @@ abstract class AbstractSqlParser(conf: SQLConf) extends ParserInterface with Log
   /** Get the builder (visitor) which converts a ParseTree into an AST. */
   protected def astBuilder: AstBuilder
 
+  //todo 1、parse解析逻辑【词法和语法】
   protected def parse[T](command: String)(toResult: SqlBaseParser => T): T = {
     logDebug(s"Parsing command: $command")
-
+    //todo SqlBase.g4 生成的词法解析器
+    //	这里会将 SQL 命令转化成不区分大小写的字符流传递给词法分析器
     val lexer = new SqlBaseLexer(new UpperCaseCharStream(CharStreams.fromString(command)))
+    //todo 清空用来识别错误的监听器列表
     lexer.removeErrorListeners()
+    //todo 添加自定义的编译错误监听器
     lexer.addErrorListener(ParseErrorListener)
     lexer.legacy_setops_precedence_enbled = conf.setOpsPrecedenceEnforced
     lexer.legacy_exponent_literal_as_decimal_enabled = conf.exponentLiteralAsDecimalEnabled
     lexer.SQL_standard_keyword_behavior = conf.ansiEnabled
-
+    //todo token 流指定来源
     val tokenStream = new CommonTokenStream(lexer)
+    //todo SqlBase.g4 生成的语法解析器
     val parser = new SqlBaseParser(tokenStream)
+    //todo 语法解析器添加后置处理器，专门用来验证并清理解析树
     parser.addParseListener(PostProcessor)
+    //todo 同上，先清空用来识别错误的监听器列表
     parser.removeErrorListeners()
+    //todo 同上，添加自定义的编译错误监听器
     parser.addErrorListener(ParseErrorListener)
+    //todo // 如果为false，则根据SQL标准，INTERSECT的优先级高于其他集合操作
+    //    //（ UNION，EXCEPT 和 MINUS ）。
     parser.legacy_setops_precedence_enbled = conf.setOpsPrecedenceEnforced
+    //todo 如果为false，则带有指数的文本将转换为double类型而不是decimal类型。
     parser.legacy_exponent_literal_as_decimal_enabled = conf.exponentLiteralAsDecimalEnabled
+    //todo 如果为true，则关键字的行为遵循ANSI SQL标准。
     parser.SQL_standard_keyword_behavior = conf.ansiEnabled
 
     try {
       try {
         // first, try parsing with potentially faster SLL mode
+        //todo 先使用 ANTLR 较快的 SLL 模式进行解析，成功返回结果
         parser.getInterpreter.setPredictionMode(PredictionMode.SLL)
         toResult(parser)
       }
       catch {
         case e: ParseCancellationException =>
           // if we fail, parse with LL mode
-          tokenStream.seek(0) // rewind input stream
+          //todo 如果解析失败，复位
+          tokenStream.seek(0) // rewind input stream//todo 把输入流的索引改成 0，倒带输入流
           parser.reset()
 
           // Try Again.
+          //todo 重试，再使用 LL 模式进行解析，成功返回结果
           parser.getInterpreter.setPredictionMode(PredictionMode.LL)
           toResult(parser)
       }
     }
     catch {
+          //todo 编译异常处理
       case e: ParseException if e.command.isDefined =>
         throw e
       case e: ParseException =>

@@ -143,11 +143,17 @@ class Analyzer(
       conf)
   }
 
+//  todo 可以看到analysis阶段的核心逻辑就 2 步：
+//  1、执行
+//  2、校验
   def executeAndCheck(plan: LogicalPlan, tracker: QueryPlanningTracker): LogicalPlan = {
     if (plan.analyzed) return plan
+    //todo 这里利用了一个 `ThreadLocal[Int]` 类型避免解析器递归调用自己
     AnalysisHelper.markInAnalyzer {
+       //todo 1、执行
       val analyzed = executeAndTrack(plan, tracker)
       try {
+        //todo 2、执行完成后校验解析结果
         checkAnalysis(analyzed)
         analyzed
       } catch {
@@ -193,8 +199,9 @@ class Analyzer(
    * execute its rules in one pass.
    */
   val postHocResolutionRules: Seq[Rule[LogicalPlan]] = Nil
-
+  //todo Analyzer中的batches规则
   override def batches: Seq[Batch] = Seq(
+    //todo Substitution 替代、置换
     Batch("Substitution", fixedPoint,
       CTESubstitution,
       WindowsSubstitution,
@@ -242,6 +249,7 @@ class Analyzer(
       ResolveTimeZone(conf) ::
       ResolveRandomSeed ::
       ResolveBinaryArithmetic ::
+        //todo Hive SQL ⇒ Spark SQL ⇒ ANSI SQL 的演变
       TypeCoercion.typeCoercionRules(conf) ++
       extendedResolutionRules : _*),
     Batch("Post-Hoc Resolution", Once, postHocResolutionRules: _*),
@@ -933,23 +941,39 @@ class Analyzer(
     // look at `AnalysisContext.catalogAndNamespace` when resolving relations with single-part name.
     // If `AnalysisContext.catalogAndNamespace` is non-empty, analyzer will expand single-part names
     // with it, instead of current catalog and namespace.
+    //todo /**
+    // * 当前 catalog 和 namespace 可能与视图创建时不同，我们必须在这里解析视图的逻辑计
+    // * 划，catalog 和 namespace 存储在视图元数据中。这是通过将 catalog 和
+    // * namespace 保持在“AnalysisContext”中来实现的，当解析单组件名称的关系时
+    // * analyzer将会查看方法`AnalysisContext.catalogAndNamespace`。如
+    // * 果`AnalysisContext.catalogAndNamespace`为非空，analyzer将展开单组件名称
+    // * 并使用它，而不是当前的 catalog 和 namespace。
+    // */
+    //————————————————
+    //版权声明：本文为CSDN博主「Shockang」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
+    //原文链接：https://blog.csdn.net/Shockang/article/details/123122650
     private def resolveViews(plan: LogicalPlan): LogicalPlan = plan match {
       // The view's child should be a logical plan parsed from the `desc.viewText`, the variable
       // `viewText` should be defined, or else we throw an error on the generation of the View
       // operator.
+      //todo  // 视图的子级应该是解析自“desc.viewText”的一个逻辑计划，变量`viewText`应该被定义，否则我们在生成视图算子时会抛出一个错误。
       case view @ View(desc, _, child) if !child.resolved =>
         // Resolve all the UnresolvedRelations and Views in the child.
+        //todo // 解析子节点中所有的 UnresolvedRelations 和视图
         val newChild = AnalysisContext.withAnalysisContext(desc.viewCatalogAndNamespace) {
+          //todo  // 嵌套视图的深度不能大于最大允许的深度
           if (AnalysisContext.get.nestedViewDepth > conf.maxNestedViewDepth) {
             view.failAnalysis(s"The depth of view ${desc.identifier} exceeds the maximum " +
               s"view resolution depth (${conf.maxNestedViewDepth}). Analysis is aborted to " +
               s"avoid errors. Increase the value of ${SQLConf.MAX_NESTED_VIEW_DEPTH.key} to work " +
               "around this.")
           }
+          //todo // 执行子节点
           executeSameContext(child)
         }
         view.copy(child = newChild)
       case p @ SubqueryAlias(_, view: View) =>
+        // todo 副本递归调用
         p.copy(child = resolveViews(view))
       case _ => plan
     }
@@ -958,6 +982,7 @@ class Analyzer(
       case i @ InsertIntoStatement(table, _, _, _, _) if i.query.resolved =>
         val relation = table match {
           case u: UnresolvedRelation =>
+             //todo 寻找表【Relation】的物理定义
             lookupRelation(u.multipartIdentifier).getOrElse(u)
           case other => other
         }
@@ -1002,6 +1027,7 @@ class Analyzer(
     private def lookupRelation(identifier: Seq[String]): Option[LogicalPlan] = {
       expandRelationName(identifier) match {
         case SessionCatalogAndIdentifier(catalog, ident) =>
+          //todo 根据catalog获取表名
           lazy val loaded = CatalogV2Util.loadTable(catalog, ident).map {
             case v1Table: V1Table =>
               v1SessionCatalog.getRelation(v1Table.v1Table)
@@ -1010,10 +1036,12 @@ class Analyzer(
                 catalog.name +: ident.asMultipartIdentifier,
                 DataSourceV2Relation.create(table, Some(catalog), Some(ident)))
           }
+          //todo 1、从关系缓存中查找
           val key = catalog.name +: ident.namespace :+ ident.name
           AnalysisContext.get.relationCache.get(key).map(_.transform {
             case multi: MultiInstanceRelation => multi.newInstance()
           }).orElse {
+            //todo 2、查不到手动加载并创建关系
             loaded.foreach(AnalysisContext.get.relationCache.update(key, _))
             loaded
           }

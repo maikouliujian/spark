@@ -600,13 +600,22 @@ class SparkSession private(
    * Executes a SQL query using Spark, returning the result as a `DataFrame`.
    * This API eagerly runs DDL/DML commands, but not for SELECT queries.
    *
+   * 使用 Spark 执行 SQL 查询，并将结果作为 DataFrame 返回。
+   * 此 API 会“急切地”运行 DDL/DML 命令，但遇到 SELECT 查询则不会。
+   *
    * @since 2.0.0
    */
+    //todo sparksql执行总入口
   def sql(sqlText: String): DataFrame = withActive {
+      //todo 定义一个查询计划追踪器
     val tracker = new QueryPlanningTracker
+    //todo 统计 parsing 阶段的开始和结束时间
     val plan = tracker.measurePhase(QueryPlanningTracker.PARSING) {
+      // todo 1、parsing 阶段
       sessionState.sqlParser.parsePlan(sqlText)
     }
+      // todo 将 parsing 阶段生成的逻辑计划经过处理生成 DataFrame 返回
+      //todo 2、analysis阶段
     Dataset.ofRows(self, plan, tracker)
   }
 
@@ -757,11 +766,15 @@ class SparkSession private(
   /**
    * Execute a block of code with the this session set as the active session, and restore the
    * previous session on completion.
+   *
+   * 执行一段代码块，将当前会话设置为活跃会话，并且在完成的时候恢复之前的会话。
    */
   private[sql] def withActive[T](block: => T): T = {
     // Use the active session thread local directly to make sure we get the session that is actually
     // set and not the default session. This to prevent that we promote the default session to the
     // active session once we are done.
+    //todo // 直接使用线程本地的活跃会话，以确保我们得到的会话实际上是事实上设置的而不是默认的会话。
+    //    // 这是为了防止一旦我们都搞完之后把默认会话升级到了活跃会话。
     val old = SparkSession.activeThreadSession.get()
     SparkSession.setActiveSession(this)
     try block finally {

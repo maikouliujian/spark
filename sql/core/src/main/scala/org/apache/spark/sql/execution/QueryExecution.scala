@@ -55,6 +55,7 @@ class QueryExecution(
   // TODO: Move the planner an optimizer into here from SessionState.
   protected def planner = sparkSession.sessionState.planner
 
+  //todo analyzed 延迟初始化
   def assertAnalyzed(): Unit = analyzed
 
   def assertSupported(): Unit = {
@@ -65,6 +66,7 @@ class QueryExecution(
 
   lazy val analyzed: LogicalPlan = executePhase(QueryPlanningTracker.ANALYSIS) {
     // We can't clone `logical` here, which will reset the `_analyzed` flag.
+    //todo 这里就是`analysis`阶段的入口啦
     sparkSession.sessionState.analyzer.executeAndCheck(logical, tracker)
   }
 

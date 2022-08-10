@@ -325,6 +325,7 @@ abstract class BaseSessionStateBuilder(
    * Build the [[SessionState]].
    */
   def build(): SessionState = {
+    //todo 创建SessionState
     new SessionState(
       session.sharedState,
       conf,

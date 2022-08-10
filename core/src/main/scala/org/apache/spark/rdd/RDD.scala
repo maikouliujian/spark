@@ -175,10 +175,12 @@ abstract class RDD[T: ClassTag](
     }
     // If this is the first time this RDD is marked for persisting, register it
     // with the SparkContext for cleanups and accounting. Do this only once.
+    //todo RDD默认情况下storageLevel 为NONE，这表明是第一次对该RDD设置持久化，此时将该RDD注册到sparkContext上下文中
     if (storageLevel == StorageLevel.NONE) {
       sc.cleaner.foreach(_.registerRDDForCleanup(this))
       sc.persistRDD(this)
     }
+    //todo 设置当前该RDD的存储级别为指定的存储级别
     storageLevel = newLevel
     this
   }
@@ -188,11 +190,15 @@ abstract class RDD[T: ClassTag](
    * it is computed. This can only be used to assign a new storage level if the RDD does not
    * have a storage level set yet. Local checkpointing is an exception.
    */
+    //todo rdd.persist
+    //todo 重点一：在RDD被首次计算出来后，根据设置的存储级别进行持久化
   def persist(newLevel: StorageLevel): this.type = {
+      //todo 重点二：判断该RDD是否需要checkpoint
     if (isLocallyCheckpointed) {
       // This means the user previously called localCheckpoint(), which should have already
       // marked this RDD for persisting. Here we should override the old storage level with
       // one that is explicitly requested by the user (after adapting it to use disk).
+      //todo 重点三：如果需要checkpoint，则转换存储级别为disk，不然一些存储在内存的数据如果在job执行中被清理掉，那么checkpoint还需要再重新计算。
       persist(LocalRDDCheckpointData.transformStorageLevel(newLevel), allowOverride = true)
     } else {
       persist(newLevel, allowOverride = false)
@@ -307,6 +313,7 @@ abstract class RDD[T: ClassTag](
    * subclasses of RDD.
    */
   final def iterator(split: Partition, context: TaskContext): Iterator[T] = {
+    //todo 如果存储级别不为NONE，则进入getOrCompute，否则进入computeOrReadCheckpoint
     if (storageLevel != StorageLevel.NONE) {
       getOrCompute(split, context)
     } else {
@@ -357,10 +364,12 @@ abstract class RDD[T: ClassTag](
     val blockId = RDDBlockId(id, partition.index)
     var readCachedBlock = true
     // This method is called on executors, so we need call SparkEnv.get instead of sc.env.
+    //todo 通过blockManager获取或者更新数据
     SparkEnv.get.blockManager.getOrElseUpdate(blockId, storageLevel, elementClassTag, () => {
       readCachedBlock = false
       computeOrReadCheckpoint(partition, context)
     }) match {
+      //todo 根据BlockManager返回的结果的不同，统一封装成InterruptibleIterator迭代对象
       case Left(blockResult) =>
         if (readCachedBlock) {
           val existingMetrics = context.taskMetrics().inputMetrics
@@ -1717,7 +1726,7 @@ abstract class RDD[T: ClassTag](
   // =======================================================================
   // Other internal methods and fields
   // =======================================================================
-
+  //todo rdd的存储等级
   private var storageLevel: StorageLevel = StorageLevel.NONE
 
   /** User code that created this RDD (e.g. `textFile`, `parallelize`). */

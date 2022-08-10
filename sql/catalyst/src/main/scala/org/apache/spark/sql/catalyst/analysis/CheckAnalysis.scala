@@ -89,6 +89,8 @@ trait CheckAnalysis extends PredicateHelper {
   def checkAnalysis(plan: LogicalPlan): Unit = {
     // We transform up and order the rules so as to catch the first possible failure instead
     // of the result of cascading resolution failures.
+    // todo 我们对规则进行转换和排序，以便抓住第一个可能的失败而不是级联解析失败的结果。
+    // todo 后序遍历的方式递归应用校验规则到逻辑计划树
     plan.foreachUp {
 
       case p if p.analyzed => // Skip already analyzed sub-plans
@@ -130,6 +132,8 @@ trait CheckAnalysis extends PredicateHelper {
         // If the arguments of the higher-order functions are resolved but the type check fails,
         // the argument functions will not get resolved, but we should report the argument type
         // check failure instead of claiming the argument functions are unresolved.
+        // todo 首先向下检查高阶函数的参数的数据类型。
+        // todo 如果高阶函数的参数已解析，但类型检查失败，参数函数不会得到解析，但我们应该报告参数类型检查失败，而不是声称参数函数未解决。
         operator transformExpressionsDown {
           case hof: HigherOrderFunction
               if hof.argumentsResolved && hof.checkArgumentDataTypes().isFailure =>
@@ -140,6 +144,9 @@ trait CheckAnalysis extends PredicateHelper {
             }
         }
 
+        // todo 开始检查表达式
+        // todo 首先获取逻辑计划的所有表达式
+        // todo 由于 GROUP BY 别名特性的存在，分组表达式会依赖聚合表达式，故我们在碰到聚合算子的情况下要先检查聚合表达式
         operator transformExpressionsUp {
           case a: Attribute if !a.resolved =>
             val from = operator.inputSet.toSeq.map(_.qualifiedName).mkString(", ")
@@ -161,6 +168,7 @@ trait CheckAnalysis extends PredicateHelper {
           case g: GroupingID =>
             failAnalysis("grouping_id() can only be used with GroupingSets/Cube/Rollup")
 
+            //todo 不支持 Distinct 窗口函数
           case w @ WindowExpression(AggregateExpression(_, _, true, _, _), _) =>
             failAnalysis(s"Distinct window functions are not supported: $w")
 
@@ -662,9 +670,12 @@ trait CheckAnalysis extends PredicateHelper {
           case _ => // Analysis successful!
         }
     }
+    //todo 检查收集到的度量信息
     checkCollectedMetrics(plan)
+    //todo 用户自定义的校验规则
     extendedCheckRules.foreach(_(plan))
     plan.foreachUp {
+      // todo 检查是否存在未解析的算子
       case o if !o.resolved =>
         failAnalysis(s"unresolved operator ${o.simpleString(SQLConf.get.maxToStringFields)}")
       case _ =>

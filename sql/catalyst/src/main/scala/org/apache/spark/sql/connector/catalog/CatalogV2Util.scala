@@ -278,8 +278,10 @@ private[sql] object CatalogV2Util {
     new StructType(newFields)
   }
 
+
   def loadTable(catalog: CatalogPlugin, ident: Identifier): Option[Table] =
     try {
+      //todo 通过catalog获取表
       Option(catalog.asTableCatalog.loadTable(ident))
     } catch {
       case _: NoSuchTableException => None

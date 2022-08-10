@@ -83,7 +83,10 @@ trait AnalysisHelper extends QueryPlan[LogicalPlan] { self: LogicalPlan =>
    */
   def resolveOperatorsUp(rule: PartialFunction[LogicalPlan, LogicalPlan]): LogicalPlan = {
     if (!analyzed) {
+      //todo // 防止嵌套调用，这里使用了一个 ThreadLocal[Int] 来记录调用的深度
       AnalysisHelper.allowInvokingTransformsInAnalyzer {
+        // todo 返回当前节点的副本，递归应用于其所有子节点
+        // todo 每一个规则的输入都是其子节点应用规则后的输出
         val afterRuleOnChildren = mapChildren(_.resolveOperatorsUp(rule))
         if (self fastEquals afterRuleOnChildren) {
           CurrentOrigin.withOrigin(origin) {

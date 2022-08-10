@@ -214,6 +214,7 @@ class SQLContext private[sql](val sparkSession: SparkSession)
    * @group cachemgmt
    * @since 1.3.0
    */
+    //todo cacheTable入口
   def cacheTable(tableName: String): Unit = {
     sparkSession.catalog.cacheTable(tableName)
   }
