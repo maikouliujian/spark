@@ -188,6 +188,7 @@ class QueryExecution(
     }
   }
 
+  //todo 打印执行计划
   private def writePlans(append: String => Unit, maxFields: Int): Unit = {
     val (verbose, addSuffix) = (true, false)
     append("== Parsed Logical Plan ==\n")

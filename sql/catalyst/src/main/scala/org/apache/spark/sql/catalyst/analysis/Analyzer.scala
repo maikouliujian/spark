@@ -1170,6 +1170,7 @@ class Analyzer(
    * Replaces [[UnresolvedAttribute]]s with concrete [[AttributeReference]]s from
    * a logical plan node's children.
    */
+  //todo ResolveReferences 规则的作用是将 UnresolvedAttribute 替换为逻辑计划节点子节点的具体 AttributeReference
   object ResolveReferences extends Rule[LogicalPlan] {
     /**
      * Generate a new logical plan for the right child with different expression IDs
@@ -1316,9 +1317,11 @@ class Analyzer(
     }
 
     def apply(plan: LogicalPlan): LogicalPlan = plan.resolveOperatorsUp {
+          //todo // 此查询计划的所有子项并没有都被解析
       case p: LogicalPlan if !p.childrenResolved => p
 
       // If the projection list contains Stars, expand it.
+      //todo // 如果投影中包含 * 号，则去扩展它。
       case p: Project if containsStar(p.projectList) =>
         p.copy(projectList = buildExpandedProjectList(p.projectList, p.child))
       // If the aggregate function argument contains Stars, expand it.
@@ -1527,9 +1530,12 @@ class Analyzer(
       child: LogicalPlan): Seq[NamedExpression] = {
       exprs.flatMap {
         // Using Dataframe/Dataset API: testData2.groupBy($"a", $"b").agg($"*")
+            //todo // 使用 Dataframe/Dataset 的 API: testData2.groupBy($"a", $"b").agg($"*")
         case s: Star => s.expand(child, resolver)
         // Using SQL API without running ResolveAlias: SELECT * FROM testData2 group by a, b
+        //todo // 使用 SQL 的 API 但是没有运行规则 ResolveAlias: SELECT * FROM testData2 group by a, b
         case UnresolvedAlias(s: Star, _) => s.expand(child, resolver)
+        //todo  // 如果 exprs 是一个列表类型有多个元素，并且其中包含 * 号
         case o if containsStar(o :: Nil) => expandStarExpression(o, child) :: Nil
         case o => o :: Nil
       }.map(_.asInstanceOf[NamedExpression])

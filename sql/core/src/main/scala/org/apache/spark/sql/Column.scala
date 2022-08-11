@@ -143,6 +143,7 @@ class TypedColumn[-T, U](
 class Column(val expr: Expression) extends Logging {
 
   def this(name: String) = this(name match {
+    //todo 解析select *
     case "*" => UnresolvedStar(None)
     case _ if name.endsWith(".*") =>
       val parts = UnresolvedAttribute.parseAttributeName(name.substring(0, name.length - 2))

@@ -58,6 +58,7 @@ object Subquery {
     Subquery(s.plan, SubqueryExpression.hasCorrelatedSubquery(s))
 }
 
+//todo Project 就是 select的结果，NamedExpression就是每一个字段
 case class Project(projectList: Seq[NamedExpression], child: LogicalPlan)
     extends OrderPreservingUnaryNode {
   override def output: Seq[Attribute] = projectList.map(_.toAttribute)
