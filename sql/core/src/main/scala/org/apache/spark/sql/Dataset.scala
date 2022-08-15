@@ -292,17 +292,21 @@ class Dataset[T] private[sql](
     val castCols = newDf.logicalPlan.output.map { col =>
       // Since binary types in top-level schema fields have a specific format to print,
       // so we do not cast them to strings here.
+      //todo // 由于顶层 schema 字段 Binary 类型有特殊的打印方式，因此这里不需要将它们转换成 String 类型
       if (col.dataType == BinaryType) {
         Column(col)
       } else {
+        //todo // 非 Binary 类型的字段都会得到 Cast 类型
         Column(col).cast(StringType)
       }
     }
+    //todo select 、take
     val data = newDf.select(castCols: _*).take(numRows + 1)
 
     // For array values, replace Seq and Array with square brackets
     // For cells that are beyond `truncate` characters, replace it with the
     // first `truncate-3` and "..."
+    //todo // 对于数组值，使用方括号来替代 Seq 和 Array，对于长度超过 truncate 的字符串，使用 truncate-3 的字符串和 ... 来代替
     schema.fieldNames.toSeq +: data.map { row =>
       row.toSeq.map { cell =>
         val str = cell match {
@@ -311,6 +315,7 @@ class Dataset[T] private[sql](
           case _ => cell.toString
         }
         if (truncate > 0 && str.length > truncate) {
+          //todo // 对于少于4个字符的字符串，不要显示省略号。
           // do not show ellipses for strings shorter than 4 characters.
           if (truncate < 4) str.substring(0, truncate)
           else str.substring(0, truncate - 3) + "..."
@@ -335,6 +340,8 @@ class Dataset[T] private[sql](
       vertical: Boolean = false): String = {
     val numRows = _numRows.max(0).min(ByteArrayMethods.MAX_ROUNDED_ARRAY_LENGTH - 1)
     // Get rows represented by Seq[Seq[String]], we may get one more line if it has more data.
+    //todo // 获取 Seq[Seq[String]] 类型的数据行，如果有更多的话可能获得不只一行的数据。
+    //todo 从上面的源码注释中可以看到，其他地方都是一些格式化打印的工作，真正的数据获取发生在这一行：
     val tmpRows = getRows(numRows, truncate)
 
     val hasMoreData = tmpRows.length - 1 > numRows
@@ -343,13 +350,16 @@ class Dataset[T] private[sql](
     val sb = new StringBuilder
     val numCols = schema.fieldNames.length
     // We set a minimum column width at '3'
+    //todo // 设置最小字段宽度为 3
     val minimumColWidth = 3
 
     if (!vertical) {
       // Initialise the width of each column to a minimum value
+      //todo // 初始化每列的宽度为最小值
       val colWidths = Array.fill(numCols)(minimumColWidth)
 
       // Compute the width of each column
+      //todo // 计算每列的宽度
       for (row <- rows) {
         for ((cell, i) <- row.zipWithIndex) {
           colWidths(i) = math.max(colWidths(i), Utils.stringHalfWidth(cell))
@@ -1446,12 +1456,15 @@ class Dataset[T] private[sql](
    * @group untypedrel
    * @since 2.0.0
    */
+    //todo Dataset.select 所做的事情就是使用 Project 将我们之前得到的AnalyzedLogicalPlan 进行封装。除此之外，
+    // 它会针对每个字段调用Column.named方法，我们看看这个方法干了什么~
   @scala.annotation.varargs
   def select(cols: Column*): DataFrame = withPlan {
     val untypedCols = cols.map {
       case typedCol: TypedColumn[_, _] =>
         // Checks if a `TypedColumn` has been inserted with
         // specific input type and schema by `withInputType`.
+        //todo // 检查是否 `TypedColumn` 已经被`withInputType` 插入了具体的输入类型和 schema
         val needInputType = typedCol.expr.find {
           case ta: TypedAggregateExpression if ta.inputDeserializer.isEmpty => true
           case _ => false
@@ -3625,9 +3638,13 @@ class Dataset[T] private[sql](
    * Wrap a Dataset action to track the QueryExecution and time cost, then report to the
    * user-registered callback functions.
    */
+  /**
+   * todo 包装数据集操作以跟踪查询执行和时间开销，然后向用户注册的回调函数报告。
+   */
   private def withAction[U](name: String, qe: QueryExecution)(action: SparkPlan => U) = {
     SQLExecution.withNewExecutionId(qe, Some(name)) {
       qe.executedPlan.resetMetrics()
+      //todo 调用QueryExecution的executedPlan【optimization的核心入口】
       action(qe.executedPlan)
     }
   }
@@ -3655,6 +3672,9 @@ class Dataset[T] private[sql](
   }
 
   /** A convenient function to wrap a logical plan and produce a DataFrame. */
+  /**
+   * todo 一个方便的函数，用于包装逻辑计划并生成 DataFrame。
+   */
   @inline private def withPlan(logicalPlan: LogicalPlan): DataFrame = {
     Dataset.ofRows(sparkSession, logicalPlan)
   }

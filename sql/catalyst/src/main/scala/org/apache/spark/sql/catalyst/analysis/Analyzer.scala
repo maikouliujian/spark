@@ -3357,6 +3357,7 @@ object EliminateSubqueryAliases extends Rule[LogicalPlan] {
   // is using transformUp rather than resolveOperators.
   def apply(plan: LogicalPlan): LogicalPlan = AnalysisHelper.allowInvokingTransformsInAnalyzer {
     plan transformUp {
+          //todo 这行代码就很好理解了，如果当前的节点是SubqueryAlias类型的，只保留它的子节点就行了。
       case SubqueryAlias(_, child) => child
     }
   }

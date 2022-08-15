@@ -182,12 +182,14 @@ class Column(val expr: Expression) extends Logging {
 
     // Leave an unaliased generator with an empty list of names since the analyzer will generate
     // the correct defaults after the nested expression's type has been resolved.
+    //todo // 将未别名化的生成器保留为空的名称列表，因为 analyzer 将会在嵌套表达式的类型被解析后，显示正确的默认值。
     case g: Generator => MultiAlias(g, Nil)
 
     case func: UnresolvedFunction => UnresolvedAlias(func, Some(Column.generateAlias))
 
     // If we have a top level Cast, there is a chance to give it a better alias, if there is a
     // NamedExpression under this Cast.
+    //todo // 如果我们有一个顶层的 Cast，这是一个机会给它一个更好的别名，如果在这个 Cast 下有一个命名表达式的话。
     case c: Cast =>
       c.transformUp {
         case c @ Cast(_: NamedExpression, _, _) => UnresolvedAlias(c)

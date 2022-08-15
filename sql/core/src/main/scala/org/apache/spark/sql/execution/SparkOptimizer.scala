@@ -29,6 +29,7 @@ import org.apache.spark.sql.execution.datasources.v2.V2ScanRelationPushDown
 import org.apache.spark.sql.execution.dynamicpruning.{CleanupDynamicPruningFilters, PartitionPruning}
 import org.apache.spark.sql.execution.python.{ExtractGroupingPythonUDFFromAggregate, ExtractPythonUDFFromAggregate, ExtractPythonUDFs}
 
+//todo Optimizer
 class SparkOptimizer(
     catalogManager: CatalogManager,
     catalog: SessionCatalog,

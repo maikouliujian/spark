@@ -735,9 +735,13 @@ object FoldablePropagation extends Rule[LogicalPlan] {
  */
 object SimplifyCasts extends Rule[LogicalPlan] {
   def apply(plan: LogicalPlan): LogicalPlan = plan transformAllExpressions {
+        //todo // 当前节点和子节点的数据类型相同，只保留子节点
     case Cast(e, dataType, _) if e.dataType == dataType => e
+    //todo // 存在 cast 嵌套的情况，判断 2 种数值类型是否兼容，即能不能强转过去
     case c @ Cast(e, dataType, _) => (e.dataType, dataType) match {
+      //todo // 如果是数组类型，第二个参数表示是否可以包含空值
       case (ArrayType(from, false), ArrayType(to, true)) if from == to => e
+      //todo // 如果是 Map 类型，并且键值的类型都是一致的
       case (MapType(fromKey, fromValue, false), MapType(toKey, toValue, true))
         if fromKey == toKey && fromValue == toValue => e
       case _ => c

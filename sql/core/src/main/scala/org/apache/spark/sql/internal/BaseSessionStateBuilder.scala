@@ -232,6 +232,7 @@ abstract class BaseSessionStateBuilder(
    *
    * Note: this depends on `catalog` and `experimentalMethods` fields.
    */
+
   protected def optimizer: Optimizer = {
     new SparkOptimizer(catalogManager, catalog, experimentalMethods) {
       override def earlyScanPushDownRules: Seq[Rule[LogicalPlan]] =
@@ -335,6 +336,7 @@ abstract class BaseSessionStateBuilder(
       () => catalog,
       sqlParser,
       () => analyzer,
+      //todo 优化器
       () => optimizer,
       planner,
       () => streamingQueryManager,

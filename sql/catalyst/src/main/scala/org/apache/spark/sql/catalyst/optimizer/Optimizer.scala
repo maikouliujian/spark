@@ -281,9 +281,21 @@ abstract class Optimizer(catalogManager: CatalogManager)
    * Implementations of this class should override [[defaultBatches]], and [[nonExcludableRules]]
    * if necessary, instead of this method.
    */
+  //todo optimizer的batches
+  //todo 可以看到，Optimizer 将规则批分成了 3 种类型：
+  //
+  //todo  defaultBatches
+  //todo  excludedRules——通过 Spark 配置参数可以排除一些规则阻止其进行优化
+  //todo  nonExcludableRules——即使 Spark 配置参数指定了也无法排除的优化规则
+  //
+  //todo  重点在于默认的规则批——defaultBatches，为了实现上的可扩展性，我们将标准的优化规则放到了抽象类 Optimizer 中，特殊的规则放到了SparkOptimizer中。
+  //————————————————
+  //版权声明：本文为CSDN博主「Shockang」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
+  //原文链接：https://blog.csdn.net/Shockang/article/details/123930918
   final override def batches: Seq[Batch] = {
     val excludedRulesConf =
       SQLConf.get.optimizerExcludedRules.toSeq.flatMap(Utils.stringToSeq)
+
     val excludedRules = excludedRulesConf.filter { ruleName =>
       val nonExcludable = nonExcludableRules.contains(ruleName)
       if (nonExcludable) {
@@ -369,6 +381,8 @@ object RemoveRedundantAliases extends Rule[LogicalPlan] {
     // Alias with metadata can not be stripped, or the metadata will be lost.
     // If the alias name is different from attribute name, we can't strip it either, or we
     // may accidentally change the output schema name of the root plan.
+    //todo // 无法剥离带有元数据的别名，否则元数据将丢失。
+    //  // 如果别名与属性名不同，我们也不能删除它，否则可能会意外更改根计划的输出`schema`名称。
     case a @ Alias(attr: Attribute, name)
       if a.metadata == Metadata.empty &&
         name == attr.name &&
@@ -383,10 +397,15 @@ object RemoveRedundantAliases extends Rule[LogicalPlan] {
    * prevent the removal of seemingly redundant aliases used to deduplicate the input for a (self)
    * join or to prevent the removal of top-level subquery attributes.
    */
+    //todo /**
+    //   * 从逻辑计划及其子树中删除冗余的别名表达式。
+    //   * `excluded`用于防止删除看似冗余的别名，这些别名用于消除（self）join 的输入的重复，或防止删除顶层的子查询属性。
+    //   */
   private def removeRedundantAliases(plan: LogicalPlan, blacklist: AttributeSet): LogicalPlan = {
     plan match {
       // We want to keep the same output attributes for subqueries. This means we cannot remove
       // the aliases that produce these attributes
+      //todo // 我们希望子查询保持相同的输出属性。这意味着我们不能移除产生这些属性的别名
       case Subquery(child, correlated) =>
         Subquery(removeRedundantAliases(child, blacklist ++ child.outputSet), correlated)
 
@@ -394,6 +413,7 @@ object RemoveRedundantAliases extends Rule[LogicalPlan] {
       // not allowed to use the same attributes. We use a blacklist to prevent us from creating a
       // situation in which this happens; the rule will only remove an alias if its child
       // attribute is not on the black list.
+      //todo // `JOIN`必须以不同的方式处理，因为`JOIN`的左侧和右侧不允许使用相同的属性。我们使用排除列表来阻止我们发生这种情况；只有当别名的子节点属性不在黑名单上规则才会删除别名。
       case Join(left, right, joinType, condition, hint) =>
         val newLeft = removeRedundantAliases(left, blacklist ++ right.outputSet)
         val newRight = removeRedundantAliases(right, blacklist ++ newLeft.outputSet)
@@ -407,6 +427,7 @@ object RemoveRedundantAliases extends Rule[LogicalPlan] {
 
       case _ =>
         // Remove redundant aliases in the subtree(s).
+        //todo // 移除子树中的冗余别名
         val currentNextAttrPairs = mutable.Buffer.empty[(Attribute, Attribute)]
         val newNode = plan.mapChildren { child =>
           val newChild = removeRedundantAliases(child, blacklist)
@@ -417,10 +438,13 @@ object RemoveRedundantAliases extends Rule[LogicalPlan] {
         // Create the attribute mapping. Note that the currentNextAttrPairs can contain duplicate
         // keys in case of Union (this is caused by the PushProjectionThroughUnion rule); in this
         // case we use the first mapping (which should be provided by the first child).
+        //todo // 创建属性映射。请注意，`currentNextAttrPairs`可以包含重复的`Union`情况下的键（这是由`PushProjectionThroughUnion`规则引起的）；
+        // 在这种情况下，我们使用第一个映射（应该由第一个子节点提供）。
         val mapping = AttributeMap(currentNextAttrPairs)
 
         // Create a an expression cleaning function for nodes that can actually produce redundant
         // aliases, use identity otherwise.
+        //todo // 为实际可能产生冗余别名的节点创建表达式清理函数，否则使用`identity`。
         val clean: Expression => Expression = plan match {
           case _: Project => removeRedundantAlias(_, blacklist)
           case _: Aggregate => removeRedundantAlias(_, blacklist)
@@ -429,6 +453,7 @@ object RemoveRedundantAliases extends Rule[LogicalPlan] {
         }
 
         // Transform the expressions.
+        //todo // 转换表达式
         newNode.mapExpressions { expr =>
           clean(expr.transform {
             case a: Attribute => mapping.get(a).map(_.withName(a.name)).getOrElse(a)
@@ -447,6 +472,7 @@ object RemoveNoopOperators extends Rule[LogicalPlan] {
 
   def apply(plan: LogicalPlan): LogicalPlan = plan transform {
     // Eliminate no-op Projects
+        //todo // 消除 no-op 的 Projects
     case p @ Project(projectList, child) if child.sameOutput(p) =>
       val newChild = child match {
         case p: Project =>
@@ -464,6 +490,7 @@ object RemoveNoopOperators extends Rule[LogicalPlan] {
       }
 
     // Eliminate no-op Window
+    //todo  // 消除 no-op 的 Window
     case w: Window if w.windowExpressions.isEmpty => w.child
   }
 }
