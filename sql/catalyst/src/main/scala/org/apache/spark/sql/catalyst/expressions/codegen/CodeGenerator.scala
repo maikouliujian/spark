@@ -1370,7 +1370,7 @@ object CodeGenerator extends Logging {
       evaluator.setDebuggingInformation(true, true, false)
       s"\n${CodeFormatter.format(code)}"
     })
-
+    //todo codegen
     val codeStats = try {
       evaluator.cook("generated.java", code.body)
       updateAndGetCompilationStats(evaluator)
@@ -1398,6 +1398,7 @@ object CodeGenerator extends Logging {
       logInfo(s"\n${CodeFormatter.format(code, maxLines)}")
     }
   }
+
 
   /**
    * Returns the bytecode statistics (max method bytecode size, max constant pool size, and
@@ -1469,6 +1470,7 @@ object CodeGenerator extends Logging {
       new CacheLoader[CodeAndComment, (GeneratedClass, ByteCodeStats)]() {
         override def load(code: CodeAndComment): (GeneratedClass, ByteCodeStats) = {
           val startTime = System.nanoTime()
+          //todo codegen
           val result = doCompile(code)
           val endTime = System.nanoTime()
           def timeMs: Double = (endTime - startTime).toDouble / NANOS_PER_MILLIS
