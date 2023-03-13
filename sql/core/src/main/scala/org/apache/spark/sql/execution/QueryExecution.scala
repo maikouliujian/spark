@@ -107,6 +107,7 @@ class QueryExecution(
     executePhase(QueryPlanningTracker.PLANNING) {
       // Clone the logical plan here, in case the planner rules change the states of the logical
       // plan.
+      //todo Planning入口
       QueryExecution.createSparkPlan(sparkSession, planner, optimizedPlan.clone())
     }
   }
@@ -138,6 +139,9 @@ class QueryExecution(
    * use `Dataset.rdd` instead where conversion will be applied.
    */
   lazy val toRdd: RDD[InternalRow] = new SQLExecutionRDD(
+    //todo 触发executedPlan.execute()
+    //todo 【无论是df.logicalPlan还是executedPlan都会触发一遍完整的Spark SQL的parsing、analysis、optimization 、
+    // planning,并且在planning阶段的planner.plan方法中会遍历strategies并应用其apply方法，其中有一个BasicOperators】
     executedPlan.execute(), sparkSession.sessionState.conf)
 
   /** Get the metrics observed during the execution of the query plan. */
@@ -350,6 +354,7 @@ object QueryExecution {
       plan: LogicalPlan): SparkPlan = {
     // TODO: We use next(), i.e. take the first plan returned by the planner, here for now,
     //       but we will implement to choose the best plan.
+    //todo 将策略遍历应用于plan
     planner.plan(ReturnAnswer(plan)).next()
   }
 

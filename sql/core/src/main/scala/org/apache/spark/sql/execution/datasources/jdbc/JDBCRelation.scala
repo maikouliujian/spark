@@ -275,6 +275,7 @@ private[sql] case class JDBCRelation(
       jdbcOptions).asInstanceOf[RDD[Row]]
   }
 
+
   override def insert(data: DataFrame, overwrite: Boolean): Unit = {
     data.write
       .mode(if (overwrite) SaveMode.Overwrite else SaveMode.Append)

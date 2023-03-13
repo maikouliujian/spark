@@ -21,6 +21,7 @@ import org.apache.spark.sql.{AnalysisException, DataFrame, SaveMode, SQLContext}
 import org.apache.spark.sql.execution.datasources.jdbc.JdbcUtils._
 import org.apache.spark.sql.sources.{BaseRelation, CreatableRelationProvider, DataSourceRegister, RelationProvider}
 
+//todo for jdbc
 class JdbcRelationProvider extends CreatableRelationProvider
   with RelationProvider with DataSourceRegister {
 
@@ -55,6 +56,7 @@ class JdbcRelationProvider extends CreatableRelationProvider
               // In this case, we should truncate table and then load.
               truncateTable(conn, options)
               val tableSchema = JdbcUtils.getSchemaOption(conn, options)
+              //todo 写入数据入口
               saveTable(df, tableSchema, isCaseSensitive, options)
             } else {
               // Otherwise, do not truncate the table, instead drop and recreate it

@@ -563,6 +563,7 @@ case class DataSource(
 
     providingInstance() match {
       case dataSource: CreatableRelationProvider =>
+        //todo data为df.logicalPlan,dataSource为Spark3DefaultSource
         SaveIntoDataSourceCommand(data, dataSource, caseInsensitiveOptions, mode)
       case format: FileFormat =>
         DataSource.validateSchema(data.schema)
@@ -594,6 +595,7 @@ case class DataSource(
 object DataSource extends Logging {
 
   /** A map to maintain backward compatibility in case we move data sources around. */
+    //todo 不同source对应的provider
   private val backwardCompatibilityMap: Map[String, String] = {
     val jdbc = classOf[JdbcRelationProvider].getCanonicalName
     val json = classOf[JsonFileFormat].getCanonicalName
@@ -653,9 +655,11 @@ object DataSource extends Logging {
     }
     val provider2 = s"$provider1.DefaultSource"
     val loader = Utils.getContextOrSparkClassLoader
+    //todo spi
     val serviceLoader = ServiceLoader.load(classOf[DataSourceRegister], loader)
 
     try {
+      //todo 过滤出当前provider1对应的类
       serviceLoader.asScala.filter(_.shortName().equalsIgnoreCase(provider1)).toList match {
         // the provider format did not match any given registered aliases
         case Nil =>

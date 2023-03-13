@@ -97,6 +97,7 @@ object SQLExecution {
             // will be caught and reported in the `SparkListenerSQLExecutionEnd`
             sparkPlanInfo = SparkPlanInfo.fromSparkPlan(queryExecution.executedPlan),
             time = System.currentTimeMillis()))
+          //todo qe.toRdd
           body
         } catch {
           case e: Throwable =>

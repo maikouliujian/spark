@@ -844,6 +844,7 @@ object JdbcUtils extends Logging {
 
   /**
    * Saves the RDD to the database in a single transaction.
+   * todo 通过jdbc写数据的入口
    */
   def saveTable(
       df: DataFrame,

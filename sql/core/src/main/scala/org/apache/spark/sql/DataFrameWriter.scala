@@ -295,13 +295,14 @@ final class DataFrameWriter[T] private[sql](ds: Dataset[T]) {
    */
     //todo 保存数据
   def save(): Unit = {
+      //todo 首先判断source是否等于hive
     if (source.toLowerCase(Locale.ROOT) == DDLUtils.HIVE_PROVIDER) {
       throw new AnalysisException("Hive data source can only be used with tables, you can not " +
         "write files of Hive data source directly.")
     }
 
     assertNotBucketed("save")
-
+    //todo 通过DataSource.lookupDataSource查找hudi对应的dataSouce类
     val maybeV2Provider = lookupV2Provider()
     if (maybeV2Provider.isDefined) {
       val provider = maybeV2Provider.get
@@ -398,6 +399,7 @@ final class DataFrameWriter[T] private[sql](ds: Dataset[T]) {
       }
 
     } else {
+      //todo jdbc、hudi走这
       saveToV1Source()
     }
   }
@@ -410,6 +412,7 @@ final class DataFrameWriter[T] private[sql](ds: Dataset[T]) {
 
     // Code path for data source v1.
     runCommand(df.sparkSession, "save") {
+      //todo 返回为：SaveIntoDataSourceCommand
       DataSource(
         sparkSession = df.sparkSession,
         className = source,
@@ -967,6 +970,7 @@ final class DataFrameWriter[T] private[sql](ds: Dataset[T]) {
   }
 
   private def lookupV2Provider(): Option[TableProvider] = {
+    //todo 根据source寻找provider
     DataSource.lookupDataSourceV2(source, df.sparkSession.sessionState.conf) match {
       // TODO(SPARK-28396): File source v2 write path is currently broken.
       case Some(_: FileDataSourceV2) => None

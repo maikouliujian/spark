@@ -88,6 +88,7 @@ case class ExecutedCommandExec(cmd: RunnableCommand) extends LeafExecNode {
   }
 
   protected override def doExecute(): RDD[InternalRow] = {
+    //todo doExecute
     sqlContext.sparkContext.parallelize(sideEffectResult, 1)
   }
 }

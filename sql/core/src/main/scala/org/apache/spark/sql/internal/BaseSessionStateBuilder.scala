@@ -324,6 +324,7 @@ abstract class BaseSessionStateBuilder(
 
   /**
    * Build the [[SessionState]].
+   * todo 创建SessionState的位置
    */
   def build(): SessionState = {
     //todo 创建SessionState
