@@ -26,6 +26,7 @@ import org.apache.spark.sql.sources.{BaseRelation, TableScan}
 import org.apache.spark.sql.types.StructType
 
 
+
 private[kafka010] class KafkaRelation(
     override val sqlContext: SQLContext,
     strategy: ConsumerStrategy,

@@ -77,6 +77,7 @@ private[kafka010] class KafkaSource(
     metadataPath: String,
     startingOffsets: KafkaOffsetRangeLimit,
     failOnDataLoss: Boolean)
+
   extends SupportsTriggerAvailableNow with Source with Logging {
 
   private val sc = sqlContext.sparkContext

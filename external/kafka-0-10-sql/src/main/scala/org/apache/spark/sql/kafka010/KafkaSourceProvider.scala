@@ -142,6 +142,7 @@ private[kafka010] class KafkaSourceProvider extends DataSourceRegister
 
     val includeHeaders = caseInsensitiveParameters.getOrElse(INCLUDE_HEADERS, "false").toBoolean
 
+
     new KafkaRelation(
       sqlContext,
       strategy(caseInsensitiveParameters),
@@ -547,6 +548,7 @@ private[kafka010] object KafkaSourceProvider extends Logging {
   private[kafka010] val ENDING_OFFSETS_OPTION_KEY = "endingoffsets"
   private[kafka010] val STARTING_OFFSETS_BY_TIMESTAMP_OPTION_KEY = "startingoffsetsbytimestamp"
   private[kafka010] val ENDING_OFFSETS_BY_TIMESTAMP_OPTION_KEY = "endingoffsetsbytimestamp"
+
   private[kafka010] val STARTING_TIMESTAMP_OPTION_KEY = "startingtimestamp"
   private[kafka010] val ENDING_TIMESTAMP_OPTION_KEY = "endingtimestamp"
   private val FAIL_ON_DATA_LOSS_OPTION_KEY = "failondataloss"
