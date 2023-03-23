@@ -86,6 +86,7 @@ private[sql] object DataSourceV2Utils extends Logging {
         }
 
       case None =>
+        //todo hudi
         provider.getTable(
           provider.inferSchema(options),
           provider.inferPartitioning(options),
@@ -103,7 +104,7 @@ private[sql] object DataSourceV2Utils extends Logging {
     val catalogManager = sparkSession.sessionState.catalogManager
     val conf = sparkSession.sessionState.conf
     val sessionOptions = DataSourceV2Utils.extractSessionConfigs(provider, conf)
-
+    //todo
     val optionsWithPath = getOptionsWithPaths(extraOptions, paths: _*)
 
     val finalOptions = sessionOptions.filterKeys(!optionsWithPath.contains(_)).toMap ++
@@ -129,6 +130,7 @@ private[sql] object DataSourceV2Utils extends Logging {
         (CatalogV2Util.loadTable(catalog, ident, timeTravel).get, Some(catalog), Some(ident))
       case _ =>
         // TODO: Non-catalog paths for DSV2 are currently not well defined.
+        // todo hudi
         val tbl = DataSourceV2Utils.getTableFromProvider(provider, dsOptions, userSpecifiedSchema)
         (tbl, None, None)
     }
@@ -138,6 +140,7 @@ private[sql] object DataSourceV2Utils extends Logging {
         Option(Dataset.ofRows(
           sparkSession,
           DataSourceV2Relation.create(table, catalog, ident, dsOptions)))
+        //todo hudi read
       case _ => None
     }
   }
@@ -150,6 +153,7 @@ private[sql] object DataSourceV2Utils extends Logging {
     } else if (paths.length == 1) {
       extraOptions + ("path" -> paths.head)
     } else {
+      //todo 如果读多个path，则添加参数paths
       val objectMapper = new ObjectMapper()
       extraOptions + ("paths" -> objectMapper.writeValueAsString(paths.toArray))
     }

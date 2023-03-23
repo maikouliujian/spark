@@ -205,6 +205,7 @@ class DataFrameReader private[sql](sparkSession: SparkSession) extends Logging {
     }
 
     DataSource.lookupDataSourceV2(source, sparkSession.sessionState.conf).flatMap { provider =>
+      //todo hudi
       DataSourceV2Utils.loadV2Source(sparkSession, provider, userSpecifiedSchema, extraOptions,
         source, paths: _*)
     }.getOrElse(loadV1Source(paths: _*))
@@ -219,6 +220,7 @@ class DataFrameReader private[sql](sparkSession: SparkSession) extends Logging {
     }
 
     // Code path for data source v1.
+    //todo hudi read
     sparkSession.baseRelationToDataFrame(
       DataSource.apply(
         sparkSession,

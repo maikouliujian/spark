@@ -199,6 +199,7 @@ private[kafka010] class KafkaOffsetReaderConsumer(
       fnAssertFetchedOffsets)
   }
 
+  //todo 拉取时间戳offset
   override def fetchSpecificTimestampBasedOffsets(
       partitionTimestamps: Map[TopicPartition, Long],
       isStartingOffsets: Boolean,
@@ -206,6 +207,7 @@ private[kafka010] class KafkaOffsetReaderConsumer(
     : KafkaSourceOffset = {
 
     val fnAssertParametersWithPartitions: ju.Set[TopicPartition] => Unit = { partitions =>
+      //todo 做校验，每个分区的offset都需要设置
       assert(partitions.asScala == partitionTimestamps.keySet,
         "If starting/endingOffsetsByTimestamp contains specific offsets, you must specify all " +
           s"topics. Specified: ${partitionTimestamps.keySet} Assigned: ${partitions.asScala}")
@@ -217,9 +219,11 @@ private[kafka010] class KafkaOffsetReaderConsumer(
         tp -> java.lang.Long.valueOf(timestamp)
       }.asJava
 
-      val offsetForTime: ju.Map[TopicPartition, OffsetAndTimestamp] =
+      val offsetForTime: ju.Map[TopicPartition, OffsetAndTimestamp] = {
+        //todo
         consumer.offsetsForTimes(converted)
-
+      }
+      //todo
       readTimestampOffsets(
         offsetForTime.asScala.toMap,
         isStartingOffsets,
@@ -275,6 +279,7 @@ private[kafka010] class KafkaOffsetReaderConsumer(
             case StrategyOnNoMatchStartingOffset.ERROR =>
               // This is to match the old behavior - we used assert to check the condition.
               // scalastyle:off throwerror
+              //todo
               throw new AssertionError("No offset " +
                 s"matched from request of topic-partition $tp and timestamp " +
                 s"${partitionTimestampFn(tp)}.")
@@ -547,6 +552,7 @@ private[kafka010] class KafkaOffsetReaderConsumer(
     withRetriesWithoutInterrupt {
       // Poll to get the latest assigned partitions
       consumer.poll(0)
+      //todo 获取所有的分区
       val partitions = consumer.assignment()
 
       if (!fetchingEarliestOffset) {

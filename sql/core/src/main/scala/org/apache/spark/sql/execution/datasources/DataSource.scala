@@ -342,11 +342,13 @@ case class DataSource(
    *                        that files already exist, we don't need to check them again.
    */
   def resolveRelation(checkFilesExist: Boolean = true): BaseRelation = {
+    //todo providingInstance返回启动类，hudi是Spark3DefaultSource
     val relation = (providingInstance(), userSpecifiedSchema) match {
       // TODO: Throw when too much is given.
       case (dataSource: SchemaRelationProvider, Some(schema)) =>
         dataSource.createRelation(sparkSession.sqlContext, caseInsensitiveOptions, schema)
       case (dataSource: RelationProvider, None) =>
+        //todo hudi===>DefaultSource.createRelation
         dataSource.createRelation(sparkSession.sqlContext, caseInsensitiveOptions)
       case (_: SchemaRelationProvider, None) =>
         throw QueryCompilationErrors.schemaNotSpecifiedForSchemaRelationProviderError(className)
@@ -651,9 +653,11 @@ object DataSource extends Logging {
     }
     val provider2 = s"$provider1.DefaultSource"
     val loader = Utils.getContextOrSparkClassLoader
+    //todo 通过spi加载所有的DataSourceRegister,包括hudi的
     val serviceLoader = ServiceLoader.load(classOf[DataSourceRegister], loader)
 
     try {
+      //todo 根据shortName过滤出对应的DataSourceRegister【比如hudi的是Spark3DefaultSource】
       serviceLoader.asScala.filter(_.shortName().equalsIgnoreCase(provider1)).toList match {
         // the provider format did not match any given registered aliases
         case Nil =>
