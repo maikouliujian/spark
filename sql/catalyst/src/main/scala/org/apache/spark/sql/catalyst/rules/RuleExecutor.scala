@@ -110,7 +110,7 @@ class PlanChangeLogger[TreeType <: TreeNode[_]] extends Logging {
     }
   }
 }
-
+//todo Analyzer和Optimizer都是RuleExecutor子类
 abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
 
   /**
