@@ -201,12 +201,15 @@ class Analyzer(override val catalogManager: CatalogManager)
   def this(catalog: SessionCatalog) = {
     this(new CatalogManager(FakeV2SessionCatalog, catalog))
   }
-
+  //todo analysis阶段
   def executeAndCheck(plan: LogicalPlan, tracker: QueryPlanningTracker): LogicalPlan = {
     if (plan.analyzed) return plan
+    //todo  这里利用了一个 `ThreadLocal[Int]` 类型避免解析器递归调用自己
     AnalysisHelper.markInAnalyzer {
+      //todo 1)执行
       val analyzed = executeAndTrack(plan, tracker)
       try {
+        //todo 2)校验
         checkAnalysis(analyzed)
         analyzed
       } catch {
@@ -319,7 +322,7 @@ class Analyzer(override val catalogManager: CatalogManager)
       ResolveBinaryArithmetic ::
       ResolveUnion ::
       RewriteDeleteFromTable ::
-      typeCoercionRules ++
+      typeCoercionRules ++ //todo Hive SQL ⇒ Spark SQL ⇒ ANSI SQL
       Seq(ResolveWithCTE) ++
       extendedResolutionRules : _*),
     Batch("Remove TempResolvedColumn", Once, RemoveTempResolvedColumn),
@@ -988,6 +991,7 @@ class Analyzer(override val catalogManager: CatalogManager)
   /**
    * Replaces unresolved relations (tables and views) with concrete relations from the catalog.
    */
+  //todo 使用 catalog 中的具体关系替换未解析的关系（这里的关系指的表和视图）
   object ResolveRelations extends Rule[LogicalPlan] {
     // The current catalog and namespace may be different from when the view was created, we must
     // resolve the view logical plan here, with the catalog and namespace stored in view metadata.
@@ -995,12 +999,22 @@ class Analyzer(override val catalogManager: CatalogManager)
     // look at `AnalysisContext.catalogAndNamespace` when resolving relations with single-part name.
     // If `AnalysisContext.catalogAndNamespace` is non-empty, analyzer will expand single-part names
     // with it, instead of current catalog and namespace.
+    /**
+     * todo 当前 catalog 和 namespace 可能与视图创建时不同，我们必须在这里解析视图的逻辑计
+     * 划，catalog 和 namespace 存储在视图元数据中。这是通过将 catalog 和
+     * namespace 保持在“AnalysisContext”中来实现的，当解析单组件名称的关系时
+     * analyzer将会查看方法`AnalysisContext.catalogAndNamespace`。如
+     * 果`AnalysisContext.catalogAndNamespace`为非空，analyzer将展开单组件名称
+     * 并使用它，而不是当前的 catalog 和 namespace。
+     */
     private def resolveViews(plan: LogicalPlan): LogicalPlan = plan match {
       // The view's child should be a logical plan parsed from the `desc.viewText`, the variable
       // `viewText` should be defined, or else we throw an error on the generation of the View
       // operator.
+      // todo 视图的子级应该是解析自“desc.viewText”的一个逻辑计划，变量`viewText`应该被定义，否则我们在生成视图算子时会抛出一个错误。
       case view @ View(desc, isTempView, child) if !child.resolved =>
         // Resolve all the UnresolvedRelations and Views in the child.
+        //todo // 解析子节点中所有的 UnresolvedRelations 和视图
         val newChild = AnalysisContext.withAnalysisContext(desc) {
           val nestedViewDepth = AnalysisContext.get.nestedViewDepth
           val maxNestedViewDepth = AnalysisContext.get.maxNestedViewDepth
@@ -1009,14 +1023,17 @@ class Analyzer(override val catalogManager: CatalogManager)
               desc.identifier, maxNestedViewDepth, view)
           }
           SQLConf.withExistingConf(View.effectiveSQLConf(desc.viewSQLConfigs, isTempView)) {
+            //todo // 执行子节点
             executeSameContext(child)
           }
         }
         // Fail the analysis eagerly because outside AnalysisContext, the unresolved operators
         // inside a view maybe resolved incorrectly.
+        //todo // 由于在AnalysisContext之外，未解析的运算符在视图内部，可能解决不正确。
         checkAnalysis(newChild)
         view.copy(child = newChild)
       case p @ SubqueryAlias(_, view: View) =>
+        // todo 副本递归调用
         p.copy(child = resolveViews(view))
       case _ => plan
     }
@@ -1033,6 +1050,7 @@ class Analyzer(override val catalogManager: CatalogManager)
       case i @ InsertIntoStatement(table, _, _, _, _, _) if i.query.resolved =>
         val relation = table match {
           case u: UnresolvedRelation if !u.isStreaming =>
+            //todo 从 Catalog 中查找对应的关系（表和视图）
             lookupRelation(u).getOrElse(u)
           case other => other
         }
@@ -1105,14 +1123,17 @@ class Analyzer(override val catalogManager: CatalogManager)
         isTimeTravel: Boolean = false): Option[LogicalPlan] = {
       // We are resolving a view and this name is not a temp view when that view was created. We
       // return None earlier here.
+      //todo // 我们正在解析一个视图并且当视图被创建的时候这个视图名称不是临时视图，我们就在这里早点返回 None
       if (isResolvingView && !isReferredTempViewName(identifier)) return None
 
       val tmpView = identifier match {
+        //todo // 我们的例子中 identifier 就一个：t_user
+        //        // 通过 SessionCatalog 来查找临时视图
         case Seq(part1) => v1SessionCatalog.lookupTempView(part1)
         case Seq(part1, part2) => v1SessionCatalog.lookupGlobalTempView(part1, part2)
         case _ => None
       }
-
+      // todo 找完了还得校验下
       tmpView.foreach { v =>
         if (isStreaming && !v.isStreaming) {
           throw QueryCompilationErrors.readNonStreamingTempViewError(identifier.quoted)
@@ -1190,10 +1211,17 @@ class Analyzer(override val catalogManager: CatalogManager)
      * Resolves relations to v1 relation if it's a v1 table from the session catalog, or to v2
      * relation. This is for resolving DML commands and SELECT queries.
      */
+    /**
+     * todo 如果是会话目录中的v1表，则将关系解析为v1关系，或者解析为v2关系。
+     * todo 这用于解析DML命令和SELECT查询。
+     */
     private def lookupRelation(
         u: UnresolvedRelation,
         timeTravelSpec: Option[TimeTravelSpec] = None): Option[LogicalPlan] = {
+      //todo // 查找临时视图
       lookupTempView(u.multipartIdentifier, u.isStreaming, timeTravelSpec.isDefined).orElse {
+        // todo 如果找不到的话，我们将尝试从关系缓存中查找
+        // todo 如果我们在视图中解析数据库对象（关系、函数等），我们可能需要当视图被创建后使用当前的 catalog 和 namespace 展开单个或多部分标识符。
         expandIdentifier(u.multipartIdentifier) match {
           case CatalogAndIdentifier(catalog, ident) =>
             val key = catalog.name +: ident.namespace :+ ident.name

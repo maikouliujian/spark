@@ -176,6 +176,7 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
    */
   def executeAndTrack(plan: TreeType, tracker: QueryPlanningTracker): TreeType = {
     QueryPlanningTracker.withTracker(tracker) {
+      //todo 执行
       execute(plan)
     }
   }
@@ -184,43 +185,66 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
    * Executes the batches of rules defined by the subclass. The batches are executed serially
    * using the defined execution strategy. Within each batch, rules are also executed serially.
    */
+  /**
+   * todo 执行子类定义的规则批。
+   * todo 规则批会使用定义好的执行策略串行执行。
+   * todo 在每个批中，规则也会连续执行。
+   */
   def execute(plan: TreeType): TreeType = {
     var curPlan = plan
+    //todo // 这个是用于统计一些运行信息的，比如花了多少时间，跑了规则批等等
     val queryExecutionMetrics = RuleExecutor.queryExecutionMeter
+    //todo // 当规则或者规则批被应用后，日志记录一下逻辑计划的改变
     val planChangeLogger = new PlanChangeLogger[TreeType]()
+    //todo // 还是那个查询计划追踪器，参见第一讲
     val tracker: Option[QueryPlanningTracker] = QueryPlanningTracker.get
+    //todo // 执行前的度量信息
     val beforeMetrics = RuleExecutor.getCurrentMetrics()
 
     // Run the structural integrity checker against the initial input
+    //todo 这个是用来检查逻辑计划的完整性的，主要是通过校验命名表达式（NamedExpression）的 ID （exprId）是否唯一不重复
     if (!isPlanIntegral(plan, plan)) {
       throw QueryExecutionErrors.structuralIntegrityOfInputPlanIsBrokenInClassError(
         this.getClass.getName.stripSuffix("$"))
     }
 
     batches.foreach { batch =>
+      // todo 规则批从哪一个逻辑计划开始
       val batchStartPlan = curPlan
+      //todo 迭代次数
       var iteration = 1
+      //todo 记录当前的逻辑计划
       var lastPlan = curPlan
+      //todo 表示是否继续循环的标识
       var continue = true
 
       // Run until fix point (or the max number of iterations as specified in the strategy.
+      //todo 运行到固定点（或者执行策略中规定的最大迭代次数）
       while (continue) {
         curPlan = batch.rules.foldLeft(curPlan) {
           case (plan, rule) =>
             val startTime = System.nanoTime()
+            //todo 对逻辑计划应用规则 logicalplan => logicalplan
             val result = rule(plan)
             val runTime = System.nanoTime() - startTime
+            //todo 不等说明规则起了作用，是有效的
             val effective = !result.fastEquals(plan)
 
             if (effective) {
+              // todo 记录一下有效的规则数量queryExecutionMetrics.incNumEffectiveExecution(rule.ruleName)
+              // todo 记录一下有效的运行时间queryExecutionMetrics.incTimeEffectiveExecutionBy(rule.ruleName, runTime)
+              // todo 日志打印一下规则是怎么变的
               queryExecutionMetrics.incNumEffectiveExecution(rule.ruleName)
               queryExecutionMetrics.incTimeEffectiveExecutionBy(rule.ruleName, runTime)
               planChangeLogger.logRule(rule.ruleName, plan, result)
             }
+            //todo // 记录一下执行时间
             queryExecutionMetrics.incExecutionTimeBy(rule.ruleName, runTime)
+            //todo // 记录一下跑了多少个规则
             queryExecutionMetrics.incNumExecution(rule.ruleName)
 
             // Record timing information using QueryPlanningTracker
+            //todo // 使用查询计划追踪器记录一下一些和时间相关的信息
             tracker.foreach(_.recordRuleInvocation(rule.ruleName, runTime, effective))
 
             // Run the structural integrity checker against the plan after each rule.
@@ -231,9 +255,11 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
 
             result
         }
+        //todo  // 迭代次数加 1，开始下一batch的迭代
         iteration += 1
         if (iteration > batch.strategy.maxIterations) {
           // Only log if this is a rule that is supposed to run more than once.
+          //todo // 只会日志打印那些运行次数大于 1 次的规则
           if (iteration != 2) {
             val endingMsg = if (batch.strategy.maxIterationsSetting == null) {
               "."
@@ -249,13 +275,14 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
             }
           }
           // Check idempotence for Once batches.
+          //todo // 检查单次规则批的幂等性
           if (batch.strategy == Once &&
             Utils.isTesting && !excludedOnceBatches.contains(batch.name)) {
             checkBatchIdempotence(batch, curPlan)
           }
           continue = false
         }
-
+        // todo 逻辑计划没变，此时就需要退出循环了
         if (curPlan.fastEquals(lastPlan)) {
           logTrace(
             s"Fixed point reached for batch ${batch.name} after ${iteration - 1} iterations.")
@@ -263,9 +290,10 @@ abstract class RuleExecutor[TreeType <: TreeNode[_]] extends Logging {
         }
         lastPlan = curPlan
       }
-
+      //todo / 日志打印一下逻辑计划从开始到现在是怎么变的
       planChangeLogger.logBatch(batch.name, batchStartPlan, curPlan)
     }
+    //todo 日志打印一些度量信息
     planChangeLogger.logMetrics(RuleExecutor.getCurrentMetrics() - beforeMetrics)
 
     curPlan

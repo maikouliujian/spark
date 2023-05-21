@@ -127,25 +127,46 @@ trait AnalysisHelper extends QueryPlan[LogicalPlan] { self: LogicalPlan =>
    *               subtree. Do not pass it if the rule is not purely functional and reads a
    *               varying initial state for different invocations.
    */
+  /**
+   * todo 返回此节点的副本，其中规则首先递归应用于其所有子节点，然后递归应用于其自身（后序遍
+   * 历，自底向上）。当规则不适用于给定节点时，它保持不变。此函数类似于transformUp，
+   * 但跳过已标记为已分析的子树。
+   * @param rule–用于将此节点转换为子节点的函数。
+   * @param cond–修剪树遍历的Lambda表达式。如果`cond.apply`在运算符T上返回
+   *             false，跳过处理T及其子树；否则，递归地处理T及其子树。
+   * @param ruleId–是规则用于修剪不必要的树遍历的唯一Id。当它是未知规则时，不会进行
+   *               修剪。否则，如果规则（id为ruleId）已在运算符T上标记为有效，则跳
+   *               过处理T及其子树。如果规则不是纯功能性的，并且为不同的调用读取不同
+   *               的初始状态，则不要传递它。
+   */
   def resolveOperatorsUpWithPruning(cond: TreePatternBits => Boolean,
     ruleId: RuleId = UnknownRuleId)(rule: PartialFunction[LogicalPlan, LogicalPlan])
   : LogicalPlan = {
+    //todo // 当前逻辑计划未被解析 并且 可以递归处理其子树 并且 对于id为ruleId的规则，此树节点及其子树没有被标记为无效。
     if (!analyzed && cond.apply(self) && !isRuleIneffective(ruleId)) {
+      // todo 防止嵌套调用，这里使用了一个 ThreadLocal[Int] 来记录调用的深度
       AnalysisHelper.allowInvokingTransformsInAnalyzer {
+        // todo 返回当前节点的副本，递归应用于其所有子节点
+        // todo 每一个规则的输入都是其子节点应用规则后的输出
         val afterRuleOnChildren = mapChildren(_.resolveOperatorsUpWithPruning(cond, ruleId)(rule))
+        // todo 如果前后逻辑计划未发生改变
         val afterRule = if (self fastEquals afterRuleOnChildren) {
           CurrentOrigin.withOrigin(origin) {
+            //todo // 应用规则到逻辑计划
             rule.applyOrElse(self, identity[LogicalPlan])
           }
         } else {
           CurrentOrigin.withOrigin(origin) {
+            //todo // 应用规则到处理后的逻辑计划
             rule.applyOrElse(afterRuleOnChildren, identity[LogicalPlan])
           }
         }
         if (self eq afterRule) {
+          // todo 标记规则（带有id ruleId）对此树节点及其子树无效。
           self.markRuleAsIneffective(ruleId)
           self
         } else {
+          // todo 复制节点标签
           afterRule.copyTagsFrom(self)
           afterRule
         }

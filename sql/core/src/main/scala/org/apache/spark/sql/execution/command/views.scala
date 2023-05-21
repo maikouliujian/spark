@@ -90,7 +90,7 @@ case class CreateViewCommand(
   }
 
   private def isTemporary = viewType == LocalTempView || viewType == GlobalTempView
-
+  //todo 创建视图的执行逻辑
   override def run(sparkSession: SparkSession): Seq[Row] = {
     if (!isAnalyzed) {
       throw QueryCompilationErrors.logicalPlanForViewNotAnalyzedError()
@@ -102,7 +102,7 @@ case class CreateViewCommand(
       throw QueryCompilationErrors.createViewNumColumnsMismatchUserSpecifiedColumnLengthError(
         analyzedPlan.output.length, userSpecifiedColumns.length)
     }
-
+    // todo 获取到 SessionCatalog
     val catalog = sparkSession.sessionState.catalog
 
     // When creating a permanent view, not allowed to reference temporary objects.
@@ -121,6 +121,7 @@ case class CreateViewCommand(
         analyzedPlan,
         aliasedPlan,
         referredTempFunctions)
+      //todo // 调用 SessionCatalog 创建临时视图的方法
       catalog.createTempView(name.table, tableDefinition, overrideIfExists = replace)
     } else if (viewType == GlobalTempView) {
       val db = sparkSession.sessionState.conf.getConf(StaticSQLConf.GLOBAL_TEMP_DATABASE)

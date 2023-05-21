@@ -601,6 +601,7 @@ class SessionCatalog(
     if (tempViews.contains(table) && !overrideIfExists) {
       throw new TempTableAlreadyExistsException(name)
     }
+    //todo 添加视图
     tempViews.put(table, viewDefinition)
   }
 

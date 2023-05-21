@@ -92,26 +92,28 @@ trait CheckAnalysis extends PredicateHelper with LookupCatalog {
         }
     }
   }
-
+  //todo 校验
   def checkAnalysis(plan: LogicalPlan): Unit = {
     // We transform up and order the rules so as to catch the first possible failure instead
     // of the result of cascading resolution failures. Inline all CTEs in the plan to help check
     // query plan structures in subqueries.
+    //todo // 我们对规则进行转换和排序，以便抓住第一个可能的失败而不是级联解析失败的结果。
+    //    // 后序遍历的方式递归应用校验规则到逻辑计划树
     val inlineCTE = InlineCTE(alwaysInline = true)
     inlineCTE(plan).foreachUp {
 
       case p if p.analyzed => // Skip already analyzed sub-plans
-
+      // todo 叶子节点的输出不能有 char/varchar 类型
       case leaf: LeafNode if leaf.output.map(_.dataType).exists(CharVarcharUtils.hasCharVarchar) =>
         throw new IllegalStateException(
           "[BUG] logical plan should not have output of char/varchar type: " + leaf)
-
+      // todo namespace 找不到
       case u: UnresolvedNamespace =>
         u.failAnalysis(s"Namespace not found: ${u.multipartIdentifier.quoted}")
-
+      //todo 表找不到
       case u: UnresolvedTable =>
         u.failAnalysis(s"Table not found: ${u.multipartIdentifier.quoted}")
-
+      // todo v2 版本的 catalog 中没有实现视图的支持
       case u @ UnresolvedView(NonSessionCatalogAndIdentifier(catalog, ident), cmd, _, _) =>
         u.failAnalysis(
           s"Cannot specify catalog `${catalog.name}` for view ${ident.quoted} " +
@@ -125,7 +127,7 @@ trait CheckAnalysis extends PredicateHelper with LookupCatalog {
         val viewStr = if (u.allowTempView) "view" else "permanent view"
         u.failAnalysis(
           s"Table or $viewStr not found: ${u.multipartIdentifier.quoted}")
-
+      // todo 数据库关系（表或视图）找不到
       case u: UnresolvedRelation =>
         u.failAnalysis(s"Table or view not found: ${u.multipartIdentifier.quoted}")
 
@@ -135,15 +137,16 @@ trait CheckAnalysis extends PredicateHelper with LookupCatalog {
 
       case u: UnresolvedHint =>
         u.failAnalysis(s"Hint not found: ${u.name}")
-
+      // todo INSERT INTO 语句中表找不到
       case InsertIntoStatement(u: UnresolvedRelation, _, _, _, _, _) =>
         u.failAnalysis(s"Table not found: ${u.multipartIdentifier.quoted}")
 
       // TODO (SPARK-27484): handle streaming write commands when we have them.
+      // todo DataSourceV2 写命令中表找不到
       case write: V2WriteCommand if write.table.isInstanceOf[UnresolvedRelation] =>
         val tblName = write.table.asInstanceOf[UnresolvedRelation].multipartIdentifier
         write.table.failAnalysis(s"Table or view not found: ${tblName.quoted}")
-
+      // todo v2 版本的分区命令中表未分区或者表不支持分区
       case command: V2PartitionCommand =>
         command.table match {
           case r @ ResolvedTable(_, _, table, _) => table match {
@@ -158,6 +161,8 @@ trait CheckAnalysis extends PredicateHelper with LookupCatalog {
         }
 
       // `ShowTableExtended` should have been converted to the v1 command if the table is v1.
+      // todo  `ShowTableExtended`当表是 v1 版本的时候要转换成 v1 的命令
+      // todo v2 版本的表不支持`SHOW TABLE EXTENDED`
       case _: ShowTableExtended =>
         throw QueryCompilationErrors.commandUnsupportedInV2TableError("SHOW TABLE EXTENDED")
 
@@ -166,6 +171,8 @@ trait CheckAnalysis extends PredicateHelper with LookupCatalog {
         // If the arguments of the higher-order functions are resolved but the type check fails,
         // the argument functions will not get resolved, but we should report the argument type
         // check failure instead of claiming the argument functions are unresolved.
+        //todo // 首先向下检查高阶函数的参数的数据类型。
+        //        // 如果高阶函数的参数已解析，但类型检查失败，参数函数不会得到解析，但我们应该报告参数类型检查失败，而不是声称参数函数未解决。
         operator transformExpressionsDown {
           case hof: HigherOrderFunction
               if hof.argumentsResolved && hof.checkArgumentDataTypes().isFailure =>
@@ -175,7 +182,9 @@ trait CheckAnalysis extends PredicateHelper with LookupCatalog {
                   s"cannot resolve '${hof.sql}' due to argument data type mismatch: $message")
             }
         }
-
+        // todo 开始检查表达式
+        // todo 首先获取逻辑计划的所有表达式
+        // todo 由于 GROUP BY 别名特性的存在，分组表达式会依赖聚合表达式，故我们在碰到聚合算子的情况下要先检查聚合表达式
         val expressions = getAllExpressions(operator)
 
         expressions.foreach(_.foreachUp {
@@ -197,7 +206,7 @@ trait CheckAnalysis extends PredicateHelper with LookupCatalog {
             a.failAnalysis(
               errorClass = "MISSING_COLUMN",
               messageParameters = Array(missingCol, orderedCandidates.mkString(", ")))
-
+          // todo 此处不能出现 *，正常情况下应该都解析成相应的字段了
           case s: Star =>
             withPosition(s) {
               throw QueryCompilationErrors.invalidStarUsageError(operator.nodeName, Seq(s))
@@ -211,7 +220,7 @@ trait CheckAnalysis extends PredicateHelper with LookupCatalog {
                   s"cannot resolve '${e.sql}' due to data type mismatch: $message" +
                     extraHintForAnsiTypeCoercionExpression(operator))
             }
-
+          // todo 类型强转需要数据类型能够支持强转
           case c: Cast if !c.resolved =>
             failAnalysis(s"invalid cast from ${c.child.dataType.catalogString} to " +
               c.dataType.catalogString)
@@ -224,15 +233,17 @@ trait CheckAnalysis extends PredicateHelper with LookupCatalog {
             failAnalysis("grouping() can only be used with GroupingSets/Cube/Rollup")
           case g: GroupingID =>
             failAnalysis("grouping_id() can only be used with GroupingSets/Cube/Rollup")
-
+          // todo 窗口函数必须有 OVER 子句
+          // todo 有 OVER 的类型会是：Alias(WindowExpression(w: WindowFunction, _), _)
+          // todo 无 OVER 的类型会是：Alias(w: WindowFunction, _).
           case e: Expression if e.children.exists(_.isInstanceOf[WindowFunction]) &&
               !e.isInstanceOf[WindowExpression] =>
             val w = e.children.find(_.isInstanceOf[WindowFunction]).get
             failAnalysis(s"Window function $w requires an OVER clause.")
-
+          // todo 不支持 Distinct 窗口函数
           case w @ WindowExpression(AggregateExpression(_, _, true, _, _), _) =>
             failAnalysis(s"Distinct window functions are not supported: $w")
-
+          // todo 窗口函数只能在使用单个偏移量的基于行排序的窗口框架中被计算
           case w @ WindowExpression(wf: FrameLessOffsetWindowFunction,
             WindowSpecDefinition(_, order, frame: SpecifiedWindowFrame))
              if order.isEmpty || !frame.isOffset =>
@@ -242,6 +253,7 @@ trait CheckAnalysis extends PredicateHelper with LookupCatalog {
           case w: WindowExpression =>
             // Only allow window functions with an aggregate expression or an offset window
             // function or a Pandas window UDF.
+            //todo // 此处只允许窗口函数要么有聚合表达式、要么有偏移量窗口函数、要么有 pandas 窗口 UDF
             w.windowFunction match {
               case agg @ AggregateExpression(_: PercentileCont | _: PercentileDisc, _, _, _, _)
                 if w.windowSpec.orderSpec.nonEmpty || w.windowSpec.frameSpecification !=
@@ -254,7 +266,9 @@ trait CheckAnalysis extends PredicateHelper with LookupCatalog {
               case other =>
                 failAnalysis(s"Expression '$other' not supported within a window function.")
             }
-
+          // todo 检查子查询表达式
+          // todo 确保相关的标量子查询在每个外部行中包含一行通过强制它们是只包含一个聚合表达式的聚合。
+          // todo GROUP BY 字段必须是谓词中列的子集
           case s: SubqueryExpression =>
             checkSubqueryExpression(operator, s)
 
@@ -266,6 +280,7 @@ trait CheckAnalysis extends PredicateHelper with LookupCatalog {
         })
 
         operator match {
+          // todo 事件时间必须定义在窗口或者时间戳上
           case etw: EventTimeWatermark =>
             etw.eventTime.dataType match {
               case s: StructType
@@ -605,14 +620,16 @@ trait CheckAnalysis extends PredicateHelper with LookupCatalog {
           case _ => // Analysis successful!
         }
     }
+    //todo // 检查收集到的度量信息
     checkCollectedMetrics(plan)
+    // todo 用户自定义的校验规则
     extendedCheckRules.foreach(_(plan))
     plan.foreachUp {
       case o if !o.resolved =>
         failAnalysis(s"unresolved operator ${o.simpleString(SQLConf.get.maxToStringFields)}")
       case _ =>
     }
-
+    // todo 将查询计划的标识符设置为已解析
     plan.setAnalyzed()
   }
 
