@@ -86,6 +86,7 @@ abstract class AbstractSqlParser extends ParserInterface with SQLConfHelper with
   }
 
   /** Creates LogicalPlan for a given SQL string. */
+    //todo 为给定的 SQL 字符串创建一个 LogicalPlan
   override def parsePlan(sqlText: String): LogicalPlan = parse(sqlText) { parser =>
     val ctx = parser.singleStatement()
     withOrigin(ctx, Some(sqlText)) {
@@ -99,39 +100,51 @@ abstract class AbstractSqlParser extends ParserInterface with SQLConfHelper with
   }
 
   /** Get the builder (visitor) which converts a ParseTree into an AST. */
+  //todo visitor定义
   protected def astBuilder: AstBuilder
 
   protected def parse[T](command: String)(toResult: SqlBaseParser => T): T = {
     logDebug(s"Parsing command: $command")
-
+    //todo 词法分析
+    //todo 这里会将 SQL 命令转化成不区分大小写的字符流传递给词法分析器
     val lexer = new SqlBaseLexer(new UpperCaseCharStream(CharStreams.fromString(command)))
+    //todo 清空用来识别错误的监听器列表
     lexer.removeErrorListeners()
+    //todo 添加自定义的编译错误监听器
     lexer.addErrorListener(ParseErrorListener)
 
     val tokenStream = new CommonTokenStream(lexer)
+    //todo 语法分析
     val parser = new SqlBaseParser(tokenStream)
     parser.addParseListener(PostProcessor)
     parser.addParseListener(UnclosedCommentProcessor(command, tokenStream))
     parser.removeErrorListeners()
     parser.addErrorListener(ParseErrorListener)
     parser.setErrorHandler(new SparkParserErrorStrategy())
+    // todo 如果为false，则根据SQL标准，INTERSECT的优先级高于其他集合操作
+    //todo（ UNION，EXCEPT 和 MINUS ）。
     parser.legacy_setops_precedence_enabled = conf.setOpsPrecedenceEnforced
+    //todo 如果为false，则带有指数的文本将转换为double类型而不是decimal类型。
     parser.legacy_exponent_literal_as_decimal_enabled = conf.exponentLiteralAsDecimalEnabled
+    //todo 如果为true，则关键字的行为遵循ANSI SQL标准。
     parser.SQL_standard_keyword_behavior = conf.enforceReservedKeywords
 
     try {
       try {
         // first, try parsing with potentially faster SLL mode
+        //todo // 先使用 ANTLR 较快的 SLL 模式进行解析，成功返回结果
         parser.getInterpreter.setPredictionMode(PredictionMode.SLL)
         toResult(parser)
       }
       catch {
         case e: ParseCancellationException =>
           // if we fail, parse with LL mode
+          //todo // 如果解析失败，复位
           tokenStream.seek(0) // rewind input stream
           parser.reset()
 
           // Try Again.
+          //todo // 重试，再使用 LL 模式进行解析，成功返回结果
           parser.getInterpreter.setPredictionMode(PredictionMode.LL)
           toResult(parser)
       }

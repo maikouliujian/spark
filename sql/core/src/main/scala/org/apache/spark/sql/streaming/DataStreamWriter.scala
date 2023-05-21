@@ -245,6 +245,7 @@ final class DataStreamWriter[T] private[sql](ds: Dataset[T]) {
    *
    * @since 2.0.0
    */
+  //todo writer入口
   @throws[TimeoutException]
   def start(): StreamingQuery = startInternal(None)
 
@@ -356,10 +357,12 @@ final class DataStreamWriter[T] private[sql](ds: Dataset[T]) {
       val sink = ForeachWriterTable[T](foreachWriter, ds.exprEnc)
       startQuery(sink, extraOptions)
     } else if (source == SOURCE_NAME_FOREACH_BATCH) {
+      //todo foreachBatch
       assertNotPartitioned(SOURCE_NAME_FOREACH_BATCH)
       if (trigger.isInstanceOf[ContinuousTrigger]) {
         throw QueryCompilationErrors.sourceNotSupportedWithContinuousTriggerError(source)
       }
+      //todo sink
       val sink = new ForeachBatchSink[T](foreachBatchWriter, ds.exprEnc)
       startQuery(sink, extraOptions)
     } else {
@@ -407,6 +410,7 @@ final class DataStreamWriter[T] private[sql](ds: Dataset[T]) {
     }
   }
 
+  //todo 程序启动入口
   private def startQuery(
       sink: Table,
       newOptions: CaseInsensitiveMap[String],
@@ -416,6 +420,7 @@ final class DataStreamWriter[T] private[sql](ds: Dataset[T]) {
 
     df.sparkSession.sessionState.streamingQueryManager.startQuery(
       newOptions.get("queryName"),
+      //todo checkpoint路径
       newOptions.get("checkpointLocation"),
       df,
       newOptions.originalMap,
@@ -539,6 +544,7 @@ final class DataStreamWriter[T] private[sql](ds: Dataset[T]) {
 object DataStreamWriter {
   val SOURCE_NAME_MEMORY = "memory"
   val SOURCE_NAME_FOREACH = "foreach"
+  //todo
   val SOURCE_NAME_FOREACH_BATCH = "foreachBatch"
   val SOURCE_NAME_CONSOLE = "console"
   val SOURCE_NAME_TABLE = "table"

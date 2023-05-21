@@ -87,7 +87,7 @@ class ErrorParserSuite extends AnalysisTest {
       "Syntax error at or near '1': extra input '1'", "---------^^^")
     intercept("select *\nfrom r as q t", 2, 12, 13, "Syntax error at or near", "------------^^^")
   }
-
+  //todo test
   test("mismatched input") {
     intercept("select * from r order by q from t", "PARSE_SYNTAX_ERROR",
       1, 27, 31,

@@ -231,6 +231,7 @@ final class DataFrameWriter[T] private[sql](ds: Dataset[T]) {
    *
    * @since 1.4.0
    */
+    //todo save方法
   def save(path: String): Unit = {
     if (!df.sparkSession.sessionState.conf.legacyPathOptionBehavior &&
         extraOptions.contains("path")) {
@@ -252,7 +253,7 @@ final class DataFrameWriter[T] private[sql](ds: Dataset[T]) {
     }
 
     assertNotBucketed("save")
-
+    //todo 获取provider
     val maybeV2Provider = lookupV2Provider()
     if (maybeV2Provider.isDefined) {
       val provider = maybeV2Provider.get

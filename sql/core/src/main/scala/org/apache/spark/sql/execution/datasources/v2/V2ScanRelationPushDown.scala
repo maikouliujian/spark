@@ -53,6 +53,7 @@ object V2ScanRelationPushDown extends Rule[LogicalPlan] with PredicateHelper wit
 
   private def createScanBuilder(plan: LogicalPlan) = plan.transform {
     case r: DataSourceV2Relation =>
+      //todo
       ScanBuilderHolder(r.output, r, r.table.asReadable.newScanBuilder(r.options))
   }
 

@@ -58,7 +58,7 @@ import org.apache.spark.util.random.RandomSampler
 class AstBuilder extends SqlBaseParserBaseVisitor[AnyRef] with SQLConfHelper with Logging {
   import org.apache.spark.sql.connector.catalog.CatalogV2Implicits._
   import ParserUtils._
-
+  //todo 调用ParseTree自己的accept方法
   protected def typedVisit[T](ctx: ParseTree): T = {
     ctx.accept(this).asInstanceOf[T]
   }
@@ -67,6 +67,10 @@ class AstBuilder extends SqlBaseParserBaseVisitor[AnyRef] with SQLConfHelper wit
    * Override the default behavior for all visit methods. This will only return a non-null result
    * when the context has only one child. This is done because there is no generic method to
    * combine the results of the context children. In all other cases null is returned.
+   */
+  /**
+   * todo 覆盖所有访问方法的默认行为。只有当上下文只有一个子项时，才会返回非空结果。
+   * 之所以这样做，是因为没有通用方法来组合上下文子项的结果。在所有其他情况下，返回null。
    */
   override def visitChildren(node: RuleNode): AnyRef = {
     if (node.getChildCount == 1) {
@@ -111,6 +115,7 @@ class AstBuilder extends SqlBaseParserBaseVisitor[AnyRef] with SQLConfHelper wit
   /* ********************************************************************************************
    * Plan parsing
    * ******************************************************************************************** */
+  //todo 让tree继续调用 accept 方法
   protected def plan(tree: ParserRuleContext): LogicalPlan = typedVisit(tree)
 
   /**
@@ -128,7 +133,7 @@ class AstBuilder extends SqlBaseParserBaseVisitor[AnyRef] with SQLConfHelper wit
     // Apply CTEs
     dmlStmt.optionalMap(ctx.ctes)(withCTE)
   }
-
+  //todo 处理cte
   private def withCTE(ctx: CtesContext, plan: LogicalPlan): LogicalPlan = {
     val ctes = ctx.namedQuery.asScala.map { nCtx =>
       val namedQuery = visitNamedQuery(nCtx)
@@ -531,6 +536,9 @@ class AstBuilder extends SqlBaseParserBaseVisitor[AnyRef] with SQLConfHelper wit
    * Add ORDER BY/SORT BY/CLUSTER BY/DISTRIBUTE BY/LIMIT/WINDOWS clauses to the logical plan. These
    * clauses determine the shape (ordering/partitioning/rows) of the query result.
    */
+    //todo
+    //  添加 ORDER BY/SORT BY/CLUSTER BY/DISTRIBUTE BY/LIMIT/WINDOWS 子句到逻辑计划中。子句决定了查询结果的 `shape` (ordering/partitioning/rows)
+    //   */
   private def withQueryResultClauses(
       ctx: QueryOrganizationContext,
       query: LogicalPlan): LogicalPlan = withOrigin(ctx) {
@@ -607,6 +615,7 @@ class AstBuilder extends SqlBaseParserBaseVisitor[AnyRef] with SQLConfHelper wit
   override def visitRegularQuerySpecification(
       ctx: RegularQuerySpecificationContext): LogicalPlan = withOrigin(ctx) {
     val from = OneRowRelation().optional(ctx.fromClause) {
+      // todo 处理 FROM 子句
       visitFromClause(ctx.fromClause)
     }
     withSelectQuerySpecification(
@@ -620,7 +629,7 @@ class AstBuilder extends SqlBaseParserBaseVisitor[AnyRef] with SQLConfHelper wit
       from
     )
   }
-
+  //todo 处理 SELECT 子句
   override def visitNamedExpressionSeq(
       ctx: NamedExpressionSeqContext): Seq[Expression] = {
     Option(ctx).toSeq
@@ -717,6 +726,11 @@ class AstBuilder extends SqlBaseParserBaseVisitor[AnyRef] with SQLConfHelper wit
    *
    * Note that query hints are ignored (both by the parser and the builder).
    */
+  /**
+   * todo 向逻辑计划添加常规（SELECT）查询规范。
+   * todo 查询规范是逻辑计划的核心，就是寻源（FROM子句）、投影（SELECT）、聚合（GROUP BY…HAVING…）过滤（WHERE）。
+   * todo 请注意，查询 hints 会被忽略（解析器和生成器都会忽略）。
+   */
   private def withSelectQuerySpecification(
       ctx: ParserRuleContext,
       selectClause: SelectClauseContext,
@@ -726,11 +740,13 @@ class AstBuilder extends SqlBaseParserBaseVisitor[AnyRef] with SQLConfHelper wit
       havingClause: HavingClauseContext,
       windowClause: WindowClauseContext,
       relation: LogicalPlan): LogicalPlan = withOrigin(ctx) {
+    //todo // 是否需要去重
     val isDistinct = selectClause.setQuantifier() != null &&
       selectClause.setQuantifier().DISTINCT() != null
 
     val plan = visitCommonSelectQueryClausePlan(
       relation,
+      //todo  // 处理 SELECT 子句
       visitNamedExpressionSeq(selectClause.namedExpressionSeq),
       lateralView,
       whereClause,
@@ -756,6 +772,7 @@ class AstBuilder extends SqlBaseParserBaseVisitor[AnyRef] with SQLConfHelper wit
     val withLateralView = lateralView.asScala.foldLeft(relation)(withGenerate)
 
     // Add where.
+    //todo // 流水线式的继续处理 WHERE 子句
     val withFilter = withLateralView.optionalMap(whereClause)(withWhereClause)
 
     // Add aggregation or a project.
@@ -763,16 +780,17 @@ class AstBuilder extends SqlBaseParserBaseVisitor[AnyRef] with SQLConfHelper wit
       case e: NamedExpression => e
       case e: Expression => UnresolvedAlias(e)
     }
-
+    //todo // 将上面的处理结果封装到 Project 对象之中
     def createProject() = if (namedExpressions.nonEmpty) {
       Project(namedExpressions, withFilter)
     } else {
       withFilter
     }
-
+    //todo 先处理 Project
     val withProject = if (aggregationClause == null && havingClause != null) {
       if (conf.getConf(SQLConf.LEGACY_HAVING_WITHOUT_GROUP_BY_AS_WHERE)) {
         // If the legacy conf is set, treat HAVING without GROUP BY as WHERE.
+        //todo // 如果这个参数设置了，就把没有 GROUP BY 的 HAVING 当成 WHERE
         val predicate = expression(havingClause.booleanExpression) match {
           case p: Predicate => p
           case e => Cast(e, BooleanType)
@@ -780,6 +798,7 @@ class AstBuilder extends SqlBaseParserBaseVisitor[AnyRef] with SQLConfHelper wit
         Filter(predicate, createProject())
       } else {
         // According to SQL standard, HAVING without GROUP BY means global aggregate.
+        // todo 根据 SQL 标准，没有 GROUP BY 的 HAVING 就意味着全局的聚合。
         withHavingClause(havingClause, Aggregate(Nil, namedExpressions, withFilter))
       }
     } else if (aggregationClause != null) {
@@ -798,6 +817,7 @@ class AstBuilder extends SqlBaseParserBaseVisitor[AnyRef] with SQLConfHelper wit
     }
 
     // Window
+    //todo 处理窗口函数
     val withWindow = withDistinct.optionalMap(windowClause)(withWindowClause)
 
     withWindow
@@ -868,6 +888,11 @@ class AstBuilder extends SqlBaseParserBaseVisitor[AnyRef] with SQLConfHelper wit
    * Create a logical plan for a given 'FROM' clause. Note that we support multiple (comma
    * separated) relations here, these get converted into a single plan by condition-less inner join.
    */
+    //todo 处理 FROM 子句
+  /**
+   * todo 为给定的“FROM”子句创建逻辑计划。
+   * todo 请注意，我们在这里支持多个（逗号分隔）关系，这些关系通过无条件内部联接转换为单个计划。
+   */
   override def visitFromClause(ctx: FromClauseContext): LogicalPlan = withOrigin(ctx) {
     val from = ctx.relation.asScala.foldLeft(null: LogicalPlan) { (left, relation) =>
       val right = plan(relation.relationPrimary)
@@ -889,6 +914,7 @@ class AstBuilder extends SqlBaseParserBaseVisitor[AnyRef] with SQLConfHelper wit
       }
       withPivot(ctx.pivotClause, from)
     } else {
+      //todo 处理lateralView
       ctx.lateralView.asScala.foldLeft(from)(withGenerate)
     }
   }
@@ -1450,6 +1476,10 @@ class AstBuilder extends SqlBaseParserBaseVisitor[AnyRef] with SQLConfHelper wit
   /**
    * Create a star (i.e. all) expression; this selects all elements (in the specified object).
    * Both un-targeted (global) and targeted aliases are supported.
+   */
+  /**
+   * todo 创建一个星形（即全部）表达式；这将选择（指定对象中的）所有元素。
+   * 同时支持非目标（全局）别名和目标别名。
    */
   override def visitStar(ctx: StarContext): Expression = withOrigin(ctx) {
     UnresolvedStar(Option(ctx.qualifiedName()).map(_.identifier.asScala.map(_.getText).toSeq))

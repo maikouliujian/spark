@@ -54,7 +54,7 @@ import org.apache.spark.util.Utils
  */
 class QueryExecution(
     val sparkSession: SparkSession,
-    val logical: LogicalPlan,
+    val logical: LogicalPlan,//todo 逻辑计划
     val tracker: QueryPlanningTracker = new QueryPlanningTracker,
     val mode: CommandExecutionMode.Value = CommandExecutionMode.ALL) extends Logging {
 

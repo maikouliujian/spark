@@ -284,6 +284,7 @@ case class DataSource(
   /** Returns a source that can be used to continually read data. */
   def createSource(metadataPath: String): Source = {
     providingInstance() match {
+      //todo struct streaming 读取kafka走这个分支
       case s: StreamSourceProvider =>
         s.createSource(
           sparkSession.sqlContext,

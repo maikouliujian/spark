@@ -34,6 +34,7 @@ object DataSourceV2Implicits {
       table match {
         case support: SupportsRead =>
           support
+          //todo
         case _ =>
           throw QueryCompilationErrors.tableDoesNotSupportReadsError(table)
       }

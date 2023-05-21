@@ -43,6 +43,52 @@ import org.apache.spark.util.Clock
  * at the appropriate times. Additionally, the status can updated with `updateStatusMessage` to
  * allow reporting on the streams current state (i.e. "Fetching more data").
  */
+//todo 上报执行进度
+
+/***
+ * Streaming query made progress: {
+  "id" : "d5c17d27-df46-4988-b0b2-0f0771368b5b",
+  "runId" : "e560caa3-f2e4-4385-a0b0-cd00f8956192",
+  "name" : "OdsKafka2s3",
+  "timestamp" : "2023-05-11T17:23:51.383Z",
+  "batchId" : 1,
+  "numInputRows" : 124,
+  "inputRowsPerSecond" : 0.0,
+  "processedRowsPerSecond" : 12.669868192500255,
+  "durationMs" : {
+    "addBatch" : 7563,
+    "getBatch" : 24,
+    "queryPlanning" : 1066,
+    "triggerExecution" : 9784
+  },
+  "stateOperators" : [ ],
+  "sources" : [ {
+    "description" : "KafkaV2[Subscribe[zheli_user_event_dev]]",
+    "startOffset" : {
+      "zheli_user_event_dev" : {
+        "2" : 8696,
+        "1" : 8735,
+        "0" : 8714
+      }
+    },
+    "endOffset" : {
+      "zheli_user_event_dev" : {
+        "2" : 8734,
+        "1" : 8777,
+        "0" : 8758
+      }
+    },
+    "latestOffset" : null,
+    "numInputRows" : 124,
+    "inputRowsPerSecond" : 0.0,
+    "processedRowsPerSecond" : 12.669868192500255
+  } ],
+  "sink" : {
+    "description" : "ForeachBatchSink",
+    "numOutputRows" : -1
+  }
+}
+ */
 trait ProgressReporter extends Logging {
 
   case class ExecutionStats(

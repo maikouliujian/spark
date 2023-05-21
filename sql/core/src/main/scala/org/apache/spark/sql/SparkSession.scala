@@ -441,6 +441,7 @@ class SparkSession private(
    * @since 2.0.0
    */
   def baseRelationToDataFrame(baseRelation: BaseRelation): DataFrame = {
+    //todo
     Dataset.ofRows(self, LogicalRelation(baseRelation))
   }
 

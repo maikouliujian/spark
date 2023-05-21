@@ -103,6 +103,7 @@
     <!-- See additional modules enabled by profiles below -->
   </modules>
 
+
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -309,6 +310,10 @@
   </properties>
   <repositories>
     <repository>
+      <id>alimaven</id>
+      <url>https://maven.aliyun.com/repository/public</url>
+    </repository>
+    <repository>
       <id>gcs-maven-central-mirror</id>
       <!--
         Google Mirror of Maven Central, placed first so that it's used instead of flaky Maven Central.
@@ -339,6 +344,7 @@
     </repository>
   </repositories>
   <pluginRepositories>
+
     <pluginRepository>
       <id>gcs-maven-central-mirror</id>
       <!--
