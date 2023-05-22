@@ -15,4 +15,5 @@
 # limitations under the License.
 #
 
+###、kafka source实现
 org.apache.spark.sql.kafka010.KafkaSourceProvider

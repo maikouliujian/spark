@@ -245,7 +245,7 @@ class StreamingQueryManager private[sql] (
       catalogAndIdent: Option[(TableCatalog, Identifier)] = None): StreamingQueryWrapper = {
     val analyzedPlan = df.queryExecution.analyzed
     df.queryExecution.assertAnalyzed()
-
+    //todo WriteToStreamStatement
     val dataStreamWritePlan = WriteToStreamStatement(
       userSpecifiedName,
       userSpecifiedCheckpointLocation,
@@ -257,13 +257,14 @@ class StreamingQueryManager private[sql] (
       trigger.isInstanceOf[ContinuousTrigger],
       analyzedPlan,
       catalogAndIdent)
-
+    //todo 重点
     val analyzedStreamWritePlan =
       sparkSession.sessionState.executePlan(dataStreamWritePlan).analyzed
         .asInstanceOf[WriteToStream]
 
     (sink, trigger) match {
       case (_: SupportsWrite, trigger: ContinuousTrigger) =>
+        //todo 流写
         new StreamingQueryWrapper(new ContinuousExecution(
           sparkSession,
           trigger,
@@ -271,6 +272,7 @@ class StreamingQueryManager private[sql] (
           extraOptions,
           analyzedStreamWritePlan))
       case _ =>
+        //todo 批写
         new StreamingQueryWrapper(new MicroBatchExecution(
           sparkSession,
           trigger,
@@ -299,6 +301,7 @@ class StreamingQueryManager private[sql] (
    * @param triggerClock [[Clock]] to use for the triggering.
    * @param catalogAndIdent Catalog and identifier for the sink, set when it is a V2 catalog table
    */
+    //todo start
   @throws[TimeoutException]
   private[sql] def startQuery(
       userSpecifiedName: Option[String],
@@ -385,6 +388,7 @@ class StreamingQueryManager private[sql] (
       // As it's provided by the user and can run arbitrary codes, we must not hold any lock here.
       // Otherwise, it's easy to cause dead-lock, or block too long if the user codes take a long
       // time to finish.
+      //todo 启动
       query.streamingQuery.start()
     } catch {
       case e: Throwable =>

@@ -49,6 +49,7 @@ class MicroBatchExecution(
 
   @volatile protected var sources: Seq[SparkDataStream] = Seq.empty
 
+  //todo 触发执行的方式
   private val triggerExecutor = trigger match {
     case t: ProcessingTimeTrigger => ProcessingTimeExecutor(t, triggerClock)
     case OneTimeTrigger => SingleBatchExecutor()
@@ -83,12 +84,13 @@ class MicroBatchExecution(
         toExecutionRelationMap.getOrElseUpdate(streamingRelation, {
           // Materialize source to avoid creating it in every batch
           val metadataPath = s"$resolvedCheckpointRoot/sources/$nextSourceId"
+          //todo kafka source入口
           val source = dataSourceV1.createSource(metadataPath)
           nextSourceId += 1
           logInfo(s"Using Source [$source] from DataSourceV1 named '$sourceName' [$dataSourceV1]")
           StreamingExecutionRelation(source, output)(sparkSession)
         })
-
+      //todo 这个分支
       case s @ StreamingRelationV2(src, srcName, table: SupportsRead, options, output, _, _, v1) =>
         val dsStr = if (src.nonEmpty) s"[${src.get}]" else ""
         val v2Disabled = disabledSources.contains(src.getOrElse(None).getClass.getCanonicalName)
@@ -100,6 +102,7 @@ class MicroBatchExecution(
             logInfo(s"Reading table [$table] from DataSourceV2 named '$srcName' $dsStr")
             // TODO: operator pushdown.
             val scan = table.newScanBuilder(options).build()
+            //todo scan转户为 MicroBatchStream
             val stream = scan.toMicroBatchStream(metadataPath)
             StreamingDataSourceV2Relation(output, scan, stream)
           })
@@ -109,6 +112,7 @@ class MicroBatchExecution(
           v2ToExecutionRelationMap.getOrElseUpdate(s, {
             // Materialize source to avoid creating it in every batch
             val metadataPath = s"$resolvedCheckpointRoot/sources/$nextSourceId"
+            //todo kafka source入口
             val source =
               v1.get.asInstanceOf[StreamingRelation].dataSource.createSource(metadataPath)
             nextSourceId += 1
@@ -117,10 +121,12 @@ class MicroBatchExecution(
           })
         }
     }
+    //todo MicroBatchStream
     sources = _logicalPlan.collect {
       // v1 source
       case s: StreamingExecutionRelation => s.source
       // v2 source
+      //todo
       case r: StreamingDataSourceV2Relation => r.stream
     }
     uniqueSources = triggerExecutor match {
@@ -160,6 +166,7 @@ class MicroBatchExecution(
         val relationOpt = plan.catalogAndIdent.map {
           case (catalog, ident) => DataSourceV2Relation.create(s, Some(catalog), Some(ident))
         }
+        //todo 返回的logicalplan
         WriteToMicroBatchDataSource(
           relationOpt,
           table = s,
@@ -204,11 +211,12 @@ class MicroBatchExecution(
   /**
    * Repeatedly attempts to run batches as data arrives.
    */
+    //todo 执行
   protected def runActivatedStream(sparkSessionForStream: SparkSession): Unit = {
 
     val noDataBatchesEnabled =
       sparkSessionForStream.sessionState.conf.streamingNoDataMicroBatchesEnabled
-
+    //todo 根据触发器，选择不同的执行方式
     triggerExecutor.execute(() => {
       if (isActive) {
         var currentBatchHasNewData = false // Whether the current batch had new data
@@ -217,9 +225,11 @@ class MicroBatchExecution(
 
         reportTimeTaken("triggerExecution") {
           // We'll do this initialization only once every start / restart
+          //todo 第一次执行
           if (currentBatchId < 0) {
             AcceptsLatestSeenOffsetHandler.setLatestSeenOffsetOnSources(
               offsetLog.getLatest().map(_._2), sources)
+            //todo 计算StartOffsets【重点】
             populateStartOffsets(sparkSessionForStream)
             logInfo(s"Stream started from $committedOffsets")
           }
@@ -234,10 +244,12 @@ class MicroBatchExecution(
           // state cleanup, etc. `isNewDataAvailable` will be updated to reflect whether new data
           // is available or not.
           if (!isCurrentBatchConstructed) {
+            //todo constructNextBatch，noDataBatchesEnabled为true
             isCurrentBatchConstructed = constructNextBatch(noDataBatchesEnabled)
           }
 
           // Record the trigger offset range for progress reporting *before* processing the batch
+          //todo 记录的offset，方便report
           recordTriggerOffsets(
             from = committedOffsets,
             to = availableOffsets,
@@ -252,6 +264,7 @@ class MicroBatchExecution(
           if (isCurrentBatchConstructed) {
             if (currentBatchHasNewData) updateStatusMessage("Processing new data")
             else updateStatusMessage("No new data but cleaning up state")
+            //todo runBatch
             runBatch(sparkSessionForStream)
           } else {
             updateStatusMessage("Waiting for data to arrive")
@@ -259,6 +272,7 @@ class MicroBatchExecution(
         }
 
         // Must be outside reportTimeTaken so it is recorded
+        //todo 上报处理信息
         finishTrigger(currentBatchHasNewData, isCurrentBatchConstructed)
 
         // Signal waiting threads. Note this must be after finishTrigger() to ensure all
@@ -305,7 +319,9 @@ class MicroBatchExecution(
    */
   private def populateStartOffsets(sparkSessionToRunBatches: SparkSession): Unit = {
     sinkCommitProgress = None
+    //todo 获取本次当前最近记录的数据
     offsetLog.getLatest() match {
+      //todo 第一次进来，有offsetLog文件
       case Some((latestBatchId, nextOffsets)) =>
         /* First assume that we are re-executing the latest known batch
          * in the offset log */
@@ -339,6 +355,7 @@ class MicroBatchExecution(
         /* identify the current batch id: if commit log indicates we successfully processed the
          * latest batch id in the offset log, then we can safely move to the next batch
          * i.e., committedBatchId + 1 */
+        //todo 获取提交的最近数据
         commitLog.getLatest() match {
           case Some((latestCommittedBatchId, commitMetadata)) =>
             if (latestBatchId == latestCommittedBatchId) {
@@ -381,6 +398,7 @@ class MicroBatchExecution(
         logInfo(s"Resuming at batch $currentBatchId with committed offsets " +
           s"$committedOffsets and available offsets $availableOffsets")
       case None => // We are starting this stream for the first time.
+        //todo 第一次进来，无offsetLog文件
         logInfo(s"Starting new streaming query.")
         currentBatchId = 0
         watermarkTracker = WatermarkTracker(sparkSessionToRunBatches.conf)
@@ -411,6 +429,7 @@ class MicroBatchExecution(
         startOffsetOpt.orNull
       case v2: MicroBatchStream =>
         startOffsetOpt.map(offset => v2.deserializeOffset(offset.json))
+          //todo 第一次调用v2.initialOffset()
           .getOrElse(v2.initialOffset())
     }
   }
@@ -445,6 +464,9 @@ class MicroBatchExecution(
       case (s: SupportsAdmissionControl, limit) =>
         updateStatusMessage(s"Getting offsets from $s")
         reportTimeTaken("latestOffset") {
+          //todo 获取KafkaMicroBatchStream.
+          //todo getStartOffset 初始化startoffset
+          //todo latestOffset,获取当前最新的offset，用来初始化endOffset
           val next = s.latestOffset(getStartOffset(s), limit)
           val latest = s.reportLatestOffset()
           ((s, Option(next)), (s, Option(latest)))
@@ -477,6 +499,7 @@ class MicroBatchExecution(
       batchTimestampMs = triggerClock.getTimeMillis())
 
     // Check whether next batch should be constructed
+    //todo shouldConstructNextBatch
     val lastExecutionRequiresAnotherBatch = noDataBatchesEnabled &&
       Option(lastExecution).exists(_.shouldRunAnotherBatch(offsetSeqMetadata))
     val shouldConstructNextBatch = isNewDataAvailable || lastExecutionRequiresAnotherBatch
@@ -490,6 +513,7 @@ class MicroBatchExecution(
       // Commit the next batch offset range to the offset log
       updateStatusMessage("Writing offsets to log")
       reportTimeTaken("walCommit") {
+        //todo 写数据之前offsetLog记录offset
         assert(offsetLog.add(currentBatchId,
           availableOffsets.toOffsetSeq(sources, offsetSeqMetadata)),
           s"Concurrent update to the log. Multiple streaming jobs detected for $currentBatchId")
@@ -545,6 +569,7 @@ class MicroBatchExecution(
         case (source: Source, available: Offset)
           if committedOffsets.get(source).map(_ != available).getOrElse(true) =>
           val current = committedOffsets.get(source).map(_.asInstanceOf[Offset])
+          //todo 读取数据，这部分逻辑基于传入的起始offset范围（包含了每个partition的offset范围）形成一个kafka的DataFrame
           val batch = source.getBatch(current, available)
           assert(batch.isStreaming,
             s"DataFrame returned by getBatch from $source did not have isStreaming=true\n" +
@@ -553,20 +578,24 @@ class MicroBatchExecution(
           Some(source -> batch.logicalPlan)
 
         case (stream: MicroBatchStream, available)
+          //todo 走的这个分支
           if committedOffsets.get(stream).map(_ != available).getOrElse(true) =>
           val current = committedOffsets.get(stream).map {
             off => stream.deserializeOffset(off.json)
           }
           val endOffset: OffsetV2 = available match {
             case v1: SerializedOffset => stream.deserializeOffset(v1.json)
+            //todo
             case v2: OffsetV2 => v2
           }
+          //todo 如果current为空，则stream.initialOffset初始化offset
           val startOffset = current.getOrElse(stream.initialOffset)
           logDebug(s"Retrieving data from $stream: $current -> $endOffset")
 
           // To be compatible with the v1 source, the `newData` is represented as a logical plan,
           // while the `newData` of v2 source is just the start and end offsets. Here we return a
           // fake logical plan to carry the offsets.
+          //todo OffsetHolder(startOffset, endOffset) 这个范围就是本次读取数据的offset范围
           Some(stream -> OffsetHolder(startOffset, endOffset))
 
         case _ => None
@@ -574,6 +603,7 @@ class MicroBatchExecution(
     }
 
     // Replace sources in the logical plan with data that has arrived since the last batch.
+    //todo logicalPlan transform
     val newBatchesPlan = logicalPlan transform {
       // For v1 sources.
       case StreamingExecutionRelation(source, output) =>
@@ -600,6 +630,7 @@ class MicroBatchExecution(
         }
 
       // For v2 sources.
+      //todo StreamingDataSourceV2Relation
       case r: StreamingDataSourceV2Relation =>
         newData.get(r.stream).map {
           case OffsetHolder(start, end) =>
@@ -627,6 +658,7 @@ class MicroBatchExecution(
     }
 
     val triggerLogicalPlan = sink match {
+      //todo
       case _: Sink => newAttributePlan
       case _: SupportsWrite =>
         newAttributePlan.asInstanceOf[WriteToMicroBatchDataSource].withNewBatchId(currentBatchId)
@@ -639,6 +671,7 @@ class MicroBatchExecution(
       StreamExecution.IS_CONTINUOUS_PROCESSING, false.toString)
 
     reportTimeTaken("queryPlanning") {
+      //todo 生成物理执行计划
       lastExecution = new IncrementalExecution(
         sparkSessionToRunBatch,
         triggerLogicalPlan,
@@ -650,13 +683,14 @@ class MicroBatchExecution(
         offsetSeqMetadata)
       lastExecution.executedPlan // Force the lazy generation of execution plan
     }
-
+    //todo 要写入的数据，Dataset
     val nextBatch =
       new Dataset(lastExecution, RowEncoder(lastExecution.analyzed.schema))
 
     val batchSinkProgress: Option[StreamWriterCommitProgress] = reportTimeTaken("addBatch") {
       SQLExecution.withNewExecutionId(lastExecution) {
         sink match {
+          //todo sink数据
           case s: Sink => s.addBatch(currentBatchId, nextBatch)
           case _: SupportsWrite =>
             // This doesn't accumulate any data - it just forces execution of the microbatch writer.
@@ -672,6 +706,7 @@ class MicroBatchExecution(
     withProgressLocked {
       sinkCommitProgress = batchSinkProgress
       watermarkTracker.updateWatermark(lastExecution.executedPlan)
+      //todo 写完成后commitLog中记录元数据
       assert(commitLog.add(currentBatchId, CommitMetadata(watermarkTracker.currentWatermark)),
         "Concurrent update to the commit log. Multiple streaming jobs detected for " +
           s"$currentBatchId")

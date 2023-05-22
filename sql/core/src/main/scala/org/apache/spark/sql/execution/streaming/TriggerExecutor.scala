@@ -46,6 +46,7 @@ case class MultiBatchExecutor() extends TriggerExecutor {
   /**
    * Execute multiple batches using `batchRunner`
    */
+    //todo 只要batchRunner返回true，就一直执行
   override def execute(batchRunner: () => Boolean): Unit = while (batchRunner()) {}
 }
 
@@ -73,6 +74,7 @@ case class ProcessingTimeExecutor(
         if (terminated) {
           return
         }
+        //todo 阻塞nextTriggerTimeMs
         clock.waitTillTime(nextTriggerTimeMs)
       } else {
         if (terminated) {

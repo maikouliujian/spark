@@ -111,11 +111,12 @@ class HDFSMetadataLog[T <: AnyRef : ClassTag](sparkSession: SparkSession, path: 
    * Store the metadata for the specified batchId and return `true` if successful. If the batchId's
    * metadata has already been stored, this method will return `false`.
    */
+    //todo 记录元数据
   override def add(batchId: Long, metadata: T): Boolean = {
     require(metadata != null, "'null' metadata cannot written to a metadata log")
     addNewBatchByStream(batchId) { output => serialize(metadata, output) }
   }
-
+   //todo 根据batchid获取相应文件的内容
   override def get(batchId: Long): Option[T] = {
     try {
       applyFnToBatchByStream(batchId) { input => Some(deserialize(input)) }
@@ -136,6 +137,7 @@ class HDFSMetadataLog[T <: AnyRef : ClassTag](sparkSession: SparkSession, path: 
    * properly and make sure the logic is not affected by failing in the middle.
    */
   def applyFnToBatchByStream[RET](batchId: Long)(fn: InputStream => RET): RET = {
+    //todo batchId 对应的文件
     val batchMetadataFile = batchIdToPath(batchId)
     if (fileManager.exists(batchMetadataFile)) {
       val input = fileManager.open(batchMetadataFile)
@@ -209,13 +211,14 @@ class HDFSMetadataLog[T <: AnyRef : ClassTag](sparkSession: SparkSession, path: 
    * Return the latest batch Id without reading the file. This method only checks for existence of
    * file to avoid cost on reading and deserializing log file.
    */
+    //todo 获取最近上一次的batchId
   def getLatestBatchId(): Option[Long] = {
     fileManager.list(metadataPath, batchFilesFilter)
       .map(f => pathToBatchId(f.getPath))
       .sorted(Ordering.Long.reverse)
       .headOption
   }
-
+  //todo 获取最近上一次的batchId和数据
   override def getLatest(): Option[(Long, T)] = {
     getLatestBatchId().map { batchId =>
       val content = get(batchId).getOrElse {

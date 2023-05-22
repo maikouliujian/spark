@@ -28,7 +28,7 @@ import org.apache.spark.sql.execution.streaming.{HDFSMetadataLog, SerializedOffs
 /** A version of [[HDFSMetadataLog]] specialized for saving the initial offsets. */
 private[kafka010] class KafkaSourceInitialOffsetWriter(
     sparkSession: SparkSession,
-    metadataPath: String)
+    metadataPath: String)//todo s"$resolvedCheckpointRoot/sources/$nextSourceId"
   extends HDFSMetadataLog[KafkaSourceOffset](sparkSession, metadataPath) {
 
   val VERSION = 1

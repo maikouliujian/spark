@@ -24,11 +24,12 @@ import org.apache.spark.sql.streaming.DataStreamWriter
 
 class ForeachBatchSink[T](batchWriter: (Dataset[T], Long) => Unit, encoder: ExpressionEncoder[T])
   extends Sink {
-
+  //todo addBatch
   override def addBatch(batchId: Long, data: DataFrame): Unit = {
     val rdd = data.queryExecution.toRdd
     implicit val enc = encoder
     val ds = data.sparkSession.internalCreateDataFrame(rdd, data.schema).as[T]
+    //todo 用户自定义batchWriter方法
     batchWriter(ds, batchId)
   }
 

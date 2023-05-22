@@ -55,7 +55,7 @@ private[kafka010] class KafkaSourceProvider extends DataSourceRegister
     with SimpleTableProvider
     with Logging {
   import KafkaSourceProvider._
-
+  //todo kafka
   override def shortName(): String = "kafka"
 
   /**
@@ -74,6 +74,7 @@ private[kafka010] class KafkaSourceProvider extends DataSourceRegister
     (shortName(), KafkaRecordToRowConverter.kafkaSchema(includeHeaders))
   }
 
+  //todo struct streaming 读取数据入口
   override def createSource(
       sqlContext: SQLContext,
       metadataPath: String,
@@ -85,10 +86,11 @@ private[kafka010] class KafkaSourceProvider extends DataSourceRegister
     // Each running query should use its own group id. Otherwise, the query may be only assigned
     // partial data since Kafka will assign partitions to multiple consumers having the same group
     // id. Hence, we should generate a unique id for each query.
+    //todo 自动生成的groupid
     val uniqueGroupId = streamingUniqueGroupId(caseInsensitiveParameters, metadataPath)
 
     val specifiedKafkaParams = convertToSpecifiedParams(caseInsensitiveParameters)
-
+    //todo 初始化读取offset的策略
     val startingStreamOffsets = KafkaSourceProvider.getKafkaOffsetRangeLimit(
       caseInsensitiveParameters, STARTING_TIMESTAMP_OPTION_KEY,
       STARTING_OFFSETS_BY_TIMESTAMP_OPTION_KEY, STARTING_OFFSETS_OPTION_KEY,
@@ -244,6 +246,7 @@ private[kafka010] class KafkaSourceProvider extends DataSourceRegister
         }
 
       case (SUBSCRIBE, value) =>
+        //todo topic支持读取多个！！！
         val topics = value.split(",").map(_.trim).filter(_.nonEmpty)
         if (topics.isEmpty) {
           throw new IllegalArgumentException(

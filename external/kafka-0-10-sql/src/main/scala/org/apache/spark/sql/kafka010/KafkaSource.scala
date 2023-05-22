@@ -75,7 +75,7 @@ private[kafka010] class KafkaSource(
     executorKafkaParams: ju.Map[String, Object],
     sourceOptions: CaseInsensitiveMap[String],
     metadataPath: String,
-    startingOffsets: KafkaOffsetRangeLimit,
+    startingOffsets: KafkaOffsetRangeLimit, //todo 获取offset的策略
     failOnDataLoss: Boolean)
 
   extends SupportsTriggerAvailableNow with Source with Logging {
@@ -114,6 +114,7 @@ private[kafka010] class KafkaSource(
    * called in StreamExecutionThread. Otherwise, interrupting a thread while running
    * `KafkaConsumer.poll` may hang forever (KAFKA-1894).
    */
+    //todo 初始化offset
   private lazy val initialPartitionOffsets = {
     val metadataLog = new KafkaSourceInitialOffsetWriter(sqlContext.sparkSession, metadataPath)
     metadataLog.get(0).getOrElse {
@@ -126,6 +127,7 @@ private[kafka010] class KafkaSource(
         case GlobalTimestampRangeLimit(ts, strategy) =>
           kafkaReader.fetchGlobalTimestampBasedOffsets(ts, isStartingOffsets = true, strategy)
       }
+      //todo 将offset记录到文件
       metadataLog.add(0, offsets)
       logInfo(s"Initial offsets: $offsets")
       offsets
@@ -288,8 +290,10 @@ private[kafka010] class KafkaSource(
    * [`start.get.partitionToOffsets`, `end.partitionToOffsets`), i.e. end.partitionToOffsets is
    * exclusive.
    */
+    //todo  获取offset区间内数据 [)
   override def getBatch(start: Option[Offset], end: Offset): DataFrame = {
     // Make sure initialPartitionOffsets is initialized
+      //todo 初始化offset
     initialPartitionOffsets
 
     logInfo(s"GetBatch called with start = $start, end = $end")
@@ -303,6 +307,7 @@ private[kafka010] class KafkaSource(
         sqlContext.sparkContext.emptyRDD[InternalRow].setName("empty"), schema, isStreaming = true)
     }
     val fromPartitionOffsets = start match {
+      //todo 上一batch的end offset
       case Some(prevBatchEndOffset) =>
         KafkaSourceOffset.getPartitionOffsets(prevBatchEndOffset)
       case None =>
@@ -315,6 +320,7 @@ private[kafka010] class KafkaSource(
       reportDataLoss)
 
     // Create an RDD that reads from Kafka and get the (key, value) pair as byte arrays.
+      //todo 根据offset range 创建rdd
     val rdd = if (includeHeaders) {
       new KafkaSourceRDD(
         sc, executorKafkaParams, offsetRanges, pollTimeoutMs, failOnDataLoss)
@@ -327,7 +333,7 @@ private[kafka010] class KafkaSource(
 
     logInfo("GetBatch generating RDD of offset range: " +
       offsetRanges.sortBy(_.topicPartition.toString).mkString(", "))
-
+    //todo 将rdd转为df
     sqlContext.internalCreateDataFrame(rdd.setName("kafka"), schema, isStreaming = true)
   }
 

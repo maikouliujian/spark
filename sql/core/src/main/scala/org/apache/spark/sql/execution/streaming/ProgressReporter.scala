@@ -195,6 +195,7 @@ trait ProgressReporter extends Logging {
       }
     }
     postEvent(new QueryProgressEvent(newProgress))
+    //todo 打印处理信息
     logInfo(s"Streaming query made progress: $newProgress")
   }
 
@@ -210,7 +211,7 @@ trait ProgressReporter extends Logging {
     assert(currentTriggerStartOffsets != null && currentTriggerEndOffsets != null &&
       currentTriggerLatestOffsets != null)
     currentTriggerEndTimestamp = triggerClock.getTimeMillis()
-
+    //todo
     val executionStats = extractExecutionStats(hasNewData, hasExecuted)
     val processingTimeMills = currentTriggerEndTimestamp - currentTriggerStartTimestamp
     val processingTimeSec = Math.max(1L, processingTimeMills).toDouble / MILLIS_PER_SECOND
@@ -248,7 +249,7 @@ trait ProgressReporter extends Logging {
     }
     val sinkProgress = SinkProgress(sink.toString, sinkOutput)
     val observedMetrics = extractObservedMetrics(hasNewData, lastExecution)
-
+    //todo 新建StreamingQueryProgress
     val newProgress = new StreamingQueryProgress(
       id = id,
       runId = runId,
@@ -308,7 +309,7 @@ trait ProgressReporter extends Logging {
     if (!hasNewData) {
       return ExecutionStats(Map.empty, stateOperators, watermarkTimestamp)
     }
-
+    //todo 读取的数据条数
     val numInputRows = extractSourceToNumInputRows()
 
     val eventTimeStats = lastExecution.executedPlan.collect {

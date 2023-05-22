@@ -103,6 +103,7 @@ abstract class StreamExecution(
    * Other threads should make a shallow copy if they are going to access this field more than
    * once, since the field's value may change at any time.
    */
+    //todo 上一batch已经处理完的offset
   @volatile
   var committedOffsets = new StreamProgress
 
@@ -113,6 +114,7 @@ abstract class StreamExecution(
    * Other threads should make a shallow copy if they are going to access this field more than
    * once, since the field's value may change at any time.
    */
+  //todo 当前batch将要被处理的offset
   @volatile
   var availableOffsets = new StreamProgress
 
@@ -122,6 +124,7 @@ abstract class StreamExecution(
    * Other threads should make a shallow copy if they are going to access this field more than
    * once, since the field's value may change at any time.
    */
+   //todo latestOffsets
   @volatile
   var latestOffsets = new StreamProgress
 
@@ -129,6 +132,7 @@ abstract class StreamExecution(
   var sinkCommitProgress: Option[StreamWriterCommitProgress] = None
 
   /** The current batchId or -1 if execution has not yet been initialized. */
+    //todo 当前执行的 id
   protected var currentBatchId: Long = -1
 
   /** Metadata associated with the whole query */
@@ -205,6 +209,7 @@ abstract class StreamExecution(
         // To fix call site like "run at <unknown>:0", we bridge the call site from the caller
         // thread to this micro batch thread
         sparkSession.sparkContext.setCallSite(callSite)
+        //todo 执行流
         runStream()
       }
     }
@@ -215,6 +220,8 @@ abstract class StreamExecution(
    * processing is done.  Thus, the Nth record in this log indicated data that is currently being
    * processed and the N-1th entry indicates which offsets have been durably committed to the sink.
    */
+    //todo 记录offset,是一个持久化的 WAL (Write-Ahead-Log)，是将来可用作故障恢复用
+    //todo 【数据处理之前做记录】
   val offsetLog = new OffsetSeqLog(sparkSession, checkpointFile("offsets"))
 
   /**
@@ -222,6 +229,8 @@ abstract class StreamExecution(
    * fully processed, and its output was committed to the sink, hence no need to process it again.
    * This is used (for instance) during restart, to help identify which batch to run next.
    */
+  //todo 记录commits
+  //todo 【数据处理完成后做记录】
   val commitLog = new CommitLog(sparkSession, checkpointFile("commits"))
 
   /** Whether all fields of the query have been initialized */
@@ -248,6 +257,7 @@ abstract class StreamExecution(
   def start(): Unit = {
     logInfo(s"Starting $prettyIdString. Use $resolvedCheckpointRoot to store the query checkpoint.")
     queryExecutionThread.setDaemon(true)
+    //todo 启动
     queryExecutionThread.start()
     startLatch.await()  // Wait until thread started and QueryStart event has been posted
   }
@@ -265,6 +275,7 @@ abstract class StreamExecution(
    * Furthermore, this method also ensures that [[QueryStartedEvent]] event is posted before the
    * `start()` method returns.
    */
+    //todo 流模式读取
   private def runStream(): Unit = {
     try {
       sparkSession.sparkContext.setJobGroup(runId.toString, getBatchDescriptionString,
@@ -296,6 +307,7 @@ abstract class StreamExecution(
 
         updateStatusMessage("Initializing sources")
         // force initialization of the logical plan so that the sources can be created
+        //todo 初始化logicalPlan
         logicalPlan
 
         offsetSeqMetadata = OffsetSeqMetadata(
@@ -304,6 +316,7 @@ abstract class StreamExecution(
         if (state.compareAndSet(INITIALIZING, ACTIVE)) {
           // Unblock `awaitInitialization`
           initializationLatch.countDown()
+          //todo structstreaming入口
           runActivatedStream(sparkSessionForStream)
           updateStatusMessage("Stopped")
         } else {

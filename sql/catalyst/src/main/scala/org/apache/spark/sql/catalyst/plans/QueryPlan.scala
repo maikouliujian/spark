@@ -381,7 +381,7 @@ abstract class QueryPlan[PlanType <: QueryPlan[PlanType]]
       }
     }
   }
-
+  //todo schema
   lazy val schema: StructType = StructType.fromAttributes(output)
 
   /** Returns the output schema in the tree format. */

@@ -50,6 +50,7 @@ class OffsetSeqLog(sparkSession: SparkSession, path: String)
   private val cachedMetadata = new ju.TreeMap[Long, OffsetSeq]()
 
   override def add(batchId: Long, metadata: OffsetSeq): Boolean = {
+    //todo 持久化batchId和offset
     val added = super.add(batchId, metadata)
     if (added) {
       // cache metadata as it will be read again

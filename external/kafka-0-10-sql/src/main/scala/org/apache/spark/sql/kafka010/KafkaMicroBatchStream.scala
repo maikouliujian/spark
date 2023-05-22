@@ -96,6 +96,7 @@ private[kafka010] class KafkaMicroBatchStream(
    * called in StreamExecutionThread. Otherwise, interrupting a thread while running
    * `KafkaConsumer.poll` may hang forever (KAFKA-1894).
    */
+    //todo 初始化offset
   override def initialOffset(): Offset = {
     KafkaSourceOffset(getOrCreateInitialPartitionOffsets())
   }
@@ -129,16 +130,19 @@ private[kafka010] class KafkaMicroBatchStream(
     latestPartitionOffsets = if (allDataForTriggerAvailableNow != null) {
       allDataForTriggerAvailableNow
     } else {
+      //todo 获取最新的offset
       kafkaOffsetReader.fetchLatestOffsets(Some(startPartitionOffsets))
     }
 
     val limits: Seq[ReadLimit] = readLimit match {
       case rows: CompositeReadLimit => rows.getReadLimits
+      //todo
       case rows => Seq(rows)
     }
 
     val offsets = if (limits.exists(_.isInstanceOf[ReadAllAvailable])) {
       // ReadAllAvailable has the highest priority
+      //todo
       latestPartitionOffsets
     } else {
       val lowerLimit = limits.find(_.isInstanceOf[ReadMinRows]).map(_.asInstanceOf[ReadMinRows])
@@ -239,7 +243,7 @@ private[kafka010] class KafkaMicroBatchStream(
 
     // SparkSession is required for getting Hadoop configuration for writing to checkpoints
     assert(SparkSession.getActiveSession.nonEmpty)
-
+    //todo 从metadataLog中取offset
     val metadataLog =
       new KafkaSourceInitialOffsetWriter(SparkSession.getActiveSession.get, metadataPath)
     metadataLog.get(0).getOrElse {
