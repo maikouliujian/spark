@@ -46,7 +46,7 @@ import org.apache.spark.util.Utils
  *    to the name `value`.
  */
 object ExpressionEncoder {
-
+  //todo 处理scala类型
   def apply[T : TypeTag](): ExpressionEncoder[T] = {
     val mirror = ScalaReflection.mirror
     val tpe = typeTag[T].in(mirror).tpe
@@ -60,7 +60,8 @@ object ExpressionEncoder {
       deserializer,
       ClassTag[T](cls))
   }
-
+  //todo 处理javabean类型
+  //todo 为javabean服务【本质原理是：需要先将javabean的各类型转化为scala的类型，比如java map转化为scala map，然后统一用scala的序列化器！！！】
   // TODO: improve error message for java bean encoder.
   def javaBean[T](beanClass: Class[T]): ExpressionEncoder[T] = {
     val schema = JavaTypeInference.inferDataType(beanClass)._1

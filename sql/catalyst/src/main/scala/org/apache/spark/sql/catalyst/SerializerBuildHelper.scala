@@ -207,7 +207,7 @@ object SerializerBuildHelper {
       dataType: DataType,
       nullable: Boolean,
       funcForNewExpr: Expression => Expression)
-
+  //todo 为scala map创建Serializer
   def createSerializerForMap(
       inputObject: Expression,
       keyInformation: MapElementInformation,

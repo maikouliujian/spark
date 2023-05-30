@@ -350,7 +350,7 @@ case class StaticInvoke(
  */
 case class Invoke(
     targetObject: Expression,
-    functionName: String,
+    functionName: String,//todo 方法名
     dataType: DataType,
     arguments: Seq[Expression] = Nil,
     methodInputTypes: Seq[AbstractDataType] = Nil,
@@ -1394,6 +1394,7 @@ case class ExternalMapToCatalyst private(
     }
 
     inputData.dataType match {
+      //todo  处理java map
       case ObjectType(cls) if classOf[java.util.Map[_, _]].isAssignableFrom(cls) =>
         (input: Any) => {
           val data = input.asInstanceOf[java.util.Map[Any, Any]]
@@ -1418,7 +1419,7 @@ case class ExternalMapToCatalyst private(
           }
           (keys, values)
         }
-
+      //todo  处理scala map
       case ObjectType(cls) if classOf[scala.collection.Map[_, _]].isAssignableFrom(cls) =>
         (input: Any) => {
           val data = input.asInstanceOf[scala.collection.Map[Any, Any]]

@@ -161,7 +161,7 @@ object JavaTypeInference {
         (new StructType(fields), true)
     }
   }
-
+  //todo 在这会过滤出beanClass的get/set方法
   def getJavaBeanReadableProperties(beanClass: Class[_]): Array[PropertyDescriptor] = {
     val beanInfo = Introspector.getBeanInfo(beanClass)
     beanInfo.getPropertyDescriptors.filterNot(_.getName == "class")
@@ -184,7 +184,9 @@ object JavaTypeInference {
   private def mapKeyValueType(typeToken: TypeToken[_]): (TypeToken[_], TypeToken[_]) = {
     val typeToken2 = typeToken.asInstanceOf[TypeToken[_ <: JMap[_, _]]]
     val mapSuperType = typeToken2.getSupertype(classOf[JMap[_, _]])
+    //todo 迭代返回map的key
     val keyType = elementType(mapSuperType.resolveType(keySetReturnType))
+    //todo 迭代返回map的value
     val valueType = elementType(mapSuperType.resolveType(valuesReturnType))
     keyType -> valueType
   }
@@ -445,7 +447,7 @@ object JavaTypeInference {
 
         case _ if ttIsAssignableFrom(listType, typeToken) =>
           toCatalystArray(inputObject, elementType(typeToken))
-
+        //todo java map类型，转化为scala的map
         case _ if ttIsAssignableFrom(mapType, typeToken) =>
           val (keyType, valueType) = mapKeyValueType(typeToken)
 
@@ -466,6 +468,7 @@ object JavaTypeInference {
             Invoke(inputObject, "name", ObjectType(classOf[String]), returnNullable = false))
 
         case other =>
+          //todo getJavaBeanReadableAndWritableProperties 获取javabean中的get/set方法
           val properties = getJavaBeanReadableAndWritableProperties(other)
           val fields = properties.map { p =>
             val fieldName = p.getName
@@ -477,6 +480,7 @@ object JavaTypeInference {
               inferExternalType(fieldType.getRawType),
               propagateNull = !hasNonNull,
               returnNullable = !hasNonNull)
+            //todo serializerFor 按照不同的类型进行序列化
             (fieldName, serializerFor(fieldValue, fieldType))
           }
           createSerializerForObject(inputObject, fields)
