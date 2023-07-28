@@ -59,6 +59,17 @@ case class CatalogFunction(
 /**
  * Storage format, used to describe how a partition or a table is stored.
  */
+//todo hive表的元信息
+
+/***
+ *
+ * @param locationUri s3://clotho-emr-data-prod/bondee_dw.db/dwd_event_user_general
+ * @param inputFormat org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+ * @param outputFormat org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+ * @param serde org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+ * @param compressed  false
+ * @param properties
+ */
 case class CatalogStorageFormat(
     locationUri: Option[URI],
     inputFormat: Option[String],

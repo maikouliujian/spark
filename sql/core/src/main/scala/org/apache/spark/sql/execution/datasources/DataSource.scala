@@ -439,6 +439,7 @@ case class DataSource(
           equality)
         DataSourceUtils.verifySchema(hs.fileFormat, hs.dataSchema)
       case _ =>
+        //todo
         SchemaUtils.checkSchemaColumnNameDuplication(
           relation.schema,
           "in the data schema",

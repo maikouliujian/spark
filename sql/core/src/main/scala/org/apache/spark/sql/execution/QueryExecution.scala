@@ -80,6 +80,7 @@ class QueryExecution(
 
   lazy val commandExecuted: LogicalPlan = mode match {
     case CommandExecutionMode.NON_ROOT => analyzed.mapChildren(eagerlyExecuteCommands)
+    //todo ALL 就可以支持整棵树以前序遍历的方式立即执行命令
     case CommandExecutionMode.ALL => eagerlyExecuteCommands(analyzed)
     case CommandExecutionMode.SKIP => analyzed
   }
@@ -93,10 +94,13 @@ class QueryExecution(
     case _ => "command"
   }
 
+  //todo 命令立即执行
   private def eagerlyExecuteCommands(p: LogicalPlan) = p transformDown {
     case c: Command =>
       val qe = sparkSession.sessionState.executePlan(c, CommandExecutionMode.NON_ROOT)
+      //todo 执行 withNewExecutionId
       val result = SQLExecution.withNewExecutionId(qe, Some(commandExecutionName(c))) {
+        //todo 执行返回结果【spark算子执行的入口！！！！！！】
         qe.executedPlan.executeCollect()
       }
       CommandResult(
@@ -108,28 +112,37 @@ class QueryExecution(
   }
 
   lazy val withCachedData: LogicalPlan = sparkSession.withActive {
+    //todo // 用来检测逻辑计划是否已经经过`analysis`阶段
     assertAnalyzed()
+    //todo // 用来检测流数据查询的
     assertSupported()
     // clone the plan to avoid sharing the plan instance between different stages like analyzing,
     // optimizing and planning.
+    //todo  // 克隆计划来避免在不同的阶段比如：analyzing/optimizing/planning 之间共享计划实例
     sparkSession.sharedState.cacheManager.useCachedData(commandExecuted.clone())
   }
 
   def assertCommandExecuted(): Unit = commandExecuted
 
+  //todo 3、【optimizing入口】
   lazy val optimizedPlan: LogicalPlan = {
     // We need to materialize the commandExecuted here because optimizedPlan is also tracked under
     // the optimizing phase
+    //todo // 此处，我们需要物化 commandExecuted，这样也不会计算到 optimization 阶段时间里面
     assertCommandExecuted()
     executePhase(QueryPlanningTracker.OPTIMIZATION) {
       // clone the plan to avoid sharing the plan instance between different stages like analyzing,
       // optimizing and planning.
-      val plan =
+      //todo // 克隆计划来避免在不同的阶段比如：analyzing/optimizing/planning 之间共享计划实例
+      val plan = {
+        //todo withCachedData
         sparkSession.sessionState.optimizer.executeAndTrack(withCachedData.clone(), tracker)
+      }
       // We do not want optimized plans to be re-analyzed as literals that have been constant
       // folded and such can cause issues during analysis. While `clone` should maintain the
       // `analyzed` state of the LogicalPlan, we set the plan as analyzed here as well out of
       // paranoia.
+      //todo // 我们不希望优化的计划被重新分析为文本值，这样会导致常量折叠，在分析过程中会导致问题。而`clone`应该保持逻辑计划的`analyzed`状态，所以我们偏执地将计划设置为 `analyzed`
       plan.setAnalyzed()
       plan
     }
@@ -150,13 +163,20 @@ class QueryExecution(
 
   // executedPlan should not be used to initialize any SparkPlan. It should be
   // only used for execution.
+  /**
+   * todo executedPlan 不应该用于初始化一切 SparkPlan，它应该只能用来执行
+   */
   lazy val executedPlan: SparkPlan = {
     // We need to materialize the optimizedPlan here, before tracking the planning phase, to ensure
     // that the optimization time is not counted as part of the planning phase.
+    //todo // 此处我们需要物化 optimizedPlan，在追踪 planning 阶段之前，要确定优化的时间不会计算到 planning 阶段里面
+    //todo 【optimizing的入口】
     assertOptimized()
     executePhase(QueryPlanningTracker.PLANNING) {
       // clone the plan to avoid sharing the plan instance between different stages like analyzing,
       // optimizing and planning.
+      //todo 克隆计划来避免在不同的阶段比如：analyzing/optimizing/planning 之间共享计划实例
+      //todo planning的入口
       QueryExecution.prepareForExecution(preparations, sparkPlan.clone())
     }
   }

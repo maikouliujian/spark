@@ -121,6 +121,7 @@ object HiveThriftServer2 extends Logging {
   }
 }
 
+
 private[hive] class HiveThriftServer2(sqlContext: SQLContext)
   extends HiveServer2
   with ReflectedCompositeService {

@@ -243,6 +243,7 @@ case class RelationConversions(
           tableDesc, query, query.output.map(_.name), mode)
 
       // INSERT HIVE DIR
+      //todo
       case InsertIntoDir(_, storage, provider, query, overwrite)
         if query.resolved && DDLUtils.isHiveTable(provider) &&
           isConvertible(storage) && conf.getConf(HiveUtils.CONVERT_METASTORE_INSERT_DIR) =>

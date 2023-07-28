@@ -87,7 +87,9 @@ private[sql] object Dataset {
 
   def ofRows(sparkSession: SparkSession, logicalPlan: LogicalPlan): DataFrame =
     sparkSession.withActive {
+      //todo 创建QueryExecution
       val qe = sparkSession.sessionState.executePlan(logicalPlan)
+      //todo analysis入口
       qe.assertAnalyzed()
       new Dataset[Row](qe, RowEncoder(qe.analyzed.schema))
   }
@@ -97,6 +99,7 @@ private[sql] object Dataset {
     : DataFrame = sparkSession.withActive {
     //todo 创建QueryExecution,QueryExecution中包含了 analyzed
     val qe = new QueryExecution(sparkSession, logicalPlan, tracker)
+    //todo analysis入口
     qe.assertAnalyzed()
     new Dataset[Row](qe, RowEncoder(qe.analyzed.schema))
   }
@@ -273,6 +276,11 @@ class Dataset[T] private[sql](
    * @param truncate If set to more than 0, truncates strings to `truncate` characters and
    *                   all cells will be aligned right.
    */
+  /**
+   * todo 获取按特定截断和垂直要求顺序表示的行。
+   * @param numRows–要返回的行数
+   * @param truncate–如果设置为大于0，则截断字符串以截断字符，所有单元格都将对齐
+   */
   private[sql] def getRows(
       numRows: Int,
       truncate: Int): Seq[Seq[String]] = {
@@ -280,9 +288,11 @@ class Dataset[T] private[sql](
     val castCols = newDf.logicalPlan.output.map { col =>
       // Since binary types in top-level schema fields have a specific format to print,
       // so we do not cast them to strings here.
+      //todo 由于顶层 schema 字段 Binary 类型有特殊的打印方式，因此这里不需要将它们转换成 String 类型
       if (col.dataType == BinaryType) {
         Column(col)
       } else {
+        //todo 非 Binary 类型的字段都会得到 Cast 类型
         Column(col).cast(StringType)
       }
     }
@@ -291,6 +301,7 @@ class Dataset[T] private[sql](
     // For array values, replace Seq and Array with square brackets
     // For cells that are beyond `truncate` characters, replace it with the
     // first `truncate-3` and "..."
+    //todo // 对于数组值，使用方括号来替代 Seq 和 Array，对于长度超过 truncate 的字符串，使用 truncate-3 的字符串和 ... 来代替
     schema.fieldNames.map(SchemaUtils.escapeMetaCharacters).toSeq +: data.map { row =>
       row.toSeq.map { cell =>
         val str = cell match {
@@ -302,6 +313,7 @@ class Dataset[T] private[sql](
         }
         if (truncate > 0 && str.length > truncate) {
           // do not show ellipses for strings shorter than 4 characters.
+          //todo // 对于少于4个字符的字符串，不要显示省略号。
           if (truncate < 4) str.substring(0, truncate)
           else str.substring(0, truncate - 3) + "..."
         } else {
@@ -319,12 +331,19 @@ class Dataset[T] private[sql](
    *                   all cells will be aligned right.
    * @param vertical If set to true, prints output rows vertically (one line per column value).
    */
+  /**
+   * todo 组合表示输出行的字符串
+   * @param _numRows–要显示的行数
+   * @param truncate–如果设置为大于0，则截断字符串以截断字符，所有单元格都将对齐。
+   * @param vertical–如果设置为true，则垂直打印输出行（每列值一行）。
+   */
   private[sql] def showString(
       _numRows: Int,
       truncate: Int = 20,
       vertical: Boolean = false): String = {
     val numRows = _numRows.max(0).min(ByteArrayMethods.MAX_ROUNDED_ARRAY_LENGTH - 1)
     // Get rows represented by Seq[Seq[String]], we may get one more line if it has more data.
+    // todo 获取 Seq[Seq[String]] 类型的数据行，如果有更多的话可能获得不只一行的数据。
     val tmpRows = getRows(numRows, truncate)
 
     val hasMoreData = tmpRows.length - 1 > numRows
@@ -364,6 +383,7 @@ class Dataset[T] private[sql](
       sb.append(sep)
 
       // data
+      //todo // 数据
       paddedRows.tail.foreach(_.addString(sb, "|", "|", "|\n"))
       sb.append(sep)
     } else {
@@ -395,6 +415,7 @@ class Dataset[T] private[sql](
     }
 
     // Print a footer
+    //todo // 打印脚注信息
     if (vertical && rows.tail.isEmpty) {
       // In a vertical mode, print an empty row set explicitly
       sb.append("(0 rows)\n")
@@ -1504,6 +1525,7 @@ class Dataset[T] private[sql](
       case typedCol: TypedColumn[_, _] =>
         // Checks if a `TypedColumn` has been inserted with
         // specific input type and schema by `withInputType`.
+        //todo  检查是否 `TypedColumn` 已经被`withInputType` 插入了具体的输入类型和 schema
         val needInputType = typedCol.expr.exists {
           case ta: TypedAggregateExpression if ta.inputDeserializer.isEmpty => true
           case _ => false
@@ -1514,7 +1536,7 @@ class Dataset[T] private[sql](
         } else {
           throw QueryCompilationErrors.cannotPassTypedColumnInUntypedSelectError(typedCol.toString)
         }
-
+      //todo 走这里
       case other => other
     }
     Project(untypedCols.map(_.named), logicalPlan)
@@ -3852,6 +3874,9 @@ class Dataset[T] private[sql](
    * user-registered callback functions, and also to convert asserts/illegal states to
    * the internal error exception.
    */
+  /**
+   * todo 包装数据集操作以跟踪查询执行和时间开销，然后向用户注册的回调函数报告。
+   */
   private def withAction[U](name: String, qe: QueryExecution)(action: SparkPlan => U) = {
     SQLExecution.withNewExecutionId(qe, Some(name)) {
       QueryExecution.withInternalError(s"""The "$name" action failed.""") {
@@ -3884,6 +3909,9 @@ class Dataset[T] private[sql](
   }
 
   /** A convenient function to wrap a logical plan and produce a DataFrame. */
+    //todo /**
+    //   * 一个方便的函数，用于包装逻辑计划并生成 DataFrame。
+    //   */
   @inline private def withPlan(logicalPlan: LogicalPlan): DataFrame = {
     Dataset.ofRows(sparkSession, logicalPlan)
   }

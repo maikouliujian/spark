@@ -59,6 +59,7 @@ object SQLExecution {
    * Wrap an action that will execute "queryExecution" to track all Spark jobs in the body so that
    * we can connect them with an execution.
    */
+    //todo 新的执行！！！！！！
   def withNewExecutionId[T](
       queryExecution: QueryExecution,
       name: Option[String] = None)(body: => T): T = queryExecution.sparkSession.withActive {
@@ -94,6 +95,7 @@ object SQLExecution {
 
       withSQLConfPropagated(sparkSession) {
         var ex: Option[Throwable] = None
+        //todo startTime
         val startTime = System.nanoTime()
         try {
           sc.listenerBus.post(SparkListenerSQLExecutionStart(
@@ -112,6 +114,7 @@ object SQLExecution {
             ex = Some(e)
             throw e
         } finally {
+          //todo 加入监听器事件！！！！！！
           val endTime = System.nanoTime()
           val event = SparkListenerSQLExecutionEnd(executionId, System.currentTimeMillis())
           // Currently only `Dataset.withAction` and `DataFrameWriter.runCommand` specify the `name`

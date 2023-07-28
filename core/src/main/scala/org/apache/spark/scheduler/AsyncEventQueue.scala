@@ -93,6 +93,7 @@ private class AsyncEventQueue(
   private val dispatchThread = new Thread(s"spark-listener-group-$name") {
     setDaemon(true)
     override def run(): Unit = Utils.tryOrStopSparkContext(sc) {
+      //todo 启动调度线程
       dispatch()
     }
   }

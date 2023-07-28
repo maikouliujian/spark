@@ -89,7 +89,7 @@ case class ProjectExec(projectList: Seq[NamedExpression], child: SparkPlan)
        |${consume(ctx, resultVars)}
      """.stripMargin
   }
-
+  //todo doExecute
   protected override def doExecute(): RDD[InternalRow] = {
     child.execute().mapPartitionsWithIndexInternal { (index, iter) =>
       val project = UnsafeProjection.create(projectList, child.output)
@@ -266,7 +266,7 @@ case class FilterExec(condition: Expression, child: SparkPlan)
        |} while(false);
      """.stripMargin
   }
-
+  //todo doExecute
   protected override def doExecute(): RDD[InternalRow] = {
     val numOutputRows = longMetric("numOutputRows")
     child.execute().mapPartitionsWithIndexInternal { (index, iter) =>

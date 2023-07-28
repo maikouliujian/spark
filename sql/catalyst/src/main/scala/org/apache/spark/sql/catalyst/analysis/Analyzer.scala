@@ -201,7 +201,7 @@ class Analyzer(override val catalogManager: CatalogManager)
   def this(catalog: SessionCatalog) = {
     this(new CatalogManager(FakeV2SessionCatalog, catalog))
   }
-  //todo analysis阶段
+  //todo 2、analysis阶段
   def executeAndCheck(plan: LogicalPlan, tracker: QueryPlanningTracker): LogicalPlan = {
     if (plan.analyzed) return plan
     //todo  这里利用了一个 `ThreadLocal[Int]` 类型避免解析器递归调用自己
@@ -3830,11 +3830,14 @@ class Analyzer(override val catalogManager: CatalogManager)
  * Removes [[SubqueryAlias]] operators from the plan. Subqueries are only required to provide
  * scoping information for attributes and can be removed once analysis is complete.
  */
+//todo 用来消除子查询别名，对应逻辑算子树中的SubqueryAlias节点。一般来讲，Subqueries 仅用于提供查询的视角范围(Scope)信息，
+// 一旦 analysis 阶段结束， 该节点就可以被移除，该优化规则直接将SubqueryAlias替换为其子节点。
 object EliminateSubqueryAliases extends Rule[LogicalPlan] {
   // This is also called in the beginning of the optimization phase, and as a result
   // is using transformUp rather than resolveOperators.
   def apply(plan: LogicalPlan): LogicalPlan = AnalysisHelper.allowInvokingTransformsInAnalyzer {
     plan.transformUpWithPruning(AlwaysProcess.fn, ruleId) {
+          //todo 如果当前的节点是SubqueryAlias类型的，只保留它的子节点就行了。
       case SubqueryAlias(_, child) => child
     }
   }

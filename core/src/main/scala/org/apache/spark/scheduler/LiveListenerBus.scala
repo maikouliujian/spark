@@ -60,7 +60,7 @@ private[spark] class LiveListenerBus(conf: SparkConf) {
 
   /** When `droppedEventsCounter` was logged last time in milliseconds. */
   @volatile private var lastReportTimestamp = 0L
-
+  //todo 队列
   private val queues = new CopyOnWriteArrayList[AsyncEventQueue]()
 
   // Visible for testing.
@@ -128,6 +128,7 @@ private[spark] class LiveListenerBus(conf: SparkConf) {
   }
 
   /** Post an event to all queues. */
+    //todo 加入event
   def post(event: SparkListenerEvent): Unit = {
     if (stopped.get()) {
       return
@@ -180,7 +181,9 @@ private[spark] class LiveListenerBus(conf: SparkConf) {
 
     this.sparkContext = sc
     queues.asScala.foreach { q =>
+      //todo 启动每一个队列中的扫描线程
       q.start(sc)
+      //todo 入队列
       queuedEvents.foreach(q.post)
     }
     queuedEvents = null

@@ -187,6 +187,7 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
    *
    * Concrete implementations of SparkPlan should override `doExecute`.
    */
+    //todo execute
   final def execute(): RDD[InternalRow] = executeQuery {
     if (isCanonicalizedPlan) {
       throw new IllegalStateException("A canonicalized plan is not supposed to be executed.")
@@ -301,6 +302,7 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
    *
    * Overridden by concrete implementations of SparkPlan.
    */
+  //todo doExecute
   protected def doExecute(): RDD[InternalRow]
 
   /**
@@ -337,6 +339,7 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
    */
   private def getByteArrayRdd(
       n: Int = -1, takeFromEnd: Boolean = false): RDD[(Long, Array[Byte])] = {
+    //todo 执行入口
     execute().mapPartitionsInternal { iter =>
       var count = 0
       val buffer = new Array[Byte](4 << 10)  // 4K
@@ -386,11 +389,15 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
     val ins = new DataInputStream(codec.compressedInputStream(bis))
 
     new NextIterator[InternalRow] {
+      //todo 数据大小
       private var sizeOfNextRow = ins.readInt()
       private def _next(): InternalRow = {
+        //todo 根据数据大小申请内存
         val bs = new Array[Byte](sizeOfNextRow)
+        //todo 将数据读到bs中
         ins.readFully(bs)
         val row = new UnsafeRow(nFields)
+        //todo
         row.pointTo(bs, sizeOfNextRow)
         sizeOfNextRow = ins.readInt()
         row
@@ -417,10 +424,13 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
   /**
    * Runs this query returning the result as an array.
    */
+    //todo 故，所谓的立即执行其实就是根据物理计划生成 RDD[InternalRow]，然后调用 “RDD.collect()” 而已，底层还是 collect 只不过不需要我们手动在代码中写明。
   def executeCollect(): Array[InternalRow] = {
+    // todo 将 unsaferow 打包到字节数组中，以实现更快的序列化。
     val byteArrayRdd = getByteArrayRdd()
 
     val results = ArrayBuffer[InternalRow]()
+    //todo // 底层还是 RDD.collect()
     byteArrayRdd.collect().foreach { countAndBytes =>
       decodeUnsafeRows(countAndBytes._2).foreach(results.+=)
     }
@@ -587,7 +597,7 @@ trait UnaryExecNode extends SparkPlan with UnaryLike[SparkPlan] {
       s"""
          |$formattedNodeName
          |$inputStr
-         |Arguments: $argumentString
+         |Arguments: $argumentStringLeafExecNode
          |""".stripMargin
     } else {
       s"""

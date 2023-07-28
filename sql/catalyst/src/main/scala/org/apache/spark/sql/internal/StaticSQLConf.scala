@@ -136,7 +136,7 @@ object StaticSQLConf {
     .version("3.1.0")
     .stringConf
     .createWithDefault("org.apache.spark.sql.execution.columnar.DefaultCachedBatchSerializer")
-
+   //todo spark.sql.queryExecutionListeners"
   val QUERY_EXECUTION_LISTENERS = buildStaticConf("spark.sql.queryExecutionListeners")
     .doc("List of class names implementing QueryExecutionListener that will be automatically " +
       "added to newly created sessions. The classes should have either a no-arg constructor, " +

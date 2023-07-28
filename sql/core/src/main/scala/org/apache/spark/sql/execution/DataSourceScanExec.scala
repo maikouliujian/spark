@@ -519,7 +519,7 @@ case class FileSourceScanExec(
       Map.empty[String, SQLMetric]
     }
   } ++ staticMetrics
-
+  //todo 获取数据的入口
   protected override def doExecute(): RDD[InternalRow] = {
     val numOutputRows = longMetric("numOutputRows")
     if (needsUnsafeRowConversion) {

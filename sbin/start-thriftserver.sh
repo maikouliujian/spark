@@ -27,6 +27,7 @@ if [ -z "${SPARK_HOME}" ]; then
   export SPARK_HOME="$(cd "`dirname "$0"`"/..; pwd)"
 fi
 
+
 # NOTE: This exact class name is matched downstream by SparkSubmit.
 # Any changes need to be reflected there.
 CLASS="org.apache.spark.sql.hive.thriftserver.HiveThriftServer2"

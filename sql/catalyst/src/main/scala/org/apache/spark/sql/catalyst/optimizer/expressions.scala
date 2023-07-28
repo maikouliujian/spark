@@ -1011,15 +1011,20 @@ object FoldablePropagation extends Rule[LogicalPlan] {
 /**
  * Removes [[Cast Casts]] that are unnecessary because the input is already the correct type.
  */
+//todo【用来删除不必要的强制转换，因为输入已经是正确的类型。】
 object SimplifyCasts extends Rule[LogicalPlan] {
   def apply(plan: LogicalPlan): LogicalPlan = plan.transformAllExpressionsWithPruning(
     _.containsPattern(CAST), ruleId) {
+        //todo // 当前节点和子节点的数据类型相同，只保留子节点
     case Cast(e, dataType, _, _) if e.dataType == dataType => e
+    //todo // 存在 cast 嵌套的情况，判断 2 种数值类型是否兼容，即能不能强转过去
     case c @ Cast(Cast(e, dt1: NumericType, _, _), dt2: NumericType, _, _)
         if isWiderCast(e.dataType, dt1) && isWiderCast(dt1, dt2) =>
       c.copy(child = e)
     case c @ Cast(e, dataType, _, _) => (e.dataType, dataType) match {
+      //todo // 如果是数组类型，第二个参数表示是否可以包含空值
       case (ArrayType(from, false), ArrayType(to, true)) if from == to => e
+      //todo // 如果是 Map 类型，并且键值的类型都是一致的
       case (MapType(fromKey, fromValue, false), MapType(toKey, toValue, true))
         if fromKey == toKey && fromValue == toValue => e
       case _ => c

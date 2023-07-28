@@ -1249,6 +1249,10 @@ object Limit {
  *
  * See [[Limit]] for more information.
  */
+/**
+ * todo 一个全局的 (协同) limit.
+ * todo 此运算符总共最多可以发出`limitExpr`个。
+ */
 case class GlobalLimit(limitExpr: Expression, child: LogicalPlan) extends OrderPreservingUnaryNode {
   override def output: Seq[Attribute] = child.output
   override def maxRows: Option[Long] = {
@@ -1269,6 +1273,10 @@ case class GlobalLimit(limitExpr: Expression, child: LogicalPlan) extends OrderP
  * of tuples on each physical partition.
  *
  * See [[Limit]] for more information.
+ */
+/**
+ * todo 一个分区局部的 (非协同) limit.
+ * todo 每个物理分区上这个运算符最多可以发出`limitExpr`个。
  */
 case class LocalLimit(limitExpr: Expression, child: LogicalPlan) extends OrderPreservingUnaryNode {
   override def output: Seq[Attribute] = child.output

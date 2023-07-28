@@ -97,6 +97,7 @@ class ExecutionListenerManager private[sql](
    */
   @DeveloperApi
   def register(listener: QueryExecutionListener): Unit = {
+    //todo 添加listener
     listenerBus.addListener(listener)
   }
 
@@ -148,6 +149,7 @@ private[sql] class ExecutionListenerBus private(sessionUUID: String)
     case _ =>
   }
 
+
   override protected def doPostEvent(
       listener: QueryExecutionListener,
       event: SparkListenerSQLExecutionEnd): Unit = {
@@ -160,8 +162,10 @@ private[sql] class ExecutionListenerBus private(sessionUUID: String)
             case other: Throwable =>
               QueryExecutionErrors.failedToExecuteQueryError(other)
           }
+          //todo 失败
           listener.onFailure(funcName, event.qe, exception)
         case _ =>
+          //todo 成功
           listener.onSuccess(funcName, event.qe, event.duration)
       }
     }

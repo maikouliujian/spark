@@ -1714,7 +1714,7 @@ private[sql] object QueryCompilationErrors extends QueryErrorsBase {
         |the partition spec (${partitionColumnNames.mkString(", ")}) defined in
         |table '$tableName'""".stripMargin.replaceAll("\n", " "))
   }
-
+  //todo
   def foundDuplicateColumnError(colType: String, duplicateCol: Seq[String]): Throwable = {
     new AnalysisException(
       s"Found duplicate column(s) $colType: ${duplicateCol.sorted.mkString(", ")}")

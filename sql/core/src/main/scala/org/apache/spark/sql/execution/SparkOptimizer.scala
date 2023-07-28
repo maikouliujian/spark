@@ -28,7 +28,7 @@ import org.apache.spark.sql.execution.datasources.SchemaPruning
 import org.apache.spark.sql.execution.datasources.v2.{GroupBasedRowLevelOperationScanPlanning, OptimizeMetadataOnlyDeleteFromTable, V2ScanPartitioning, V2ScanRelationPushDown, V2Writes}
 import org.apache.spark.sql.execution.dynamicpruning.{CleanupDynamicPruningFilters, PartitionPruning}
 import org.apache.spark.sql.execution.python.{ExtractGroupingPythonUDFFromAggregate, ExtractPythonUDFFromAggregate, ExtractPythonUDFs}
-
+//todo [SparkOptimizer]
 class SparkOptimizer(
     catalogManager: CatalogManager,
     catalog: SessionCatalog,
@@ -46,7 +46,7 @@ class SparkOptimizer(
 
   override def preCBORules: Seq[Rule[LogicalPlan]] =
     OptimizeMetadataOnlyDeleteFromTable :: Nil
-
+  //todo  所有优化器规则
   override def defaultBatches: Seq[Batch] = (preOptimizationBatches ++ super.defaultBatches :+
     Batch("Optimize Metadata Only Query", Once, OptimizeMetadataOnlyQuery(catalog)) :+
     Batch("PartitionPruning", Once,

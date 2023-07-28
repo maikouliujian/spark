@@ -54,6 +54,7 @@ private[spark] object SchemaUtils {
         checkSchemaColumnNameDuplication(valueType, colType, caseSensitiveAnalysis)
       case structType: StructType =>
         val fields = structType.fields
+        //todo
         checkColumnNameDuplication(fields.map(_.name), colType, caseSensitiveAnalysis)
         fields.foreach { field =>
           checkSchemaColumnNameDuplication(field.dataType, colType, caseSensitiveAnalysis)
@@ -74,6 +75,7 @@ private[spark] object SchemaUtils {
       schema: StructType,
       colType: String,
       resolver: Resolver): Unit = {
+    //todo
     checkSchemaColumnNameDuplication(schema, colType, isCaseSensitiveAnalysis(resolver))
   }
 
@@ -116,6 +118,7 @@ private[spark] object SchemaUtils {
     // scalastyle:off caselocale
     val names = if (caseSensitiveAnalysis) columnNames else columnNames.map(_.toLowerCase)
     // scalastyle:on caselocale
+    //todo 寻找重复的列
     if (names.distinct.length != names.length) {
       val duplicateColumns = names.groupBy(identity).collect {
         case (x, ys) if ys.length > 1 => s"`$x`"

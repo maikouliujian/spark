@@ -135,6 +135,7 @@ private[hive] class HiveMetastoreCatalog(sparkSession: SparkSession) extends Log
       val options = relation.tableMeta.properties.filterKeys(isParquetProperty).toMap ++
         relation.tableMeta.storage.properties + (ParquetOptions.MERGE_SCHEMA ->
         SQLConf.get.getConf(HiveUtils.CONVERT_METASTORE_PARQUET_WITH_SCHEMA_MERGING).toString)
+      //todo hiverelation--->sparkrelation
         convertToLogicalRelation(relation, options, classOf[ParquetFileFormat], "parquet", isWrite)
     } else {
       val options = relation.tableMeta.properties.filterKeys(isOrcProperty).toMap ++
@@ -206,6 +207,7 @@ private[hive] class HiveMetastoreCatalog(sparkSession: SparkSession) extends Log
       }
 
     val result = if (relation.isPartitioned) {
+      //todo
       val partitionSchema = relation.tableMeta.partitionSchema
       val rootPaths: Seq[Path] = if (lazyPruningEnabled) {
         Seq(tablePath)
@@ -233,7 +235,7 @@ private[hive] class HiveMetastoreCatalog(sparkSession: SparkSession) extends Log
           metastoreSchema,
           fileFormatClass,
           Some(partitionSchema))
-
+        //todo
         val logicalRelation = cached.getOrElse {
           val sizeInBytes = relation.stats.sizeInBytes.toLong
           val fileIndex = {

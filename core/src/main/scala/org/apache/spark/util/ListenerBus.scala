@@ -34,7 +34,7 @@ import org.apache.spark.scheduler.SparkListenerEnvironmentUpdate
  * An event bus which posts events to its listeners.
  */
 private[spark] trait ListenerBus[L <: AnyRef, E] extends Logging {
-
+  //todo (listener,timer)
   private[this] val listenersPlusTimers = new CopyOnWriteArrayList[(L, Option[Timer])]
 
   // Marked `private[spark]` for access in tests.
@@ -63,6 +63,7 @@ private[spark] trait ListenerBus[L <: AnyRef, E] extends Logging {
   /**
    * Add a listener to listen events. This method is thread-safe and can be called in any thread.
    */
+    //todo 添加监听器
   final def addListener(listener: L): Unit = {
     listenersPlusTimers.add((listener, getTimer(listener)))
   }
@@ -73,6 +74,7 @@ private[spark] trait ListenerBus[L <: AnyRef, E] extends Logging {
    */
   final def removeListener(listener: L): Unit = {
     listenersPlusTimers.asScala.find(_._1 eq listener).foreach { listenerAndTimer =>
+      //todo 移除监听器
       listenersPlusTimers.remove(listenerAndTimer)
     }
   }
@@ -105,6 +107,7 @@ private[spark] trait ListenerBus[L <: AnyRef, E] extends Logging {
     val iter = listenersPlusTimers.iterator
     while (iter.hasNext) {
       val listenerAndMaybeTimer = iter.next()
+      //todo 监听器
       val listener = listenerAndMaybeTimer._1
       val maybeTimer = listenerAndMaybeTimer._2
       val maybeTimerContext = if (maybeTimer.isDefined) {
@@ -114,6 +117,7 @@ private[spark] trait ListenerBus[L <: AnyRef, E] extends Logging {
       }
       lazy val listenerName = Utils.getFormattedClassName(listener)
       try {
+        //todo
         doPostEvent(listener, event)
         if (Thread.interrupted()) {
           // We want to throw the InterruptedException right away so we can associate the interrupt

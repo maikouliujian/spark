@@ -122,7 +122,7 @@ case class SortMergeJoinExec(
       conf.sortMergeJoinExecBufferInMemoryThreshold
     }
   }
-
+  //todo smj join逻辑
   protected override def doExecute(): RDD[InternalRow] = {
     val numOutputRows = longMetric("numOutputRows")
     val spillSize = longMetric("spillSize")
@@ -140,7 +140,7 @@ case class SortMergeJoinExec(
       // An ordering that can be used to compare keys from both sides.
       val keyOrdering = RowOrdering.createNaturalAscendingOrdering(leftKeys.map(_.dataType))
       val resultProj: InternalRow => InternalRow = UnsafeProjection.create(output, output)
-
+      //todo joinType join类型
       joinType match {
         case _: InnerLike =>
           new RowIterator {
@@ -266,6 +266,7 @@ case class SortMergeJoinExec(
                 if (currentRightMatches != null && currentRightMatches.length > 0) {
                   val rightMatchesIterator = currentRightMatches.generateIterator()
                   while (rightMatchesIterator.hasNext) {
+                    //todo 进行join
                     joinRow(currentLeftRow, rightMatchesIterator.next())
                     if (boundCondition(joinRow)) {
                       numOutputRows += 1
@@ -345,6 +346,7 @@ case class SortMergeJoinExec(
             override def advanceNext(): Boolean = {
               while (smjScanner.findNextOuterJoinRows()) {
                 currentLeftRow = smjScanner.getStreamedRow
+                //todo smj
                 val currentRightMatches = smjScanner.getBufferedMatches
                 var found = false
                 if (currentRightMatches != null && currentRightMatches.length > 0) {
@@ -1294,7 +1296,7 @@ private[joins] class SortMergeJoinScanner(
   // --- Public methods ---------------------------------------------------------------------------
 
   def getStreamedRow: InternalRow = streamedRow
-
+  //todo 可以溢写的array
   def getBufferedMatches: ExternalAppendOnlyUnsafeRowArray = bufferedMatches
 
   /**
