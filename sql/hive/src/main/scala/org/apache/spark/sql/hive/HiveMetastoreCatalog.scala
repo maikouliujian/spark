@@ -136,6 +136,7 @@ private[hive] class HiveMetastoreCatalog(sparkSession: SparkSession) extends Log
         relation.tableMeta.storage.properties + (ParquetOptions.MERGE_SCHEMA ->
         SQLConf.get.getConf(HiveUtils.CONVERT_METASTORE_PARQUET_WITH_SCHEMA_MERGING).toString)
       //todo hiverelation--->sparkrelation
+      //todo
         convertToLogicalRelation(relation, options, classOf[ParquetFileFormat], "parquet", isWrite)
     } else {
       val options = relation.tableMeta.properties.filterKeys(isOrcProperty).toMap ++

@@ -57,6 +57,7 @@ object SparkPlan {
  *
  * The naming convention is that physical operators end with "Exec" suffix, e.g. [[ProjectExec]].
  */
+//todo SparkPlan是物理计划的顶级父类，要找真正的物理执行算子，找SparkPlan的子类！！！！！！
 abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializable {
   @transient final val session = SparkSession.getActiveSession.orNull
 
@@ -187,7 +188,7 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
    *
    * Concrete implementations of SparkPlan should override `doExecute`.
    */
-    //todo execute
+    //todo execute逻辑
   final def execute(): RDD[InternalRow] = executeQuery {
     if (isCanonicalizedPlan) {
       throw new IllegalStateException("A canonicalized plan is not supposed to be executed.")
@@ -302,7 +303,7 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
    *
    * Overridden by concrete implementations of SparkPlan.
    */
-  //todo doExecute
+  //todo doExecute【各个物理节点算子执行】
   protected def doExecute(): RDD[InternalRow]
 
   /**
@@ -339,10 +340,11 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
    */
   private def getByteArrayRdd(
       n: Int = -1, takeFromEnd: Boolean = false): RDD[(Long, Array[Byte])] = {
-    //todo 执行入口
+    //todo 执行数据转化入口！！！！！！
     execute().mapPartitionsInternal { iter =>
       var count = 0
       val buffer = new Array[Byte](4 << 10)  // 4K
+      //todo 压缩格式
       val codec = CompressionCodec.createCodec(SparkEnv.get.conf)
       val bos = new ByteArrayOutputStream()
       val out = new DataOutputStream(codec.compressedOutputStream(bos))

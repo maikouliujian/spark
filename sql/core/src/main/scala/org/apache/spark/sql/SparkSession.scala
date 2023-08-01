@@ -615,14 +615,14 @@ class SparkSession private(
    *
    * @since 2.0.0
    */
-    //todo
+    //todo sql执行
   def sql(sqlText: String): DataFrame = withActive {
     val tracker = new QueryPlanningTracker
     val plan = tracker.measurePhase(QueryPlanningTracker.PARSING) {
       //todo 1）parsing 阶段
       sessionState.sqlParser.parsePlan(sqlText)
     }
-      //todo 1）analysis 阶段
+      //todo 2）analysis 阶段
     Dataset.ofRows(self, plan, tracker)
   }
 

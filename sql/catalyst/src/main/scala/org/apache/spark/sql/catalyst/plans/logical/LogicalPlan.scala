@@ -26,7 +26,7 @@ import org.apache.spark.sql.catalyst.trees.{BinaryLike, LeafLike, UnaryLike}
 import org.apache.spark.sql.errors.{QueryCompilationErrors, QueryExecutionErrors}
 import org.apache.spark.sql.types.StructType
 
-
+//todo spark逻辑计划的顶级父类！！！！！！
 abstract class LogicalPlan
   extends QueryPlan[LogicalPlan]
   with AnalysisHelper

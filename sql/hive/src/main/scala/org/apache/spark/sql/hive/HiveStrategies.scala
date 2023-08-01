@@ -193,6 +193,7 @@ object HiveAnalysis extends Rule[LogicalPlan] {
  * This rule must be run before all other DDL post-hoc resolution rules, i.e.
  * `PreprocessTableCreation`, `PreprocessTableInsertion`, `DataSourceAnalysis` and `HiveAnalysis`.
  */
+//todo hiveRelation 转化为 spark relation
 case class RelationConversions(
     sessionCatalog: HiveSessionCatalog) extends Rule[LogicalPlan] {
   private def isConvertible(relation: HiveTableRelation): Boolean = {
@@ -228,6 +229,7 @@ case class RelationConversions(
           query, overwrite, ifPartitionNotExists)
 
       // Read path
+      //todo HiveTableRelation 转化为 LogicalRelation
       case relation: HiveTableRelation
           if DDLUtils.isHiveTable(relation.tableMeta) && isConvertible(relation) =>
         metastoreCatalog.convert(relation, isWrite = false)
@@ -275,6 +277,7 @@ private[hive] trait HiveStrategies {
    * Retrieves data using a HiveTableScan.  Partition pruning predicates are also detected and
    * applied.
    */
+  //todo hive表执行算子
   object HiveTableScans extends Strategy {
     def apply(plan: LogicalPlan): Seq[SparkPlan] = plan match {
       case ScanOperation(projectList, filters, relation: HiveTableRelation) =>
@@ -291,6 +294,7 @@ private[hive] trait HiveStrategies {
           projectList,
           filters.filter(f => f.references.isEmpty || !f.references.subsetOf(partitionKeyIds)),
           identity[Seq[Expression]],
+          //todo hive读取数据的表
           HiveTableScanExec(_, relation, partitionKeyFilters.toSeq)(sparkSession)) :: Nil
       case _ =>
         Nil

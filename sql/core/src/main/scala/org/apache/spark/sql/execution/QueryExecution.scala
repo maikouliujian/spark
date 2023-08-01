@@ -71,7 +71,7 @@ class QueryExecution(
       UnsupportedOperationChecker.checkForBatch(analyzed)
     }
   }
-
+  //todo 2）analysis阶段入口！！！！！！
   lazy val analyzed: LogicalPlan = executePhase(QueryPlanningTracker.ANALYSIS) {
     // We can't clone `logical` here, which will reset the `_analyzed` flag.\
     //todo 这里就是`analysis`阶段的入口啦
@@ -124,7 +124,7 @@ class QueryExecution(
 
   def assertCommandExecuted(): Unit = commandExecuted
 
-  //todo 3、【optimizing入口】
+  //todo 3、【optimizing入口！！！！！！】
   lazy val optimizedPlan: LogicalPlan = {
     // We need to materialize the commandExecuted here because optimizedPlan is also tracked under
     // the optimizing phase
@@ -150,13 +150,16 @@ class QueryExecution(
 
   private def assertOptimized(): Unit = optimizedPlan
 
+  //todo 4）planning阶段的入口！！！！！！
   lazy val sparkPlan: SparkPlan = {
     // We need to materialize the optimizedPlan here because sparkPlan is also tracked under
     // the planning phase
+    //todo optimized触发逻辑
     assertOptimized()
     executePhase(QueryPlanningTracker.PLANNING) {
       // Clone the logical plan here, in case the planner rules change the states of the logical
       // plan.
+      //todo 这里会通过createSparkPlan来将逻辑计划转换成物理计划。
       QueryExecution.createSparkPlan(sparkSession, planner, optimizedPlan.clone())
     }
   }
@@ -166,6 +169,7 @@ class QueryExecution(
   /**
    * todo executedPlan 不应该用于初始化一切 SparkPlan，它应该只能用来执行
    */
+    //todo 3) optimized阶段的入口！！！！！！
   lazy val executedPlan: SparkPlan = {
     // We need to materialize the optimizedPlan here, before tracking the planning phase, to ensure
     // that the optimization time is not counted as part of the planning phase.
@@ -478,6 +482,7 @@ object QueryExecution {
       plan: LogicalPlan): SparkPlan = {
     // TODO: We use next(), i.e. take the first plan returned by the planner, here for now,
     //       but we will implement to choose the best plan.
+    //todo 通过 planner 进行转化，返回物理计划的第一个！！！！！！
     planner.plan(ReturnAnswer(plan)).next()
   }
 

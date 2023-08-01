@@ -225,7 +225,7 @@ object FileSourceStrategy extends Strategy with PredicateHelper with Logging {
 
       // outputAttributes should also include the metadata columns at the very end
       val outputAttributes = readDataColumns ++ partitionColumns ++ metadataColumns
-
+      //todo 读取数据入口算子
       val scan =
         FileSourceScanExec(
           fsRelation,

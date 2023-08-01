@@ -118,7 +118,7 @@ private[spark] object HiveUtils extends Logging {
     .toSequence
     .createWithDefault(Nil)
 
-  //todo
+  //todo 是否hive转化为spark
   val CONVERT_METASTORE_PARQUET = buildConf("spark.sql.hive.convertMetastoreParquet")
     .doc("When set to true, the built-in Parquet reader and writer are used to process " +
       "parquet tables created by using the HiveQL syntax, instead of Hive serde.")

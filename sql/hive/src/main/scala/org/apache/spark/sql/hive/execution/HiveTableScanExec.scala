@@ -50,6 +50,7 @@ import org.apache.spark.util.Utils
  * @param partitionPruningPred An optional partition pruning predicate for partitioned table.
  */
 private[hive]
+//todo hive表读取数据的类
 case class HiveTableScanExec(
     requestedAttributes: Seq[Attribute],
     relation: HiveTableRelation,
@@ -208,6 +209,7 @@ case class HiveTableScanExec(
       }
     } else {
       Utils.withDummyCallSite(sparkContext) {
+        //todo 读取数据！！！！！！
         hadoopReader.makeRDDForPartitionedTable(prunedPartitions)
       }
     }
@@ -233,6 +235,7 @@ case class HiveTableScanExec(
 
   override def doCanonicalize(): HiveTableScanExec = {
     val input: AttributeSeq = relation.output
+    //todo hive读取数据的算子
     HiveTableScanExec(
       requestedAttributes.map(QueryPlan.normalizeExpressions(_, input)),
       relation.canonicalized.asInstanceOf[HiveTableRelation],
