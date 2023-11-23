@@ -287,6 +287,7 @@ class HistoryServer(
  *
  * This launches the HistoryServer as a Spark daemon.
  */
+//todo HistoryServer
 object HistoryServer extends Logging {
   private val conf = new SparkConf
 

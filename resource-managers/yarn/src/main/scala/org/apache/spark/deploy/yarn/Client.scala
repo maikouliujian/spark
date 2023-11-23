@@ -204,6 +204,7 @@ private[spark] class Client(
       // The app staging dir based on the STAGING_DIR configuration if configured
       // otherwise based on the users home directory.
       // scalastyle:off FileSystemGet
+      //TODO base dir
       val appStagingBaseDir = sparkConf.get(STAGING_DIR)
         .map { new Path(_, UserGroupInformation.getCurrentUser.getShortUserName) }
         .getOrElse(FileSystem.get(hadoopConf).getHomeDirectory())
@@ -253,7 +254,7 @@ private[spark] class Client(
           logWarning("Failed to cleanup staging dir " + stagingDirPath, ioe)
       }
     }
-
+    //todo 清空临时目录(HDFS/S3)
     cleanupStagingDirInternal()
   }
 
@@ -1214,6 +1215,7 @@ private[spark] class Client(
       if (state == YarnApplicationState.FINISHED ||
           state == YarnApplicationState.FAILED ||
           state == YarnApplicationState.KILLED) {
+        //TODO
         cleanupStagingDir()
         return createAppReport(report)
       }

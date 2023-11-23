@@ -33,7 +33,7 @@ import org.apache.spark.util.kvstore.{InMemoryStore, KVStore}
  * A wrapper around a KVStore that provides methods for accessing the API data stored within.
  */
 private[spark] class AppStatusStore(
-    val store: KVStore,
+    val store: KVStore,//todo 存储spark metrics的地方！！！！！！
     val listener: Option[AppStatusListener] = None) {
 
   def applicationInfo(): v1.ApplicationInfo = {

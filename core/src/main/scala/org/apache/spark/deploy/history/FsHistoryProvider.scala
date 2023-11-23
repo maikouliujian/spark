@@ -333,6 +333,7 @@ private[history] class FsHistoryProvider(conf: SparkConf, clock: Clock)
       .map(_.toApplicationInfo())
   }
 
+  //todo
   override def getApplicationInfo(appId: String): Option[ApplicationInfo] = {
     try {
       Some(load(appId).toApplicationInfo())

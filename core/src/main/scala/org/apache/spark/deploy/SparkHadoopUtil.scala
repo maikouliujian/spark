@@ -427,6 +427,7 @@ private[spark] object SparkHadoopUtil extends Logging {
    */
   private[spark] def newConfiguration(conf: SparkConf): Configuration = {
     val hadoopConf = new Configuration()
+    //todo 启动配置
     appendS3AndSparkHadoopHiveConfigurations(conf, hadoopConf)
     hadoopConf
   }

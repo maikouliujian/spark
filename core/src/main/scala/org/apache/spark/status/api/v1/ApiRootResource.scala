@@ -127,6 +127,7 @@ private[v1] trait ApiRequestContext {
  * Base class for resource handlers that use app-specific data. Abstracts away dealing with
  * application and attempt IDs, and finding the app's UI.
  */
+
 private[v1] trait BaseAppResource extends ApiRequestContext {
 
   @PathParam("appId") protected[this] var appId: String = _

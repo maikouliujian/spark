@@ -32,6 +32,7 @@ import org.apache.spark.executor.ExecutorMetrics
 import org.apache.spark.metrics.ExecutorMetricType
 import org.apache.spark.resource.{ExecutorResourceRequest, ResourceInformation, TaskResourceRequest}
 
+
 case class ApplicationInfo private[spark](
     id: String,
     name: String,
