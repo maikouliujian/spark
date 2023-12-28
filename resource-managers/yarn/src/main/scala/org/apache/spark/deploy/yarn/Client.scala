@@ -218,11 +218,13 @@ private[spark] class Client(
       verifyClusterResources(newAppResponse)
 
       // Set up the appropriate contexts to launch our AM
+      //todo am的containerContext
       val containerContext = createContainerLaunchContext()
       val appContext = createApplicationSubmissionContext(newApp, containerContext)
 
       // Finally, submit and monitor the application
       logInfo(s"Submitting application $appId to ResourceManager")
+      //todo 向yarn提交任务！！！！！！
       yarnClient.submitApplication(appContext)
       launcherBackend.setAppId(appId.toString)
       reportLauncherState(SparkAppHandle.State.SUBMITTED)
@@ -911,6 +913,7 @@ private[spark] class Client(
     logInfo("Setting up the launch environment for our AM container")
     val env = new HashMap[String, String]()
     populateClasspath(args, hadoopConf, sparkConf, env, sparkConf.get(DRIVER_CLASS_PATH))
+    //todo 设置 stagingDirPath
     env("SPARK_YARN_STAGING_DIR") = stagingDirPath.toString
     env("SPARK_USER") = UserGroupInformation.getCurrentUser().getShortUserName()
 
@@ -980,6 +983,13 @@ private[spark] class Client(
       }
 
     val launchEnv = setupLaunchEnv(stagingDirPath, pySparkArchives)
+    //todo 向stagingDirPath提交资源文件
+    /***
+     * Uploading resource file:/mnt/tmp/spark-31e5df09-b27c-4cfe-8267-1b92b94cd43f/__spark_libs__2592149478607886232.zip -> hdfs://ha-nn-uri/user/data/.sparkStaging/application_1700728090340_0721/__spark_libs__2592149478607886232.zip
+     * Uploading resource file:/etc/spark/conf.dist/hive-site.xml -> hdfs://ha-nn-uri/user/data/.sparkStaging/application_1700728090340_0721/hive-site.xml
+     * Uploading resource file:/etc/hudi/conf.dist/hudi-defaults.conf -> hdfs://ha-nn-uri/user/data/.sparkStaging/application_1700728090340_0721/hudi-defaults.conf
+     * Uploading resource file:/mnt/tmp/spark-31e5df09-b27c-4cfe-8267-1b92b94cd43f/__spark_conf__618098522271922127.zip -> hdfs://ha-nn-uri/user/data/.sparkStaging/application_1700728090340_0721/__spark_conf__.zip
+     */
     val localResources = prepareLocalResources(stagingDirPath, pySparkArchives)
 
     val amContainer = Records.newRecord(classOf[ContainerLaunchContext])
@@ -1326,6 +1336,7 @@ private[spark] class Client(
    * throw an appropriate SparkException.
    */
   def run(): Unit = {
+    //todo 提交Application
     submitApplication()
     if (!launcherBackend.isConnected() && fireAndForget) {
       val report = getApplicationReport
@@ -1336,6 +1347,7 @@ private[spark] class Client(
         throw new SparkException(s"Application $appId finished with status: $state")
       }
     } else {
+      //todo
       val YarnAppReport(appState, finalState, diags) = monitorApplication()
       if (appState == YarnApplicationState.FAILED || finalState == FinalApplicationStatus.FAILED) {
         diags.foreach { err =>
