@@ -34,6 +34,7 @@ import org.apache.spark.sql.internal.SQLConf
  *                              /                                     \
  *   r0:[m0-b0, m1-b0, m2-b0], r1-0:[m0-b1], r1-1:[m1-b1], r1-2:[m2-b1], r2[m0-b2, m1-b2, m2-b2]
  */
+//todo 优化数据倾斜的规则
 object OptimizeSkewInRebalancePartitions extends AQEShuffleReadRule {
 
   override val supportedShuffleOrigins: Seq[ShuffleOrigin] =
@@ -52,6 +53,7 @@ object OptimizeSkewInRebalancePartitions extends AQEShuffleReadRule {
       conf.getConf(SQLConf.ADAPTIVE_REBALANCE_PARTITIONS_SMALL_PARTITION_FACTOR)
     bytesByPartitionId.indices.flatMap { reduceIndex =>
       val bytes = bytesByPartitionId(reduceIndex)
+      //todo 如果比目标size大，则切分分区
       if (bytes > targetSize) {
         val newPartitionSpec = ShufflePartitionsUtil.createSkewPartitionSpecs(
           shuffleId, reduceIndex, targetSize, smallPartitionFactor)
@@ -69,9 +71,11 @@ object OptimizeSkewInRebalancePartitions extends AQEShuffleReadRule {
   }
 
   private def tryOptimizeSkewedPartitions(shuffle: ShuffleQueryStageExec): SparkPlan = {
+    //todo 默认64MB
     val advisorySize = conf.getConf(SQLConf.ADVISORY_PARTITION_SIZE_IN_BYTES)
     val mapStats = shuffle.mapStats
     if (mapStats.isEmpty ||
+      //todo 如果shufflemap产出的每一个分区数据都小于建议值，直接返回
       mapStats.get.bytesByPartitionId.forall(_ <= advisorySize)) {
       return shuffle
     }

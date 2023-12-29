@@ -107,6 +107,7 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
    */
   def logicalLink: Option[LogicalPlan] =
     getTagValue(SparkPlan.LOGICAL_PLAN_TAG)
+      //todo 继承自祖先的逻辑计划
       .orElse(getTagValue(SparkPlan.LOGICAL_PLAN_INHERITED_TAG))
 
   /**

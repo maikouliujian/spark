@@ -39,7 +39,9 @@ case class SimpleCost(value: Long) extends Cost {
  * A skew join aware implementation of [[CostEvaluator]], which counts the number of
  * [[ShuffleExchangeLike]] nodes and skew join nodes in the plan.
  */
+//todo cbo优化器
 case class SimpleCostEvaluator(forceOptimizeSkewedJoin: Boolean) extends CostEvaluator {
+  //todo 计算shuffle和倾斜join的数量
   override def evaluateCost(plan: SparkPlan): Cost = {
     val numShuffles = plan.collect {
       case s: ShuffleExchangeLike => s

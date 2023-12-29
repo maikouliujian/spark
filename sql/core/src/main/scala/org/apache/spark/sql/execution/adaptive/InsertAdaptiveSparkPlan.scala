@@ -37,29 +37,39 @@ import org.apache.spark.sql.internal.SQLConf
  *
  * Note that this rule is stateful and thus should not be reused across query executions.
  */
+//todo AQE开启的入口
 case class InsertAdaptiveSparkPlan(
     adaptiveExecutionContext: AdaptiveExecutionContext) extends Rule[SparkPlan] {
 
   override def apply(plan: SparkPlan): SparkPlan = applyInternal(plan, false)
 
   private def applyInternal(plan: SparkPlan, isSubquery: Boolean): SparkPlan = plan match {
+    //todo [1] 判断是否开启AQE
     case _ if !conf.adaptiveExecutionEnabled => plan
+    //todo [2] 和数据写入相关的命令算子不会应用AQE
     case _: ExecutedCommandExec => plan
     case _: CommandResultExec => plan
     case c: DataWritingCommandExec => c.copy(child = apply(c.child))
     case c: V2CommandExec => c.withNewChildren(c.children.map(apply))
+    //todo [3] 判断是否满足以下条件之一可以应用AQE
     case _ if shouldApplyAQE(plan, isSubquery) =>
+      //todo [4] 验证是否支持AQE
       if (supportAdaptive(plan)) {
         try {
           // Plan sub-queries recursively and pass in the shared stage cache for exchange reuse.
           // Fall back to non-AQE mode if AQE is not supported in any of the sub-queries.
+          //todo [1] 预处理子查询，先要构建一个子查询 Map！！！！！！
+          //todo 在buildSubqueryMap(plan)执行后会为所有子查询返回 表达式 ID 到 执行计划的映射。
           val subqueryMap = buildSubqueryMap(plan)
+          //todo [2] 应用自适应的子查询Rule
           val planSubqueriesRule = PlanAdaptiveSubqueries(subqueryMap)
           val preprocessingRules = Seq(
             planSubqueriesRule)
           // Run pre-processing rules.
+          //todo [3] 运行预处理规则
           val newPlan = AdaptiveSparkPlanExec.applyPhysicalRules(plan, preprocessingRules)
           logDebug(s"Adaptive execution enabled for plan: $plan")
+          //todo [4] 调用AdaptiveSparkPlanExec算子
           AdaptiveSparkPlanExec(newPlan, adaptiveExecutionContext, preprocessingRules, isSubquery)
         } catch {
           case SubqueryAdaptiveNotSupportedException(subquery) =>
@@ -87,8 +97,11 @@ case class InsertAdaptiveSparkPlan(
   //     the query needs to add exchanges later.
   //   - The query contains sub-query.
   private def shouldApplyAQE(plan: SparkPlan, isSubquery: Boolean): Boolean = {
+    //todo  1. 开启AQE强制应用
+    //todo  2. query中包含子查询
     conf.getConf(SQLConf.ADAPTIVE_EXECUTION_FORCE_APPLY) || isSubquery || {
       plan.exists {
+            //todo 3. query 包含Exchange算子或者是否需要添加Exchange算子，即存在shuffle or broadcast事件
         case _: Exchange => true
         case p if !p.requiredChildDistribution.forall(_ == UnspecifiedDistribution) => true
         case p => p.expressions.exists(_.exists {

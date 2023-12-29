@@ -125,6 +125,7 @@ case class AdaptiveSparkPlanExec(
 
   // A list of physical optimizer rules to be applied to a new stage before its execution. These
   // optimizations should be stage-independent.
+  //todo 这里主要是AQE的物理计划层面的优化规则
   @transient private val queryStageOptimizerRules: Seq[Rule[SparkPlan]] = Seq(
     PlanAdaptiveDynamicPruningFilters(this),
     ReuseAdaptiveSubquery(context.subqueryCache),
@@ -230,13 +231,16 @@ case class AdaptiveSparkPlanExec(
       // Use inputPlan logicalLink here in case some top level physical nodes may be removed
       // during `initialPlan`
       var currentLogicalPlan = inputPlan.logicalLink.get
+      //todo 这个方法的输出类型是CreateStageResult，这个方法会从下到上递归的遍历物理计划树生成新的Query stage,这个 createQueryStages 方法在每次计划发生变化时都会被调用
       var result = createQueryStages(currentPhysicalPlan)
       val events = new LinkedBlockingQueue[StageMaterializationEvent]()
       val errors = new mutable.ArrayBuffer[Throwable]()
       var stagesToReplace = Seq.empty[QueryStageExec]
+      // todo [1] 是否所有的孩子stage都已经被物化
       while (!result.allChildStagesMaterialized) {
         currentPhysicalPlan = result.newPlan
         if (result.newStages.nonEmpty) {
+          // todo [2] 通知监听器物理计划已经变更
           stagesToReplace = result.newStages ++ stagesToReplace
           executionId.foreach(onUpdatePlan(_, result.newStages.map(_.plan)))
 
@@ -245,6 +249,7 @@ case class AdaptiveSparkPlanExec(
           // This partial fix only guarantees the start of materialization for BroadcastQueryStage
           // is prior to others, but because the submission of collect job for broadcasting is
           // running in another thread, the issue is not completely resolved.
+          // todo [3] 先提交广播阶段的任务，以避免等待用于计划任务并导致广播超时
           val reorderedNewStages = result.newStages
             .sortWith {
               case (_: BroadcastQueryStageExec, _: BroadcastQueryStageExec) => false
@@ -253,6 +258,7 @@ case class AdaptiveSparkPlanExec(
             }
 
           // Start materialization of all new stages and fail fast if any stages failed eagerly
+          // todo [4] 等待下一个完成的stage，这表明新的统计数据可用，并且可能可以创建新的阶段。
           reorderedNewStages.foreach { stage =>
             try {
               stage.materialize().onComplete { res =>
@@ -298,10 +304,13 @@ case class AdaptiveSparkPlanExec(
         // the current physical plan. Once a new plan is adopted and both logical and physical
         // plans are updated, we can clear the query stage list because at this point the two plans
         // are semantically and physically in sync again.
+        //todo [5] 尝试重新优化和重新规划。如果新计划的成本小于或者等于当前的计划就采用新计划！！！！！！
         val logicalPlan = replaceWithQueryStagesInLogicalPlan(currentLogicalPlan, stagesToReplace)
         val (newPhysicalPlan, newLogicalPlan) = reOptimize(logicalPlan)
+        //todo cbo
         val origCost = costEvaluator.evaluateCost(currentPhysicalPlan)
         val newCost = costEvaluator.evaluateCost(newPhysicalPlan)
+        //todo 如果新计划的成本小于或者等于当前的计划就采用新计划
         if (newCost < origCost ||
             (newCost == origCost && currentPhysicalPlan != newPhysicalPlan)) {
           logOnLevel(s"Plan changed from $currentPhysicalPlan to $newPhysicalPlan")
@@ -311,12 +320,16 @@ case class AdaptiveSparkPlanExec(
           stagesToReplace = Seq.empty[QueryStageExec]
         }
         // Now that some stages have finished, we can try creating new stages.
+        // todo [6] 现在一些stage已经结束了，我们可以创建新的阶段。
         result = createQueryStages(currentPhysicalPlan)
       }
 
       // Run the final plan when there's no more unfinished stages.
+      //todo 当没有未完成的阶段时运行final plan
       currentPhysicalPlan = applyPhysicalRules(
+        //todo 物理计划的优化
         optimizeQueryStage(result.newPlan, isFinalStage = true),
+        //todo new stage被创建后应用的物理优化规则
         postStageCreationRules(supportsColumnar),
         Some((planChangeLogger, "AQE Post Stage Creation")))
       isFinalPlan = true
@@ -347,7 +360,7 @@ case class AdaptiveSparkPlanExec(
   override def executeTail(n: Int): Array[InternalRow] = {
     withFinalPlanUpdate(_.executeTail(n))
   }
-
+  //todo 获取最终的物理计划的更新
   override def doExecute(): RDD[InternalRow] = {
     withFinalPlanUpdate(_.execute())
   }
@@ -364,6 +377,7 @@ case class AdaptiveSparkPlanExec(
   }
 
   private def withFinalPlanUpdate[T](fun: SparkPlan => T): T = {
+    //todo 获取最终的物理计划
     val plan = getFinalPhysicalPlan()
     val result = fun(plan)
     finalPlanUpdate
@@ -473,6 +487,7 @@ case class AdaptiveSparkPlanExec(
         case Some(existingStage) if conf.exchangeReuseEnabled =>
           val stage = reuseQueryStage(existingStage, e)
           val isMaterialized = stage.isMaterialized
+          //todo 对于QueryStageExec节点类型，直接封装为CreateStageResult 返回
           CreateStageResult(
             newPlan = stage,
             allChildStagesMaterialized = isMaterialized,
@@ -483,6 +498,7 @@ case class AdaptiveSparkPlanExec(
           val newPlan = e.withNewChildren(Seq(result.newPlan)).asInstanceOf[Exchange]
           // Create a query stage only when all the child query stages are ready.
           if (result.allChildStagesMaterialized) {
+            //todo 将基于broadcast转换为BroadcastQueryStageExec，shuffle作为ShuffleQueryStageExec
             var newStage = newQueryStage(newPlan)
             if (conf.exchangeReuseEnabled) {
               // Check the `stageCache` again for reuse. If a match is found, ditch the new stage
@@ -520,7 +536,9 @@ case class AdaptiveSparkPlanExec(
           newStages = results.flatMap(_.newStages))
       }
   }
-
+  //todo 可以看出有两种类型的QueryStageExec可以物化统计数据，用于AQE的后序优化。
+  //    Shuffle 查询阶段：这个阶段将其输出具体化为 Shuffle 文件，Spark 启动另一个作业来执行进一步的算子。
+  //    广播查询阶段：这个阶段将其输出具体化为 Driver JVM 中的一个数组。Spark 在执行进一步的算子之前先广播数组。
   private def newQueryStage(e: Exchange): QueryStageExec = {
     val optimizedPlan = optimizeQueryStage(e.child, isFinalStage = false)
     val queryStage = e match {
@@ -604,6 +622,7 @@ case class AdaptiveSparkPlanExec(
    *    The updated plan node will be:
    *    LogicalQueryStage(HashAgg - Stage1)
    */
+    //todo 会将逻辑计划树中的所有QueryStage替换为LogicalQueryStage。
   private def replaceWithQueryStagesInLogicalPlan(
       plan: LogicalPlan,
       stagesToReplace: Seq[QueryStageExec]): LogicalPlan = {
@@ -640,6 +659,7 @@ case class AdaptiveSparkPlanExec(
    */
   private def reOptimize(logicalPlan: LogicalPlan): (SparkPlan, LogicalPlan) = {
     logicalPlan.invalidateStatsCache()
+    //todo AQEOptimizer
     val optimized = optimizer.execute(logicalPlan)
     val sparkPlan = context.session.sessionState.planner.plan(ReturnAnswer(optimized)).next()
     val newPlan = applyPhysicalRules(

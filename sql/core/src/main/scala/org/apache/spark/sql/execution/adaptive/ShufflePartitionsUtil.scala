@@ -325,7 +325,7 @@ object ShufflePartitionsUtil extends Logging {
     var i = 0
     var currentPartitionSize = 0L
     var lastPartitionSize = -1L
-
+    //todo 合并相邻分区
     def tryMergePartitions() = {
       // When we are going to start a new partition, it's possible that the current partition or
       // the previous partition is very small and it's better to merge the current partition into
@@ -384,6 +384,7 @@ object ShufflePartitionsUtil extends Logging {
   : Option[Seq[PartialReducerPartitionSpec]] = {
     val mapPartitionSizes = getMapSizesForReduceId(shuffleId, reducerId)
     if (mapPartitionSizes.exists(_ < 0)) return None
+    //todo 切分
     val mapStartIndices = splitSizeListByTargetSize(
       mapPartitionSizes, targetSize, smallPartitionFactor)
     if (mapStartIndices.length > 1) {

@@ -28,6 +28,7 @@ import org.apache.spark.util.Utils
 /**
  * The optimizer for re-optimizing the logical plan used by AdaptiveSparkPlanExec.
  */
+//todo aqe的优化器！！！！！！
 class AQEOptimizer(conf: SQLConf) extends RuleExecutor[LogicalPlan] {
   private def fixedPoint =
     FixedPoint(

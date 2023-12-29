@@ -192,7 +192,7 @@ class ShuffledRowRDD(
         tracker.getMapLocation(dependency, startMapIndex, endMapIndex)
     }
   }
-
+  //todo 执行
   override def compute(split: Partition, context: TaskContext): Iterator[InternalRow] = {
     val tempMetrics = context.taskMetrics().createTempShuffleReadMetrics()
     // `SQLShuffleReadMetricsReporter` will update its own metrics for SQL exchange operator,
