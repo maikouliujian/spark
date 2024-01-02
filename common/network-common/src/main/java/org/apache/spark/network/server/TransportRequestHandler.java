@@ -163,6 +163,7 @@ public class TransportRequestHandler extends MessageHandler<RequestMessage> {
       rpcHandler.receive(reverseClient, req.body().nioByteBuffer(), new RpcResponseCallback() {
         @Override
         public void onSuccess(ByteBuffer response) {
+          //todo 响应回去
           respond(new RpcResponse(req.requestId, new NioManagedBuffer(response)));
         }
 

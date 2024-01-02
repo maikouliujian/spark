@@ -50,6 +50,7 @@ import static org.apache.spark.network.util.NettyUtils.getRemoteAddress;
  * on the channel for at least `requestTimeoutMs`. Note that this is duplex traffic; we will not
  * timeout if the client is continuously sending but getting no responses, for simplicity.
  */
+//todo 处理核心业务的handler
 public class TransportChannelHandler extends SimpleChannelInboundHandler<Message> {
   private static final Logger logger = LoggerFactory.getLogger(TransportChannelHandler.class);
 
@@ -133,7 +134,7 @@ public class TransportChannelHandler extends SimpleChannelInboundHandler<Message
       return super.acceptInboundMessage(msg);
     }
   }
-
+  //todo 处理请求/响应
   @Override
   public void channelRead0(ChannelHandlerContext ctx, Message request) throws Exception {
     if (request instanceof RequestMessage) {

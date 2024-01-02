@@ -146,6 +146,7 @@ public class TransportClientFactory implements Closeable {
    * @param fastFail whether this call should fail immediately when the last attempt to the same
    *                 address failed with in the last fast fail time window.
    */
+  //todo 创建netty client的入口
   public TransportClient createClient(String remoteHost, int remotePort, boolean fastFail)
       throws IOException, InterruptedException {
     // Get connection from the connection pool first.
@@ -215,6 +216,7 @@ public class TransportClientFactory implements Closeable {
             resolvedAddress, fastFailTimeWindow));
       }
       try {
+        //todo 创建netty client
         clientPool.clients[clientIndex] = createClient(resolvedAddress);
         clientPool.lastConnectionFailed = 0;
       } catch (IOException e) {
@@ -243,6 +245,7 @@ public class TransportClientFactory implements Closeable {
   }
 
   /** Create a completely new {@link TransportClient} to the remote address. */
+  //todo 创建netty client
   @VisibleForTesting
   TransportClient createClient(InetSocketAddress address)
       throws IOException, InterruptedException {

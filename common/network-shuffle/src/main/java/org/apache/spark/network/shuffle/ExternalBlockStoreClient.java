@@ -106,7 +106,7 @@ public class ExternalBlockStoreClient extends BlockStoreClient {
         "but the appAttemptId {} cannot be parsed to Integer", appAttemptId, e);
     }
   }
-
+  //todo 拉取shuffle data
   @Override
   public void fetchBlocks(
       String host,
@@ -126,6 +126,7 @@ public class ExternalBlockStoreClient extends BlockStoreClient {
               assert inputListener instanceof BlockFetchingListener :
                 "Expecting a BlockFetchingListener, but got " + inputListener.getClass();
               TransportClient client = clientFactory.createClient(host, port, maxRetries > 0);
+              //todo 启动OneForOneBlockFetcher拉取shuffle data
               new OneForOneBlockFetcher(client, appId, execId, inputBlockId,
                 (BlockFetchingListener) inputListener, transportConf, downloadFileManager).start();
             } else {
@@ -277,6 +278,7 @@ public class ExternalBlockStoreClient extends BlockStoreClient {
       String execId,
       ExecutorShuffleInfo executorInfo) throws IOException, InterruptedException {
     checkInit();
+    //todo [3] 向ESS发送RegisterExecutor消息===>经过rpc===>ExternalBlockHandler中181行===>最终注册到blockManager中
     try (TransportClient client = clientFactory.createClient(host, port)) {
       ByteBuffer registerMessage = new RegisterExecutor(appId, execId, executorInfo).toByteBuffer();
       client.sendRpcSync(registerMessage, registrationTimeoutMs);

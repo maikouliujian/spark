@@ -290,10 +290,13 @@ public class OneForOneBlockFetcher {
           // Immediately request all chunks -- we expect that the total size of the request is
           // reasonable due to higher level chunking in [[ShuffleBlockFetcherIterator]].
           for (int i = 0; i < streamHandle.numChunks; i++) {
+            //todo chunks块的获取有两种模式，分别是流模式或批处理模式
             if (downloadFileManager != null) {
+              //todo 流模式读取chunk
               client.stream(OneForOneStreamManager.genStreamChunkId(streamHandle.streamId, i),
                 new DownloadCallback(i));
             } else {
+              //todo 获取chunk块的数据，它是每个请求响应一个块
               client.fetchChunk(streamHandle.streamId, i, chunkCallback);
             }
           }

@@ -51,7 +51,7 @@ public abstract class BlockTransferMessage implements Encodable {
     PUSH_BLOCK_STREAM(12), FINALIZE_SHUFFLE_MERGE(13), MERGE_STATUSES(14),
     FETCH_SHUFFLE_BLOCK_CHUNKS(15), DIAGNOSE_CORRUPTION(16), CORRUPTION_CAUSE(17),
     PUSH_BLOCK_RETURN_CODE(18);
-
+    //todo 每一种message的唯一标识
     private final byte id;
 
     Type(int id) {

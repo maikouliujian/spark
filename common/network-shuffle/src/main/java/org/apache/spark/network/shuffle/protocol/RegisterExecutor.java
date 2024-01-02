@@ -87,7 +87,7 @@ public class RegisterExecutor extends BlockTransferMessage {
     Encoders.Strings.encode(buf, execId);
     executorInfo.encode(buf);
   }
-
+  //todo RegisterExecutor
   public static RegisterExecutor decode(ByteBuf buf) {
     String appId = Encoders.Strings.decode(buf);
     String execId = Encoders.Strings.decode(buf);

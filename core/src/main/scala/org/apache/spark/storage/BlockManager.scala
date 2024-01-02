@@ -536,6 +536,8 @@ private[spark] class BlockManager(
     }
 
     // Register Executors' configuration with the local shuffle service, if one should exist.
+    //todo 如果开启ess
+    //todo [1] executor向ESS注册
     if (externalShuffleServiceEnabled && !blockManagerId.isDriver) {
       registerWithExternalShuffleServer()
     }
@@ -575,6 +577,7 @@ private[spark] class BlockManager(
       } else {
         shuffleManager.getClass.getName
       }
+    //todo [2] 封装localDirs， shuffle data的位置信息
     val shuffleConfig = new ExecutorShuffleInfo(
       diskBlockManager.localDirsString,
       diskBlockManager.subDirsPerLocalDir,
@@ -586,6 +589,7 @@ private[spark] class BlockManager(
     for (i <- 1 to MAX_ATTEMPTS) {
       try {
         // Synchronous and will throw an exception if we cannot connect.
+        //todo
         blockStoreClient.asInstanceOf[ExternalBlockStoreClient].registerWithShuffleServer(
           shuffleServerId.host, shuffleServerId.port, shuffleServerId.executorId, shuffleConfig)
         return

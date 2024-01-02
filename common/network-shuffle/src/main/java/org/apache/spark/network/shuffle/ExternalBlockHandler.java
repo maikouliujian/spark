@@ -178,13 +178,14 @@ public class ExternalBlockHandler extends RpcHandler
       } finally {
         responseDelayContext.stop();
       }
-
+     //todo RegisterExecutor 处理事件
     } else if (msgObj instanceof RegisterExecutor) {
       final Timer.Context responseDelayContext =
         metrics.registerExecutorRequestLatencyMillis.time();
       try {
         RegisterExecutor msg = (RegisterExecutor) msgObj;
         checkAuth(client, msg.appId);
+        //todo 注册到blockManager中
         blockManager.registerExecutor(msg.appId, msg.execId, msg.executorInfo);
         mergeManager.registerExecutor(msg.appId, msg.executorInfo);
         callback.onSuccess(ByteBuffer.wrap(new byte[0]));

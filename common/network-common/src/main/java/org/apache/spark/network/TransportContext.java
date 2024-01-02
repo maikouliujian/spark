@@ -62,6 +62,7 @@ import org.apache.spark.network.util.TransportFrameDecoder;
  * channel. As each TransportChannelHandler contains a TransportClient, this enables server
  * processes to send messages back to the client on an existing channel.
  */
+//todo
 public class TransportContext implements Closeable {
   private static final Logger logger = LoggerFactory.getLogger(TransportContext.class);
 
@@ -184,10 +185,12 @@ public class TransportContext implements Closeable {
    * be used to communicate on this channel. The TransportClient is directly associated with a
    * ChannelHandler to ensure all users of the same channel get the same TransportClient object.
    */
+  //todo 这个方法server/client共用
   public TransportChannelHandler initializePipeline(
       SocketChannel channel,
       RpcHandler channelRpcHandler) {
     try {
+      //todo 处理核心业务的handler
       TransportChannelHandler channelHandler = createChannelHandler(channel, channelRpcHandler);
       ChannelPipeline pipeline = channel.pipeline();
       if (nettyLogger.getLoggingHandler() != null) {
@@ -222,7 +225,9 @@ public class TransportContext implements Closeable {
    * properties (such as the remoteAddress()) may not be available yet.
    */
   private TransportChannelHandler createChannelHandler(Channel channel, RpcHandler rpcHandler) {
+    //todo 处理响应的handler
     TransportResponseHandler responseHandler = new TransportResponseHandler(channel);
+    //todo TransportClient
     TransportClient client = new TransportClient(channel, responseHandler);
     boolean separateChunkFetchRequest = conf.separateChunkFetchRequest();
     ChunkFetchRequestHandler chunkFetchRequestHandler = null;
@@ -231,6 +236,7 @@ public class TransportContext implements Closeable {
         client, rpcHandler.getStreamManager(),
         conf.maxChunksBeingTransferred(), false /* syncModeEnabled */);
     }
+    //todo 处理请求的handler
     TransportRequestHandler requestHandler = new TransportRequestHandler(channel, client,
       rpcHandler, conf.maxChunksBeingTransferred(), chunkFetchRequestHandler);
     return new TransportChannelHandler(client, responseHandler, requestHandler,
