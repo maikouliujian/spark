@@ -1283,10 +1283,19 @@ private[spark] class HiveExternalCatalog(conf: SparkConf, hadoopConf: Configurat
     val rawTable = getRawTable(db, table)
     val catalogTable = restoreTableMetadata(rawTable)
     val partColNameMap = buildLowerCasePartColNameMap(catalogTable)
+    //todo val sql =
+    //      """
+    //        |select
+    //        |event,type,carrier,wifi
+    //        |from
+    //        |bondee_dw.dwd_event_user_general
+    //        |where concat(p_day,' ',p_hour) in ('2024-01-05 11','2024-01-05 12','2024-01-05 13')
+    //        |""".stripMargin
+    //todo 如果是concat(p_day,' ',p_hour) in ('2024-01-05 11','2024-01-05 12','2024-01-05 13')，这一步没把分区裁剪好
     val clientPrunedPartitions =
       client.getPartitionsByFilter(rawTable, predicates).map { part =>
         part.copy(spec = restorePartitionSpec(part.spec, partColNameMap))
-      }
+    //todo 根据表达式再次过滤！！！！！！
     prunePartitionsByFilter(catalogTable, clientPrunedPartitions, predicates, defaultTimeZoneId)
   }
 

@@ -141,6 +141,7 @@ object ExternalCatalogUtils {
       table: CatalogTable,
       partitionFilters: Seq[Expression]): Seq[CatalogTablePartition] = {
     if (conf.metastorePartitionPruning) {
+      //todo 分区过滤
       catalog.listPartitionsByFilter(table.identifier, partitionFilters)
     } else {
       ExternalCatalogUtils.prunePartitionsByFilter(table, catalog.listPartitions(table.identifier),
@@ -160,7 +161,7 @@ object ExternalCatalogUtils {
         catalogTable.partitionSchema)
       val boundPredicate = generatePartitionPredicateByFilter(catalogTable,
         partitionSchema, predicates)
-
+      //todo 根据表达式concat(p_day,' ',p_hour) in ('2024-01-05 11','2024-01-05 12','2024-01-05 13') 过滤成功！！！！！！
       inputPartitions.filter { p =>
         boundPredicate.eval(p.toRow(partitionSchema, defaultTimeZoneId))
       }

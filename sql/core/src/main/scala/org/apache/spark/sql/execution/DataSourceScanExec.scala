@@ -250,6 +250,7 @@ case class FileSourceScanExec(
   @transient lazy val selectedPartitions: Array[PartitionDirectory] = {
     val optimizerMetadataTimeNs = relation.location.metadataOpsTimeNs.getOrElse(0L)
     val startTime = System.nanoTime()
+    //todo 获取过滤后的分区
     val ret =
       relation.location.listFiles(
         partitionFilters.filterNot(isDynamicPruningFilter), dataFilters)
@@ -496,7 +497,7 @@ case class FileSourceScanExec(
       driverMetrics("numPartitions") = partitions.length
     }
   }
-
+  //todo 读取数据的指标===>会在spark ui上显示！！！！！！
   override lazy val metrics = Map(
     "numOutputRows" -> SQLMetrics.createMetric(sparkContext, "number of output rows"),
     "numFiles" -> SQLMetrics.createMetric(sparkContext, "number of files read"),

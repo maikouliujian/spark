@@ -164,6 +164,7 @@ object FileSourceStrategy extends Strategy with PredicateHelper with Logging {
 
       // this partitionKeyFilters should be the same with the ones being executed in
       // PruneFileSourcePartitions
+      //todo 分区过滤下推！！！！！！
       val partitionKeyFilters = DataSourceStrategy.getPushedDownFilters(partitionColumns,
         normalizedFilters)
 

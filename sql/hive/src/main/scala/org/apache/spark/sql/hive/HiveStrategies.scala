@@ -286,7 +286,7 @@ private[hive] trait HiveStrategies {
         val partitionKeyIds = AttributeSet(relation.partitionCols)
         val normalizedFilters = DataSourceStrategy.normalizeExprs(
           filters.filter(_.deterministic), relation.output)
-
+        //todo hive表分区过滤下推！！！！！！
         val partitionKeyFilters = DataSourceStrategy.getPushedDownFilters(relation.partitionCols,
           normalizedFilters)
 

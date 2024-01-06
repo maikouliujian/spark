@@ -2324,6 +2324,7 @@ case class TryElementAt(left: Expression, right: Expression, replacement: Expres
   """,
   group = "collection_funcs",
   since = "1.5.0")
+//todo
 case class Concat(children: Seq[Expression]) extends ComplexTypeMergingExpression {
 
   private def allowedTypes: Seq[AbstractDataType] = Seq(StringType, BinaryType, ArrayType)

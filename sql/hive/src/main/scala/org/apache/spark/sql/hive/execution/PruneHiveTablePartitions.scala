@@ -95,6 +95,7 @@ private[sql] class PruneHiveTablePartitions(session: SparkSession)
       if filters.nonEmpty && relation.isPartitioned && relation.prunedPartitions.isEmpty =>
       val partitionKeyFilters = getPartitionKeyFilters(filters, relation)
       if (partitionKeyFilters.nonEmpty) {
+        //todo 分区过滤！！！！！！
         val newPartitions = ExternalCatalogUtils.listPartitionsByFilter(conf,
           session.sessionState.catalog, relation.tableMeta, partitionKeyFilters.toSeq)
         val newTableMeta = updateTableMeta(relation, newPartitions, partitionKeyFilters)

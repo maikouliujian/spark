@@ -488,6 +488,7 @@ object DataSourceStrategy
       val partitionSet = AttributeSet(partitionColumns)
       val predicates = ExpressionSet(normalizedFilters
         .flatMap(extractPredicatesWithinOutputSet(_, partitionSet)))
+      //todo
       logInfo(s"Pruning directories with: ${predicates.mkString(",")}")
       predicates
     }

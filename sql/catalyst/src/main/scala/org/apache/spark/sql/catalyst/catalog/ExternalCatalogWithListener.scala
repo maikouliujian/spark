@@ -259,6 +259,7 @@ class ExternalCatalogWithListener(delegate: ExternalCatalog)
       table: String,
       predicates: Seq[Expression],
       defaultTimeZoneId: String): Seq[CatalogTablePartition] = {
+    //todo【HiveExternalCatalog】
     delegate.listPartitionsByFilter(db, table, predicates, defaultTimeZoneId)
   }
 

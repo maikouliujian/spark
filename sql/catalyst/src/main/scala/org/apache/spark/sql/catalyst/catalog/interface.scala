@@ -818,6 +818,7 @@ case class TemporaryViewRelation(
  *
  * TODO: remove this after we completely make hive as a data source.
  */
+//todo 读取hive表的逻辑算子
 case class HiveTableRelation(
     tableMeta: CatalogTable,
     dataCols: Seq[AttributeReference],

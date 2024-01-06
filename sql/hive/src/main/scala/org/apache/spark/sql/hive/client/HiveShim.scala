@@ -1069,7 +1069,7 @@ private[client] class Shim_v0_13 extends Shim_v0_12 {
 
       case _ => None
     }
-
+    //todo 分区下推格式转化！！！！！！
     filters.flatMap(convert).mkString(" and ")
   }
 
@@ -1090,6 +1090,9 @@ private[client] class Shim_v0_13 extends Shim_v0_12 {
       catalogTable: CatalogTable): Seq[Partition] = {
     // Hive getPartitionsByFilter() takes a string that represents partition
     // predicates like "str_key=\"value\" and int_key=1 ..."
+    //todo 转化分区过滤条件的核心方法
+    //todo 比如where concat(p_day,' ',p_hour) in ('2024-01-05 11','2024-01-05 12','2024-01-05 13') 就返回 ""
+    //todo 比如where p_day in ('2024-01-05') and p_hour >= '11' and p_hour <= '13' 就返回 p_day = '2024-01-05' and p_hour >= '11' and p_hour <= '13'
     val filter = convertFilters(table, predicates)
 
     val partitions =
@@ -1110,6 +1113,7 @@ private[client] class Shim_v0_13 extends Shim_v0_12 {
           // occurs and the config`spark.sql.hive.metastorePartitionPruningFallbackOnException` is
           // enabled.
           recordHiveCall()
+          //todo p_day = '2024-01-05' and p_hour >= '11' and p_hour <= '13' 这种可以直接通过hive的过滤查数
           getPartitionsByFilterMethod.invoke(hive, table, filter)
             .asInstanceOf[JArrayList[Partition]]
         } catch {

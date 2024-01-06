@@ -67,9 +67,11 @@ class CatalogFileIndex(
    *
    * @param filters partition-pruning filters
    */
+    //todo 分区过滤
   def filterPartitions(filters: Seq[Expression]): InMemoryFileIndex = {
     if (table.partitionColumnNames.nonEmpty) {
       val startTime = System.nanoTime()
+      //todo 获取选择的分区
       val selectedPartitions = ExternalCatalogUtils.listPartitionsByFilter(
         sparkSession.sessionState.conf, sparkSession.sessionState.catalog, table, filters)
       val partitions = selectedPartitions.map { p =>
@@ -81,6 +83,7 @@ class CatalogFileIndex(
       }
       val partitionSpec = PartitionSpec(partitionSchema, partitions)
       val timeNs = System.nanoTime() - startTime
+      //todo 构建InMemoryFileIndex
       new InMemoryFileIndex(sparkSession,
         rootPathsSpecified = partitionSpec.partitions.map(_.path),
         parameters = Map.empty,

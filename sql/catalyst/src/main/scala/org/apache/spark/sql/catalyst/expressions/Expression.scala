@@ -83,6 +83,7 @@ import org.apache.spark.sql.types._
  * - [[ComplexTypeMergingExpression]]: to resolve output types of the complex expressions
  *                                     (e.g., [[CaseWhen]]).
  */
+//todo Expression代表sparksql中的关键词，如concat、where、or等
 abstract class Expression extends TreeNode[Expression] {
 
   /**
