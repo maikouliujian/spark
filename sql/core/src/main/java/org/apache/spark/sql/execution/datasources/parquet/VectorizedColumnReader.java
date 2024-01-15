@@ -46,6 +46,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 /**
  * Decoder to return values from a single column.
  */
+//todo 读取一列数据
 public class VectorizedColumnReader {
   /**
    * The dictionary, if this column has dictionary encoding.
@@ -60,6 +61,7 @@ public class VectorizedColumnReader {
   /**
    * Value readers.
    */
+  //todo 读取value值
   private ValuesReader dataColumn;
 
   /**
@@ -105,6 +107,7 @@ public class VectorizedColumnReader {
       String int96RebaseTz,
       ParsedVersion writerVersion) throws IOException {
     this.descriptor = descriptor;
+    //todo ColumnChunkPageReader
     this.pageReader = pageReadStore.getPageReader(descriptor);
     this.readState = new ParquetReadState(descriptor, isRequired,
       pageReadStore.getRowIndexes().orElse(null));
@@ -166,8 +169,9 @@ public class VectorizedColumnReader {
   /**
    * Reads `total` rows from this columnReader into column.
    */
+  //todo 读取数据
   void readBatch(
-      int total,
+      int total,//todo 这一批次的行数
       WritableColumnVector column,
       WritableColumnVector repetitionLevels,
       WritableColumnVector definitionLevels) throws IOException {
@@ -183,6 +187,7 @@ public class VectorizedColumnReader {
     readState.resetForNewBatch(total);
     while (readState.rowsToReadInBatch > 0 || !readState.lastListCompleted) {
       if (readState.valuesToReadInPage == 0) {
+        //todo 读取一个page，返回page中value个数
         int pageValueCount = readPage();
         if (pageValueCount < 0) {
           // we've read all the pages; this could happen when we're reading a repeated list and we
@@ -257,7 +262,7 @@ public class VectorizedColumnReader {
       }
     }
   }
-
+  //todo 读取columnchunk中一个page的数据,返回value个数
   private int readPage() {
     DataPage page = pageReader.readPage();
     if (page == null) {
@@ -278,6 +283,7 @@ public class VectorizedColumnReader {
       @Override
       public Integer visit(DataPageV2 dataPageV2) {
         try {
+          //todo 读取PageV2
           return readPageV2(dataPageV2);
         } catch (IOException e) {
           throw new RuntimeException(e);
@@ -285,7 +291,7 @@ public class VectorizedColumnReader {
       }
     });
   }
-
+  //todo 初始化数据reader
   private void initDataReader(
       int pageValueCount,
       Encoding dataEncoding,
@@ -311,6 +317,7 @@ public class VectorizedColumnReader {
     }
 
     try {
+      //todo
       dataColumn.initFromPage(pageValueCount, in);
     } catch (IOException e) {
       throw new IOException("could not read page in col " + descriptor, e);
@@ -374,6 +381,7 @@ public class VectorizedColumnReader {
   }
 
   private int readPageV2(DataPageV2 page) throws IOException {
+    //todo 包含的value个数
     int pageValueCount = page.getValueCount();
 
     // do not read the length from the stream. v2 pages handle dividing the page bytes.
@@ -386,6 +394,7 @@ public class VectorizedColumnReader {
     defColumn.initFromPage(pageValueCount, page.getDefinitionLevels().toInputStream());
 
     try {
+      //todo
       initDataReader(pageValueCount, page.getDataEncoding(), page.getData().toInputStream());
       return pageValueCount;
     } catch (IOException e) {

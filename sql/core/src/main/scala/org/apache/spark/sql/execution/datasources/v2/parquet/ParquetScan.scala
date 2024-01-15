@@ -34,7 +34,7 @@ import org.apache.spark.sql.sources.Filter
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.util.CaseInsensitiveStringMap
 import org.apache.spark.util.SerializableConfiguration
-
+//todo 读取parquet文件的算子
 case class ParquetScan(
     sparkSession: SparkSession,
     hadoopConf: Configuration,

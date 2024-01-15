@@ -38,7 +38,9 @@ import org.apache.spark.sql.types.StructType;
  */
 final class ParquetColumnVector {
   private final ParquetColumn column;
+  //todo 通常用于表示复杂类型列（例如结构体、嵌套结构、重复组等）中的子列
   private final List<ParquetColumnVector> children;
+  //todo 用于存储数据
   private final WritableColumnVector vector;
 
   /**
@@ -46,13 +48,17 @@ final class ParquetColumnVector {
    * These are allocated only for leaf columns; for non-leaf columns, they simply maintain
    * references to that of the former.
    */
+  //todo Repetition Level（重复级别）:用以表示在该字段路径上哪个节点进行了重复,required 和 optional 字段不需要 repetition level
   private WritableColumnVector repetitionLevels;
+  //todo Definition Level（定义级别）:用以表示该字段路径上有多少可选的字段实际进行了定义,只有 optional 和 repeated 字段需要 Definition Levels 定义
   private WritableColumnVector definitionLevels;
 
   /** Whether this column is primitive (i.e., leaf column) */
+  //todo 是否是基本数据类型列
   private final boolean isPrimitive;
 
   /** Reader for this column - only set if 'isPrimitive' is true */
+  //todo 列读取器
   private VectorizedColumnReader columnReader;
 
   ParquetColumnVector(

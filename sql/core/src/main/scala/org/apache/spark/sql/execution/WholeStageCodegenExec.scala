@@ -126,6 +126,9 @@ trait CodegenSupport extends SparkPlan {
         val colExprs = output.zipWithIndex.map { case (attr, i) =>
           BoundReference(i, attr.dataType, attr.nullable)
         }
+        //todo 返回同一行所有列的值定义的代码
+        //todo 如：string a = "1";
+        //todo     int b = 2;
         val evaluateInputs = evaluateVariables(colVars)
         // generate the code to create a UnsafeRow
         ctx.INPUT_ROW = row
@@ -167,7 +170,9 @@ trait CodegenSupport extends SparkPlan {
       case stream: Stream[ExprCode] => stream.force
       case other => other
     }
-
+    //todo 返回同一行所有列的值定义的代码
+    //todo 如：string a = "1";
+    //todo     int b = 2;
     val rowVar = prepareRowVar(ctx, row, outputVars)
 
     // Set up the `currentVars` in the codegen context, as we generate the code of `inputVars`

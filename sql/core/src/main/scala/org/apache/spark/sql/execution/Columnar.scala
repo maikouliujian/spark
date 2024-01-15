@@ -65,6 +65,7 @@ trait ColumnarToRowTransition extends UnaryExecNode
  * [[org.apache.spark.sql.execution.python.ArrowEvalPythonExec]] and
  * [[MapPartitionsInRWithArrowExec]]. Eventually this should replace those implementations.
  */
+ //todo spark 列转行！！！！！！
 case class ColumnarToRowExec(child: SparkPlan) extends ColumnarToRowTransition with CodegenSupport {
   // supportsColumnar requires to be only called on driver side, see also SPARK-37779.
   assert(Utils.isInRunningSparkTask || child.supportsColumnar)
@@ -107,10 +108,11 @@ case class ColumnarToRowExec(child: SparkPlan) extends ColumnarToRowTransition w
   private def genCodeColumnVector(
       ctx: CodegenContext,
       columnVar: String,
-      ordinal: String,
+      ordinal: String,//todo rowid
       dataType: DataType,
       nullable: Boolean): ExprCode = {
     val javaType = CodeGenerator.javaType(dataType)
+    //todo 获取列columnVar在rowid:ordinal的value
     val value = CodeGenerator.getValueFromVector(columnVar, dataType, ordinal)
     val isNullVar = if (nullable) {
       JavaCode.isNullVariable(ctx.freshName("isNull"))
@@ -171,6 +173,8 @@ case class ColumnarToRowExec(child: SparkPlan) extends ColumnarToRowTransition w
 
     ctx.currentVars = null
     val rowidx = ctx.freshName("rowIdx")
+    //todo ExprCode
+    //todo rowid:ordinal下所有列的值
     val columnsBatchInput = (output zip colVars).map { case (attr, colVar) =>
       genCodeColumnVector(ctx, colVar, rowidx, attr.dataType, attr.nullable)
     }

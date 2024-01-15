@@ -105,7 +105,7 @@ case class ParquetScanBuilder(
       case _ => false
     }
   }
-
+  //todo ParquetScan构建
   override def build(): Scan = {
     // the `finalSchema` is either pruned in pushAggregation (if aggregates are
     // pushed down), or pruned in readDataSchema() (in regular column pruning). These

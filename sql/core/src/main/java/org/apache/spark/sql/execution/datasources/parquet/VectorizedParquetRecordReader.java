@@ -149,6 +149,7 @@ public class VectorizedParquetRecordReader extends SpecificParquetRecordReaderBa
     this.int96RebaseMode = int96RebaseMode;
     this.int96RebaseTz = int96RebaseTz;
     MEMORY_MODE = useOffHeap ? MemoryMode.OFF_HEAP : MemoryMode.ON_HEAP;
+    //todo 每一个batch能读取的容量，默认值为4096
     this.capacity = capacity;
   }
 
@@ -181,6 +182,7 @@ public class VectorizedParquetRecordReader extends SpecificParquetRecordReaderBa
   @Override
   public void initialize(String path, List<String> columns) throws IOException,
       UnsupportedOperationException {
+    //todo 初始化
     super.initialize(path, columns);
     initializeInternal();
   }
@@ -204,7 +206,7 @@ public class VectorizedParquetRecordReader extends SpecificParquetRecordReaderBa
     }
     super.close();
   }
-
+  //todo Spark可以通过nextKeyValue方法【逐个批次】地读取Parquet文件
   @Override
   public boolean nextKeyValue() throws IOException {
     resultBatch();
@@ -235,6 +237,7 @@ public class VectorizedParquetRecordReader extends SpecificParquetRecordReaderBa
   // Columns 0,1: data columns
   // Column 2: partitionValues[0]
   // Column 3: partitionValues[1]
+  //todo 创建ColumnBatch实例和相关的ColumnVector实例
   private void initBatch(
       MemoryMode memMode,
       StructType partitionColumns,
@@ -251,12 +254,15 @@ public class VectorizedParquetRecordReader extends SpecificParquetRecordReaderBa
 
     WritableColumnVector[] vectors;
     if (memMode == MemoryMode.OFF_HEAP) {
+      //todo 每一列对应一个OffHeapColumnVector
       vectors = OffHeapColumnVector.allocateColumns(capacity, batchSchema);
     } else {
+      //todo 每一列对应一个OnHeapColumnVector
       vectors = OnHeapColumnVector.allocateColumns(capacity, batchSchema);
     }
+    //todo 新建columnarBatch【一个批次数据的包装】
     columnarBatch = new ColumnarBatch(vectors);
-
+    //todo 每一列对应一个ParquetColumnVector
     columnVectors = new ParquetColumnVector[sparkSchema.fields().length];
     for (int i = 0; i < columnVectors.length; i++) {
       columnVectors[i] = new ParquetColumnVector(parquetColumn.children().apply(i),
@@ -306,13 +312,18 @@ public class VectorizedParquetRecordReader extends SpecificParquetRecordReaderBa
     }
     columnarBatch.setNumRows(0);
     if (rowsReturned >= totalRowCount) return false;
+    //todo 检查是否达到了rowgroup end
     checkEndOfRowGroup();
 
     int num = (int) Math.min(capacity, totalCountLoadedSoFar - rowsReturned);
+    //todo 遍历该batch中每一列
     for (ParquetColumnVector cv : columnVectors) {
+      //todo 获取当前列cv的子message对应的列
       for (ParquetColumnVector leafCv : cv.getLeaves()) {
         VectorizedColumnReader columnReader = leafCv.getColumnReader();
         if (columnReader != null) {
+          //todo 批量读取当前列的数据
+          //todo 批量将当前列数据读到leafCv.getValueVector()、leafCv.getRepetitionLevelVector()和leafCv.getDefinitionLevelVector()中
           columnReader.readBatch(num, leafCv.getValueVector(),
             leafCv.getRepetitionLevelVector(), leafCv.getDefinitionLevelVector());
         }
@@ -321,6 +332,7 @@ public class VectorizedParquetRecordReader extends SpecificParquetRecordReaderBa
     }
 
     rowsReturned += num;
+    //todo 设置一个批次的行数
     columnarBatch.setNumRows(num);
     numBatched = num;
     batchIdx = 0;

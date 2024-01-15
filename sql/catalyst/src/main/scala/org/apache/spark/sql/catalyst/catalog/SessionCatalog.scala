@@ -1273,6 +1273,7 @@ class SessionCatalog(
     val table = formatTableName(tableName.table)
     requireDbExists(db)
     requireTableExists(TableIdentifier(table, Option(db)))
+    //todo 【ExternalCatalogWithListener】
     externalCatalog.listPartitionsByFilter(db, table, predicates, conf.sessionLocalTimeZone)
   }
 

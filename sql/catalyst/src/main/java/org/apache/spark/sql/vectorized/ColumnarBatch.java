@@ -52,6 +52,7 @@ public class ColumnarBatch implements AutoCloseable {
     final int maxRows = numRows;
     final ColumnarBatchRow row = new ColumnarBatchRow(columns);
     return new Iterator<InternalRow>() {
+      //todo rowId一个批次数据的行号
       int rowId = 0;
 
       @Override

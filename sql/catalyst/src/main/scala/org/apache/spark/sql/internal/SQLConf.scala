@@ -526,7 +526,7 @@ object SQLConf {
     .version("2.1.1")
     .intConf
     .createWithDefault(4)
-
+  //todo
   val ADVANCED_PARTITION_PREDICATE_PUSHDOWN =
     buildConf("spark.sql.hive.advancedPartitionPredicatePushdown.enabled")
       .internal()
@@ -1027,7 +1027,7 @@ object SQLConf {
     .version("2.3.0")
     .booleanConf
     .createWithDefault(false)
-
+  //todo PARQUET_VECTORIZED_READER_BATCH_SIZE
   val PARQUET_VECTORIZED_READER_BATCH_SIZE = buildConf("spark.sql.parquet.columnarReaderBatchSize")
     .doc("The number of rows to include in a parquet vectorized reader batch. The number should " +
       "be carefully chosen to minimize overhead and avoid OOMs in reading data.")
@@ -1131,7 +1131,7 @@ object SQLConf {
     .version("1.4.0")
     .booleanConf
     .createWithDefault(false)
-
+ //todo
   val HIVE_METASTORE_PARTITION_PRUNING =
     buildConf("spark.sql.hive.metastorePartitionPruning")
       .doc("When true, some predicates will be pushed down into the Hive metastore so that " +

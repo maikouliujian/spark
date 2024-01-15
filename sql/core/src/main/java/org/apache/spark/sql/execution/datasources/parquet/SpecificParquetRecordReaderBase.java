@@ -67,6 +67,7 @@ import org.apache.spark.util.AccumulatorV2;
  * this way, albeit at a higher cost to implement. This base class is reusable.
  */
 public abstract class SpecificParquetRecordReaderBase<T> extends RecordReader<Void, T> {
+  //todo 当前reader读取的parquet文件
   protected Path file;
   protected MessageType fileSchema;
   protected MessageType requestedSchema;
@@ -81,7 +82,7 @@ public abstract class SpecificParquetRecordReaderBase<T> extends RecordReader<Vo
    * rows of all the row groups.
    */
   protected long totalRowCount;
-
+  //todo RowGroupReader
   protected ParquetRowGroupReader reader;
 
   @Override
@@ -143,6 +144,7 @@ public abstract class SpecificParquetRecordReaderBase<T> extends RecordReader<Vo
    * split machinery. It is not intended for general use and those not support all the
    * configurations.
    */
+  //todo 它从Parquet文件的页脚中获取ParquetMetadata，应用谓词下推过滤器以定位要读取的行组
   protected void initialize(String path, List<String> columns) throws IOException {
     Configuration config = new Configuration();
     config.setBoolean(SQLConf.PARQUET_BINARY_AS_STRING().key() , false);
@@ -158,7 +160,9 @@ public abstract class SpecificParquetRecordReaderBase<T> extends RecordReader<Vo
       .build();
     ParquetFileReader fileReader = ParquetFileReader.open(
       HadoopInputFile.fromPath(file, config), options);
+    //todo 新建RowGroupReader
     this.reader = new ParquetRowGroupReaderImpl(fileReader);
+    //todo parquet footer 元数据schema
     this.fileSchema = fileReader.getFooter().getFileMetaData().getSchema();
 
     if (columns == null) {
