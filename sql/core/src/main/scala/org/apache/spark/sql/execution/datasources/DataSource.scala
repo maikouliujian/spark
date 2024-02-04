@@ -282,6 +282,7 @@ case class DataSource(
   }
 
   /** Returns a source that can be used to continually read data. */
+  //todo 创建source！！！！！！
   def createSource(metadataPath: String): Source = {
     providingInstance() match {
       //todo struct streaming 读取kafka走这个分支
@@ -596,6 +597,7 @@ case class DataSource(
 object DataSource extends Logging {
 
   /** A map to maintain backward compatibility in case we move data sources around. */
+  //todo source mapping定义！！！！！！
   private val backwardCompatibilityMap: Map[String, String] = {
     val jdbc = classOf[JdbcRelationProvider].getCanonicalName
     val json = classOf[JsonFileFormat].getCanonicalName

@@ -195,6 +195,7 @@ import org.apache.spark.sql.types.IntegerType
  * we could improve this in the current rule by applying more advanced expression canonicalization
  * techniques.
  */
+
 object RewriteDistinctAggregates extends Rule[LogicalPlan] {
 
   private def mayNeedtoRewrite(a: Aggregate): Boolean = {

@@ -74,6 +74,7 @@ object AggUtils {
       initialInputBufferOffset: Int = 0,
       resultExpressions: Seq[NamedExpression] = Nil,
       child: SparkPlan): SparkPlan = {
+    //todo 是否使用hash
     val useHash = Aggregate.supportsHashAggregate(
       aggregateExpressions.flatMap(_.aggregateFunction.aggBufferAttributes))
     val forceSortAggregate = forceApplySortAggregate(child.conf)
@@ -167,11 +168,11 @@ object AggUtils {
 
     finalAggregate :: Nil
   }
-
+  //todo AggregateWithOneDistinct,处理只有一个count distinct
   def planAggregateWithOneDistinct(
-      groupingExpressions: Seq[NamedExpression],
-      functionsWithDistinct: Seq[AggregateExpression],
-      functionsWithoutDistinct: Seq[AggregateExpression],
+      groupingExpressions: Seq[NamedExpression], //todo group by 对应的列
+      functionsWithDistinct: Seq[AggregateExpression], //todo count distinct聚合表达式
+      functionsWithoutDistinct: Seq[AggregateExpression], //todo 非count distinct聚合表达式
       distinctExpressions: Seq[Expression],
       normalizedNamedDistinctExpressions: Seq[NamedExpression],
       resultExpressions: Seq[NamedExpression],
@@ -181,7 +182,7 @@ object AggUtils {
     // calculate sessions for input rows and update rows' session column, so that further
     // aggregations can aggregate input rows for the same session.
     val maySessionChild = mayAppendUpdatingSessionExec(groupingExpressions, child)
-
+    //todo Attributes代表字段+id
     val distinctAttributes = normalizedNamedDistinctExpressions.map(_.toAttribute)
     val groupingAttributes = groupingExpressions.map(_.toAttribute)
 
@@ -192,6 +193,9 @@ object AggUtils {
       // We will group by the original grouping expression, plus an additional expression for the
       // DISTINCT column. For example, for AVG(DISTINCT value) GROUP BY key, the grouping
       // expressions will be [key, value].
+      //todo select a,count(distinct b)  from testdata2 group by a
+      //todo ===>
+      //todo select a,count(b) from (  select a,b  from testdata2 group by a,b ) tmp  group by a中的select a,b  from testdata2 group by a,b
       createAggregate(
         groupingExpressions = groupingExpressions ++ normalizedNamedDistinctExpressions,
         aggregateExpressions = aggregateExpressions,
@@ -219,11 +223,13 @@ object AggUtils {
 
     // 3. Create an Aggregate operator for partial aggregation (for distinct)
     val distinctColumnAttributeLookup = distinctExpressions.zip(distinctAttributes).toMap
+    //todo 这里将count(distinct b) ===> count(b)
     val rewrittenDistinctFunctions = functionsWithDistinct.map {
       // Children of an AggregateFunction with DISTINCT keyword has already
       // been evaluated. At here, we need to replace original children
       // to AttributeReferences.
       case agg @ AggregateExpression(aggregateFunction, mode, true, _, _) =>
+        //todo 这里将count(distinct b) ===> count(b)
         aggregateFunction.transformDown(distinctColumnAttributeLookup)
           .asInstanceOf[AggregateFunction]
       case agg =>
@@ -268,7 +274,7 @@ object AggUtils {
       // The attributes of the final aggregation buffer, which is presented as input to the result
       // projection:
       val finalAggregateAttributes = finalAggregateExpressions.map(_.resultAttribute)
-
+      //todo
       val (distinctAggregateExpressions, distinctAggregateAttributes) =
         rewrittenDistinctFunctions.zipWithIndex.map { case (func, i) =>
           // We rewrite the aggregate function to a non-distinct aggregation because

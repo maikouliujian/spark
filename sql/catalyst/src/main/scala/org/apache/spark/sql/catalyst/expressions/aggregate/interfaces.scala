@@ -96,9 +96,10 @@ object AggregateExpression {
  * (`isDistinct`) indicating if DISTINCT keyword is specified for this function and
  * a field (`filter`) indicating if filter clause is specified for this function.
  */
+//todo 聚合表达式
 case class AggregateExpression(
     aggregateFunction: AggregateFunction,
-    mode: AggregateMode,
+    mode: AggregateMode,//聚合模式
     isDistinct: Boolean,
     filter: Option[Expression],
     resultId: ExprId)
