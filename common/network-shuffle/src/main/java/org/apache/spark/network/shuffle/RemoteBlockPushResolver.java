@@ -120,6 +120,7 @@ public class RemoteBlockPushResolver implements MergedShuffleFileManager {
         }
     };
     indexCache = CacheBuilder.newBuilder()
+            //todo index文件大小
       .maximumWeight(conf.mergedIndexCacheSize())
       .weigher((Weigher<String, ShuffleIndexInformation>)
         (filePath, indexInfo) -> indexInfo.getRetainedMemorySize())
@@ -514,6 +515,7 @@ public class RemoteBlockPushResolver implements MergedShuffleFileManager {
     }
     AtomicReference<Map<Integer, AppShufflePartitionInfo>> shuffleMergePartitionsRef =
       new AtomicReference<>(null);
+    //todo
     appShuffleInfo.shuffles.compute(msg.shuffleId, (shuffleId, mergePartitionsInfo) -> {
       if (null != mergePartitionsInfo) {
         if (msg.shuffleMergeId < mergePartitionsInfo.shuffleMergeId ||

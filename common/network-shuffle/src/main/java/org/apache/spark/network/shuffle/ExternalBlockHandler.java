@@ -216,6 +216,7 @@ public class ExternalBlockHandler extends RpcHandler
       FinalizeShuffleMerge msg = (FinalizeShuffleMerge) msgObj;
       try {
         checkAuth(client, msg.appId);
+        //todo ESS 服务收到FinalizeShuffleMerge请求后，停止接收 pushed shuffle 数据，并持久化所有缓存数据到文件中，最后向 Driver 返回最终 merged shuffle blocks 信息
         MergeStatuses statuses = mergeManager.finalizeShuffleMerge(msg);
         callback.onSuccess(statuses.toByteBuffer());
       } catch(IOException e) {

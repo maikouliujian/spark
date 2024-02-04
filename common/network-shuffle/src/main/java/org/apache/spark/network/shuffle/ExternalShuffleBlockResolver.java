@@ -111,6 +111,7 @@ public class ExternalShuffleBlockResolver {
     this.rddFetchEnabled =
       Boolean.parseBoolean(conf.get(Constants.SHUFFLE_SERVICE_FETCH_RDD_ENABLED, "false"));
     this.registeredExecutorFile = registeredExecutorFile;
+    //todo spark.shuffle.service.index.cache.size 建议调大
     String indexCacheSize = conf.get("spark.shuffle.service.index.cache.size", "100m");
     CacheLoader<String, ShuffleIndexInformation> indexCacheLoader =
         new CacheLoader<String, ShuffleIndexInformation>() {
@@ -119,6 +120,7 @@ public class ExternalShuffleBlockResolver {
           }
         };
     shuffleIndexCache = CacheBuilder.newBuilder()
+            //todo！！！！！！
       .maximumWeight(JavaUtils.byteStringAsBytes(indexCacheSize))
       .weigher((Weigher<String, ShuffleIndexInformation>)
         (filePath, indexInfo) -> indexInfo.getRetainedMemorySize())
@@ -308,6 +310,7 @@ public class ExternalShuffleBlockResolver {
         "shuffle_" + shuffleId + "_" + mapId + "_0.index");
 
     try {
+      //todo shuffle index
       ShuffleIndexInformation shuffleIndexInformation = shuffleIndexCache.get(indexFilePath);
       ShuffleIndexRecord shuffleIndexRecord = shuffleIndexInformation.getIndex(
         startReduceId, endReduceId);

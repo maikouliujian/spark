@@ -92,6 +92,7 @@ import org.apache.spark.network.yarn.util.HadoopConfigProvider;
  * either on the NodeManager's classpath, or specified in the classpath configuration.
  * This {@code classpath} configuration is only supported on YARN versions >= 2.9.0.
  */
+//todo YarnShuffleService
 public class YarnShuffleService extends AuxiliaryService {
   private static final Logger defaultLogger = LoggerFactory.getLogger(YarnShuffleService.class);
   private Logger logger = defaultLogger;
@@ -233,6 +234,7 @@ public class YarnShuffleService extends AuxiliaryService {
       }
 
       TransportConf transportConf = new TransportConf("shuffle", new HadoopConfigProvider(_conf));
+      //todo 合并shuffle文件manager
       MergedShuffleFileManager shuffleMergeManager = newMergedShuffleFileManagerInstance(
         transportConf);
       blockHandler = new ExternalBlockHandler(
