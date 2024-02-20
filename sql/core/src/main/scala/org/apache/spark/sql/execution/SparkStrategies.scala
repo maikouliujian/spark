@@ -138,6 +138,7 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
    *     Supports both equi-joins and non-equi-joins.
    *     Supports only inner like joins.
    */
+  //todo sparksql join策略
   object JoinSelection extends Strategy
     with PredicateHelper
     with JoinSelectionHelper {
@@ -155,6 +156,7 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
       }
 
       if (onlyLookingAtHint && buildSide.isEmpty) {
+        //todo 广播
         if (isBroadcast) {
           // check broadcast hash join
           if (hintToBroadcastLeft(hint)) invalidBuildSideInHint(hint.leftHint.get, "left")
@@ -175,7 +177,7 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
           "no equi-join keys")
       }
     }
-
+    //todo join执行
     def apply(plan: LogicalPlan): Seq[SparkPlan] = plan match {
 
       // If it is an equi-join, we first look at the join hints w.r.t. the following order:
@@ -241,7 +243,10 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
             None
           }
         }
-
+        //todo Spark SQL 中的笛卡尔积连接（CartesianProduct join）只支持内连接（inner join），这是出于【性能和效率】的考虑。
+        // 内连接是连接操作中最常见的一种，它只会保留两个数据集中满足连接条件的元素对，因此在连接之前可以进行一些优化和过滤，以减少需要处理的数据量。
+        // 相比之下，外连接（outer join）和交叉连接（cross join）会生成更大的结果集，需要处理更多的数据，因此在 Spark SQL中笛卡尔积连接只支持内连接。
+        // 这也是为了防止用户错误地使用笛卡尔积连接导致性能问题。
         def createCartesianProduct() = {
           if (joinType.isInstanceOf[InnerLike]) {
             // `CartesianProductExec` can't implicitly evaluate equal join condition, here we should

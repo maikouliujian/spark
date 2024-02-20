@@ -60,6 +60,7 @@ case class ResolvedHint(child: LogicalPlan, hints: HintInfo = HintInfo())
  * Hint that is associated with a [[Join]] node, with [[HintInfo]] on its left child and on its
  * right child respectively.
  */
+//todo join hints
 case class JoinHint(leftHint: Option[HintInfo], rightHint: Option[HintInfo]) {
 
   def isEmpty: Boolean = leftHint.isEmpty && rightHint.isEmpty
