@@ -551,7 +551,7 @@ private[kafka010] object KafkaSourceProvider extends Logging {
   private[kafka010] val ENDING_OFFSETS_OPTION_KEY = "endingoffsets"
   private[kafka010] val STARTING_OFFSETS_BY_TIMESTAMP_OPTION_KEY = "startingoffsetsbytimestamp"
   private[kafka010] val ENDING_OFFSETS_BY_TIMESTAMP_OPTION_KEY = "endingoffsetsbytimestamp"
-
+  //todo 根据时间戳读取
   private[kafka010] val STARTING_TIMESTAMP_OPTION_KEY = "startingtimestamp"
   private[kafka010] val ENDING_TIMESTAMP_OPTION_KEY = "endingtimestamp"
   private val FAIL_ON_DATA_LOSS_OPTION_KEY = "failondataloss"
@@ -613,7 +613,7 @@ private[kafka010] object KafkaSourceProvider extends Logging {
       offsetOptionKey: String,
       defaultOffsets: KafkaOffsetRangeLimit): KafkaOffsetRangeLimit = {
     // The order below represents "preferences"
-
+    //todo 获取不到offset时的保底策略
     val strategyOnNoMatchStartingOffset = params.get(STARTING_OFFSETS_BY_TIMESTAMP_STRATEGY_KEY)
       .map(v => StrategyOnNoMatchStartingOffset.withName(v.toUpperCase(Locale.ROOT)))
       .getOrElse(StrategyOnNoMatchStartingOffset.ERROR)
