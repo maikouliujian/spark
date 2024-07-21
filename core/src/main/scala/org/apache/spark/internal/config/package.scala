@@ -2018,31 +2018,33 @@ package object config {
       .version("0.8.1")
       .timeConf(TimeUnit.MILLISECONDS)
       .createOptional
-
+  //todo spark推测执行
   private[spark] val SPECULATION_ENABLED =
     ConfigBuilder("spark.speculation")
       .version("0.6.0")
       .booleanConf
       .createWithDefault(false)
-
+  //todo 启动检查推测执行的线程，定期检测的间隔
   private[spark] val SPECULATION_INTERVAL =
     ConfigBuilder("spark.speculation.interval")
       .version("0.6.0")
       .timeConf(TimeUnit.MILLISECONDS)
       .createWithDefault(100)
-
+  //todo val threshold = max(speculationMultiplier * medianDuration【运行结束任务运行时长的中位数】, minTimeToSpeculation)
+  //todo 当task运行时间大于threshold时，启动推测执行
   private[spark] val SPECULATION_MULTIPLIER =
     ConfigBuilder("spark.speculation.multiplier")
       .version("0.6.0")
       .doubleConf
       .createWithDefault(1.5)
-
+ //todo minFinishedForSpeculation = speculationQuantile * numTasks
+  //todo 当运行成功task的数量大于minFinishedForSpeculation时，启动推测执行
   private[spark] val SPECULATION_QUANTILE =
     ConfigBuilder("spark.speculation.quantile")
       .version("0.6.0")
       .doubleConf
       .createWithDefault(0.75)
-
+  //todo 推测执行前，task的最小执行时间
   private[spark] val SPECULATION_MIN_THRESHOLD =
     ConfigBuilder("spark.speculation.minTaskRuntime")
       .doc("Minimum amount of time a task runs before being considered for speculation. " +

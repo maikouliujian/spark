@@ -220,9 +220,10 @@ private[spark] class TaskSchedulerImpl(
 
   override def start(): Unit = {
     backend.start()
-
+    //todo 启动推测执行线程
     if (!isLocal && conf.get(SPECULATION_ENABLED)) {
       logInfo("Starting speculative execution thread")
+      //todo 启动一个线程，定期检查任务是否可以推测执行
       speculationScheduler.scheduleWithFixedDelay(
         () => Utils.tryOrStopSparkContext(sc) { checkSpeculatableTasks() },
         SPECULATION_INTERVAL_MS, SPECULATION_INTERVAL_MS, TimeUnit.MILLISECONDS)

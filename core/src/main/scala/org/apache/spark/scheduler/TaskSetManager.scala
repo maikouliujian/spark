@@ -1074,14 +1074,17 @@ private[spark] class TaskSetManager(
       threshold: Double): Boolean = {
     val info = taskInfos(tid)
     val index = info.index
+    //todo task没有成功，并且没有被复制，并且运行时间超过阈值，并且不是推测任务，则进行推测
     if (!successful(index) && copiesRunning(index) == 1 &&
         info.timeRunning(currentTimeMillis) > threshold && !speculatableTasks.contains(index)) {
+      //todo 复制一个task，向task优先位置上分发该task
       addPendingTask(index, speculatable = true)
       logInfo(
         ("Marking task %d in stage %s (on %s) as speculatable because it ran more" +
           " than %.0f ms(%d speculatable tasks in this taskset now)")
           .format(index, taskSet.id, info.host, threshold, speculatableTasks.size + 1))
       speculatableTasks += index
+      //todo 推测任务提交给taskscheduler
       sched.dagScheduler.speculativeTaskSubmitted(tasks(index))
       true
     } else {
@@ -1094,6 +1097,7 @@ private[spark] class TaskSetManager(
    * by the TaskScheduler.
    *
    */
+    //todo 检查推测执行的task
   override def checkSpeculatableTasks(minTimeToSpeculation: Long): Boolean = {
     // No need to speculate if the task set is zombie or is from a barrier stage. If there is only
     // one task we don't speculate since we don't have metrics to decide whether it's taking too
@@ -1102,6 +1106,7 @@ private[spark] class TaskSetManager(
       return false
     }
     var foundTasks = false
+      //todo minFinishedForSpeculation = speculationQuantile * numTasks
     logDebug("Checking for speculative tasks: minFinished = " + minFinishedForSpeculation)
 
     // It's possible that a task is marked as completed by the scheduler, then the size of
@@ -1110,12 +1115,15 @@ private[spark] class TaskSetManager(
     val numSuccessfulTasks = successfulTaskDurations.size()
     if (numSuccessfulTasks >= minFinishedForSpeculation) {
       val time = clock.getTimeMillis()
+      //todo 成功task运行时长的中位数
       val medianDuration = successfulTaskDurations.median
       val threshold = max(speculationMultiplier * medianDuration, minTimeToSpeculation)
       // TODO: Threshold should also look at standard deviation of task durations and have a lower
       // bound based on that.
       logDebug("Task length threshold for speculation: " + threshold)
+      //todo 遍历正在运行的task
       for (tid <- runningTasksSet) {
+        //todo 核心
         var speculated = checkAndSubmitSpeculatableTask(tid, time, threshold)
         if (!speculated && executorDecommissionKillInterval.isDefined) {
           val taskInfo = taskInfos(tid)

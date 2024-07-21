@@ -2842,6 +2842,7 @@ private[scheduler] class DAGSchedulerEventProcessLoop(dagScheduler: DAGScheduler
       dagScheduler.handleBeginEvent(task, taskInfo)
 
     case SpeculativeTaskSubmitted(task) =>
+      //todo 处理推测执行task
       dagScheduler.handleSpeculativeTaskSubmitted(task)
 
     case UnschedulableTaskSetAdded(stageId, stageAttemptId) =>

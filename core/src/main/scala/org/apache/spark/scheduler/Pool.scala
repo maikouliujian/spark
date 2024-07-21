@@ -97,6 +97,7 @@ private[spark] class Pool(
   override def checkSpeculatableTasks(minTimeToSpeculation: Long): Boolean = {
     var shouldRevive = false
     for (schedulable <- schedulableQueue.asScala) {
+      //todo 检查推测执行的task
       shouldRevive |= schedulable.checkSpeculatableTasks(minTimeToSpeculation)
     }
     shouldRevive
