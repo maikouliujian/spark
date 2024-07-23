@@ -55,7 +55,9 @@ object ShufflePartitionsUtil extends Logging {
 
     // If `minNumPartitions` is very large, it is possible that we need to use a value less than
     // `advisoryTargetSize` as the target size of a coalesced task.
+    //todo 所有shuffle分区数总大小
     val totalPostShuffleInputSize = mapOutputStatistics.flatMap(_.map(_.bytesByPartitionId.sum)).sum
+    //todo 分区大小的最大值
     val maxTargetSize = math.ceil(totalPostShuffleInputSize / minNumPartitions.toDouble).toLong
     // It's meaningless to make target size smaller than minPartitionSize.
     val targetSize = maxTargetSize.min(advisoryTargetSize).max(minPartitionSize)
@@ -147,6 +149,7 @@ object ShufflePartitionsUtil extends Logging {
         val repeatValue = partitionIndices(i)
         // coalesce any partitions before partition(i - 1) and after the end of latest skew section.
         if (i - 1 > start) {
+          //todo
           val partitionSpecs = coalescePartitions(
             partitionIndices(start),
             repeatValue,
@@ -401,6 +404,7 @@ object ShufflePartitionsUtil extends Logging {
           dataSize += mapPartitionSizes(mapIndex)
           mapIndex += 1
         }
+        //todo 返回PartialReducerPartitionSpec
         PartialReducerPartitionSpec(reducerId, startMapIndex, endMapIndex, dataSize)
       })
     } else {

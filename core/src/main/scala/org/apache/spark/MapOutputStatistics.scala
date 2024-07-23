@@ -24,4 +24,7 @@ package org.apache.spark
  * @param bytesByPartitionId approximate number of output bytes for each map output partition
  *   (may be inexact due to use of compressed map statuses)
  */
+//todo shuffle中间结果
+//todo shuffleId shuffleid
+//todo Array: bytesByPartitionId 每一个map输出分区的大小
 private[spark] class MapOutputStatistics(val shuffleId: Int, val bytesByPartitionId: Array[Long])

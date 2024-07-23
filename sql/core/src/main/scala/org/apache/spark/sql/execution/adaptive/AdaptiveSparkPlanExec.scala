@@ -81,7 +81,7 @@ case class AdaptiveSparkPlanExec(
   }
 
   @transient private val planChangeLogger = new PlanChangeLogger[SparkPlan]()
-
+  //todo aqe优化器
   // The logical plan optimizer for re-optimizing the current logical plan.
   @transient private val optimizer = new AQEOptimizer(conf)
 
@@ -106,6 +106,7 @@ case class AdaptiveSparkPlanExec(
   // A list of physical plan rules to be applied before creation of query stages. The physical
   // plan should reach a final status of query stages (i.e., no more addition or removal of
   // Exchange nodes) after running these rules.
+  //todo pre 优化
   @transient private val queryStagePreparationRules: Seq[Rule[SparkPlan]] = {
     // For cases like `df.repartition(a, b).select(c)`, there is no distribution requirement for
     // the final plan, but we do need to respect the user-specified repartition. Here we ask
@@ -119,17 +120,20 @@ case class AdaptiveSparkPlanExec(
       ReplaceHashWithSortAgg,
       RemoveRedundantSorts,
       DisableUnnecessaryBucketedScan,
+      //todo 优化倾斜join
       OptimizeSkewedJoin(ensureRequirements)
     ) ++ context.session.sessionState.queryStagePrepRules
   }
 
   // A list of physical optimizer rules to be applied to a new stage before its execution. These
   // optimizations should be stage-independent.
-  //todo 这里主要是AQE的物理计划层面的优化规则
+  //todo 这里主要是AQE的物理计划层面的优化规则！！！！！！！！
   @transient private val queryStageOptimizerRules: Seq[Rule[SparkPlan]] = Seq(
     PlanAdaptiveDynamicPruningFilters(this),
     ReuseAdaptiveSubquery(context.subqueryCache),
+    //todo 对于shuffle join数据倾斜的优化
     OptimizeSkewInRebalancePartitions,
+    //todo 合并shuffle分区，解决小文件问题
     CoalesceShufflePartitions(context.session),
     // `OptimizeShuffleWithLocalRead` needs to make use of 'AQEShuffleReadExec.partitionSpecs'
     // added by `CoalesceShufflePartitions`, and must be executed after it.
@@ -148,7 +152,7 @@ case class AdaptiveSparkPlanExec(
       context.session.sessionState.columnarRules, outputsColumnar),
     collapseCodegenStagesRule
   )
-
+  //todo 采用aqe策略来优化物理计划
   private def optimizeQueryStage(plan: SparkPlan, isFinalStage: Boolean): SparkPlan = {
     val optimized = queryStageOptimizerRules.foldLeft(plan) { case (latestPlan, rule) =>
       val applied = rule.apply(latestPlan)
@@ -219,7 +223,7 @@ case class AdaptiveSparkPlanExec(
     Option(context.session.sparkContext.getLocalProperty(SQLExecution.EXECUTION_ID_KEY))
       .map(_.toLong).filter(SQLExecution.getQueryExecution(_) eq context.qe)
   }
-
+  //todo 入口！！！！！！
   private def getFinalPhysicalPlan(): SparkPlan = lock.synchronized {
     if (isFinalPlan) return currentPhysicalPlan
 
@@ -232,6 +236,7 @@ case class AdaptiveSparkPlanExec(
       // during `initialPlan`
       var currentLogicalPlan = inputPlan.logicalLink.get
       //todo 这个方法的输出类型是CreateStageResult，这个方法会从下到上递归的遍历物理计划树生成新的Query stage,这个 createQueryStages 方法在每次计划发生变化时都会被调用
+      //todo 递归的遍历物理计划树生成新的Query stage
       var result = createQueryStages(currentPhysicalPlan)
       val events = new LinkedBlockingQueue[StageMaterializationEvent]()
       val errors = new mutable.ArrayBuffer[Throwable]()
@@ -261,6 +266,7 @@ case class AdaptiveSparkPlanExec(
           // todo [4] 等待下一个完成的stage，这表明新的统计数据可用，并且可能可以创建新的阶段。
           reorderedNewStages.foreach { stage =>
             try {
+              //todo stage物化===> 获取 MapOutputStatistics信息
               stage.materialize().onComplete { res =>
                 if (res.isSuccess) {
                   events.offer(StageSuccess(stage, res.get))
@@ -375,7 +381,7 @@ case class AdaptiveSparkPlanExec(
       finalPlan.doExecuteBroadcast()
     }
   }
-
+  //todo 获取最终的物理计划
   private def withFinalPlanUpdate[T](fun: SparkPlan => T): T = {
     //todo 获取最终的物理计划
     val plan = getFinalPhysicalPlan()

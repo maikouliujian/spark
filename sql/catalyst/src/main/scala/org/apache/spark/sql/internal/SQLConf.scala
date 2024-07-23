@@ -561,7 +561,7 @@ object SQLConf {
       .bytesConf(ByteUnit.BYTE)
       .checkValue(_ > 0, "advisoryPartitionSizeInBytes must be positive")
       .createWithDefaultString("64MB")
-
+  //todo 是否开启aqe
   val ADAPTIVE_EXECUTION_ENABLED = buildConf("spark.sql.adaptive.enabled")
     .doc("When true, enable adaptive query execution, which re-optimizes the query plan in the " +
       "middle of query execution, based on accurate runtime statistics.")
@@ -588,7 +588,7 @@ object SQLConf {
     .transform(_.toUpperCase(Locale.ROOT))
     .checkValues(Set("TRACE", "DEBUG", "INFO", "WARN", "ERROR"))
     .createWithDefault("debug")
-
+ //todo 建议大小
   val ADVISORY_PARTITION_SIZE_IN_BYTES =
     buildConf("spark.sql.adaptive.advisoryPartitionSizeInBytes")
       .doc("The advisory size in bytes of the shuffle partition during adaptive optimization " +
@@ -674,7 +674,7 @@ object SQLConf {
       .version("3.0.0")
       .booleanConf
       .createWithDefault(true)
-
+  //todo aqe解决数据倾斜
   val SKEW_JOIN_ENABLED =
     buildConf("spark.sql.adaptive.skewJoin.enabled")
       .doc(s"When true and '${ADAPTIVE_EXECUTION_ENABLED.key}' is true, Spark dynamically " +

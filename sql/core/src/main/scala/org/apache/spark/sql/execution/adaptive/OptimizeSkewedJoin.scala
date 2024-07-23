@@ -112,13 +112,16 @@ case class OptimizeSkewedJoin(ensureRequirements: EnsureRequirements)
       left: ShuffleQueryStageExec,
       right: ShuffleQueryStageExec,
       joinType: JoinType): Option[(SparkPlan, SparkPlan)] = {
+    //todo 判断是否可以拆分
     val canSplitLeft = canSplitLeftSide(joinType)
     val canSplitRight = canSplitRightSide(joinType)
     if (!canSplitLeft && !canSplitRight) return None
-
+    //todo 左分区数
     val leftSizes = left.mapStats.get.bytesByPartitionId
+    //todo 右分区数
     val rightSizes = right.mapStats.get.bytesByPartitionId
     assert(leftSizes.length == rightSizes.length)
+    //todo 分区数
     val numPartitions = leftSizes.length
     // We use the median size of the original shuffle partitions to detect skewed partitions.
     val leftMedSize = Utils.median(leftSizes, false)
@@ -131,7 +134,7 @@ case class OptimizeSkewedJoin(ensureRequirements: EnsureRequirements)
          |Right side partitions size info:
          |${getSizeInfo(rightMedSize, rightSizes)}
       """.stripMargin)
-
+    //todo 计算倾斜的阈值
     val leftSkewThreshold = getSkewThreshold(leftMedSize)
     val rightSkewThreshold = getSkewThreshold(rightMedSize)
     val leftTargetSize = targetSize(leftSizes, leftSkewThreshold)
@@ -143,14 +146,16 @@ case class OptimizeSkewedJoin(ensureRequirements: EnsureRequirements)
     var numSkewedRight = 0
     for (partitionIndex <- 0 until numPartitions) {
       val leftSize = leftSizes(partitionIndex)
+      //todo 左边要切
       val isLeftSkew = canSplitLeft && leftSize > leftSkewThreshold
       val rightSize = rightSizes(partitionIndex)
+      //todo 右边要切
       val isRightSkew = canSplitRight && rightSize > rightSkewThreshold
       val leftNoSkewPartitionSpec =
         Seq(CoalescedPartitionSpec(partitionIndex, partitionIndex + 1, leftSize))
       val rightNoSkewPartitionSpec =
         Seq(CoalescedPartitionSpec(partitionIndex, partitionIndex + 1, rightSize))
-
+      //todo 处理左切
       val leftParts = if (isLeftSkew) {
         val skewSpecs = ShufflePartitionsUtil.createSkewPartitionSpecs(
           left.mapStats.get.shuffleId, partitionIndex, leftTargetSize)
@@ -164,7 +169,7 @@ case class OptimizeSkewedJoin(ensureRequirements: EnsureRequirements)
       } else {
         leftNoSkewPartitionSpec
       }
-
+      //todo 处理右切
       val rightParts = if (isRightSkew) {
         val skewSpecs = ShufflePartitionsUtil.createSkewPartitionSpecs(
           right.mapStats.get.shuffleId, partitionIndex, rightTargetSize)
@@ -202,6 +207,7 @@ case class OptimizeSkewedJoin(ensureRequirements: EnsureRequirements)
     case smj @ SortMergeJoinExec(_, _, joinType, _,
         s1 @ SortExec(_, _, ShuffleStage(left: ShuffleQueryStageExec), _),
         s2 @ SortExec(_, _, ShuffleStage(right: ShuffleQueryStageExec), _), false) =>
+      //todo 优化数据倾斜的join
       tryOptimizeJoinChildren(left, right, joinType).map {
         case (newLeft, newRight) =>
           smj.copy(
@@ -211,6 +217,7 @@ case class OptimizeSkewedJoin(ensureRequirements: EnsureRequirements)
     case shj @ ShuffledHashJoinExec(_, _, joinType, _, _,
         ShuffleStage(left: ShuffleQueryStageExec),
         ShuffleStage(right: ShuffleQueryStageExec), false) =>
+      //todo 优化数据倾斜的join
       tryOptimizeJoinChildren(left, right, joinType).map {
         case (newLeft, newRight) =>
           shj.copy(left = newLeft, right = newRight, isSkewJoin = true)
@@ -227,6 +234,7 @@ case class OptimizeSkewedJoin(ensureRequirements: EnsureRequirements)
     // accept the extra shuffles if the force-apply config is true.
     // TODO: It's possible that only one skewed join in the query plan leads to extra shuffles and
     //       we only need to skip optimizing that join. We should make the strategy smarter here.
+    //todo 重点！！！！！！！
     val optimized = optimizeSkewJoin(plan)
     val requirementSatisfied = if (ensureRequirements.requiredDistribution.isDefined) {
       ValidateRequirements.validate(optimized, ensureRequirements.requiredDistribution.get)
@@ -235,6 +243,7 @@ case class OptimizeSkewedJoin(ensureRequirements: EnsureRequirements)
     }
     if (requirementSatisfied) {
       optimized.transform {
+            //todo 去掉SkewJoinChildWrapper包装
         case SkewJoinChildWrapper(child) => child
       }
     } else if (conf.getConf(SQLConf.ADAPTIVE_FORCE_OPTIMIZE_SKEWED_JOIN)) {

@@ -39,6 +39,7 @@ import org.apache.spark.sql.vectorized.ColumnarBatch
  */
 case class AQEShuffleReadExec private(
     child: SparkPlan,
+    //todo 切分优化后的分区
     partitionSpecs: Seq[ShufflePartitionSpec]) extends UnaryExecNode {
   assert(partitionSpecs.nonEmpty, s"${getClass.getSimpleName} requires at least one partition")
 

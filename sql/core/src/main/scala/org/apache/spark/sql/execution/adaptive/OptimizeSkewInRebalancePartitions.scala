@@ -65,6 +65,7 @@ object OptimizeSkewInRebalancePartitions extends AQEShuffleReadRule {
           newPartitionSpec.get
         }
       } else {
+        //todo 如果比目标size小，则不切分
         CoalescedPartitionSpec(reduceIndex, reduceIndex + 1, bytes) :: Nil
       }
     }
@@ -79,13 +80,14 @@ object OptimizeSkewInRebalancePartitions extends AQEShuffleReadRule {
       mapStats.get.bytesByPartitionId.forall(_ <= advisorySize)) {
       return shuffle
     }
-
+    //todo 优化数据倾斜的分区！！！！！！
     val newPartitionsSpec = optimizeSkewedPartitions(
       mapStats.get.shuffleId, mapStats.get.bytesByPartitionId, advisorySize)
     // return origin plan if we can not optimize partitions
     if (newPartitionsSpec.length == mapStats.get.bytesByPartitionId.length) {
       shuffle
     } else {
+      //todo 优化数据倾斜的分区！！！！！！
       AQEShuffleReadExec(shuffle, newPartitionsSpec)
     }
   }
@@ -97,6 +99,7 @@ object OptimizeSkewInRebalancePartitions extends AQEShuffleReadRule {
 
     plan transformUp {
       case stage: ShuffleQueryStageExec if isSupported(stage.shuffle) =>
+        //todo 遇到ShuffleQueryStageExec，尝试优化
         tryOptimizeSkewedPartitions(stage)
     }
   }

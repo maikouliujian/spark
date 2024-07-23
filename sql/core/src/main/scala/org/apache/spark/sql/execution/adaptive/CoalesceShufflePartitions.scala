@@ -39,7 +39,7 @@ case class CoalesceShufflePartitions(session: SparkSession) extends AQEShuffleRe
   override def isSupported(shuffle: ShuffleExchangeLike): Boolean = {
     shuffle.outputPartitioning != SinglePartition && super.isSupported(shuffle)
   }
-
+  //todo
   override def apply(plan: SparkPlan): SparkPlan = {
     if (!conf.coalesceShufflePartitionsEnabled) {
       return plan
@@ -78,14 +78,17 @@ case class CoalesceShufflePartitions(session: SparkSession) extends AQEShuffleRe
     // Sub-plans under the Union operator can be coalesced independently, so we can divide them
     // into independent "coalesce groups", and all shuffle stages within each group have to be
     // coalesced together.
+    //todo 收集所有的shuffleStage
     val coalesceGroups = collectCoalesceGroups(plan)
 
     // Divide minimum task parallelism among coalesce groups according to their data sizes.
     val minNumPartitionsByGroup = if (coalesceGroups.length == 1) {
       Seq(math.max(minNumPartitions, 1))
     } else {
+      //todo 计算每个shuffle中间结果的大小
       val sizes =
         coalesceGroups.map(_.flatMap(_.shuffleStage.mapStats.map(_.bytesByPartitionId.sum)).sum)
+        //todo shuffle总大小
       val totalSize = sizes.sum
       sizes.map { size =>
         val num = if (totalSize > 0) {
@@ -100,6 +103,7 @@ case class CoalesceShufflePartitions(session: SparkSession) extends AQEShuffleRe
     val specsMap = mutable.HashMap.empty[Int, Seq[ShufflePartitionSpec]]
     // Coalesce partitions for each coalesce group independently.
     coalesceGroups.zip(minNumPartitionsByGroup).foreach { case (shuffleStages, minNumPartitions) =>
+      //todo 合并分区
       val newPartitionSpecs = ShufflePartitionsUtil.coalescePartitions(
         shuffleStages.map(_.shuffleStage.mapStats),
         shuffleStages.map(_.partitionSpecs),
@@ -127,6 +131,7 @@ case class CoalesceShufflePartitions(session: SparkSession) extends AQEShuffleRe
    * 1) all leaf nodes of this child are shuffle stages; and
    * 2) all these shuffle stages support coalescing.
    */
+    //todo 收集所有的shuffleStage
   private def collectCoalesceGroups(plan: SparkPlan): Seq[Seq[ShuffleStageInfo]] = plan match {
     case r @ AQEShuffleReadExec(q: ShuffleQueryStageExec, _) if isSupported(q.shuffle) =>
       Seq(collectShuffleStageInfos(r))

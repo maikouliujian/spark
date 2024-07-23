@@ -290,6 +290,7 @@ abstract class TreeNode[BaseType <: TreeNode[BaseType]] extends Product with Tre
    * Returns a Seq of the children of this node.
    * Children should not change. Immutability required for containsChild optimization
    */
+  //todo 子节点
   def children: Seq[BaseType]
 
   lazy val containsChild: Set[TreeNode[_]] = children.toSet
@@ -1219,7 +1220,7 @@ trait LeafLike[T <: TreeNode[T]] { self: TreeNode[T] =>
   override final def mapChildren(f: T => T): T = this.asInstanceOf[T]
   override final def withNewChildrenInternal(newChildren: IndexedSeq[T]): T = this.asInstanceOf[T]
 }
-
+//todo 一元的，只有一个child
 trait UnaryLike[T <: TreeNode[T]] { self: TreeNode[T] =>
   def child: T
   @transient override final lazy val children: Seq[T] = IndexedSeq(child)
