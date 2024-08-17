@@ -48,7 +48,8 @@ private[sql] class ExternalAppendOnlyUnsafeRowArray(
     taskContext: TaskContext,
     initialSize: Int,
     pageSizeBytes: Long,
-    numRowsInMemoryBufferThreshold: Int,
+    numRowsInMemoryBufferThreshold: Int, //todo 内存数据条数阈值
+    //todo 溢写磁盘条数阈值
     numRowsSpillThreshold: Int) extends Logging {
 
   def this(numRowsInMemoryBufferThreshold: Int, numRowsSpillThreshold: Int) = {
@@ -114,8 +115,9 @@ private[sql] class ExternalAppendOnlyUnsafeRowArray(
     numRows = 0
     modificationsCount += 1
   }
-
+  //todo 添加元素！！！！！！
   def add(unsafeRow: UnsafeRow): Unit = {
+    //todo 如果内存中的数据条数小于阈值，则直接添加到内存中【ArrayBuffer】
     if (numRows < numRowsInMemoryBufferThreshold) {
       inMemoryBuffer += unsafeRow.copy()
     } else {
@@ -124,6 +126,7 @@ private[sql] class ExternalAppendOnlyUnsafeRowArray(
           s"${classOf[UnsafeExternalSorter].getName}")
 
         // We will not sort the rows, so prefixComparator and recordComparator are null
+        //todo 如果内存中的数据条数大于等于阈值，创建UnsafeExternalSorter，后续写数据都这个对象
         spillableArray = UnsafeExternalSorter.create(
           taskMemoryManager,
           blockManager,
@@ -137,6 +140,7 @@ private[sql] class ExternalAppendOnlyUnsafeRowArray(
           false)
 
         // populate with existing in-memory buffered rows
+        //todo 1、先将内存数据写入到spillableArray
         if (inMemoryBuffer != null) {
           inMemoryBuffer.foreach(existingUnsafeRow =>
             spillableArray.insertRecord(
@@ -150,7 +154,7 @@ private[sql] class ExternalAppendOnlyUnsafeRowArray(
         }
         numFieldsPerRow = unsafeRow.numFields()
       }
-
+      //todo 2、插入新数据到spillableArray
       spillableArray.insertRecord(
         unsafeRow.getBaseObject,
         unsafeRow.getBaseOffset,
@@ -170,14 +174,17 @@ private[sql] class ExternalAppendOnlyUnsafeRowArray(
    * the iterator, then the iterator is invalidated thus saving clients from thinking that they
    * have read all the data while there were new rows added to this array.
    */
+    //todo 生成迭代器用来读数据
   def generateIterator(startIndex: Int): Iterator[UnsafeRow] = {
     if (startIndex < 0 || (numRows > 0 && startIndex > numRows)) {
       throw QueryExecutionErrors.invalidStartIndexError(numRows, startIndex)
     }
 
     if (spillableArray == null) {
+      //todo 纯内存【arraybuffer取】
       new InMemoryBufferIterator(startIndex)
     } else {
+      //todo 内存 + 磁盘
       new SpillableArrayIterator(spillableArray.getIterator(startIndex), numFieldsPerRow)
     }
   }

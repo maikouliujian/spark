@@ -255,11 +255,13 @@ trait JoinSelectionHelper {
       hint: JoinHint,
       hintOnly: Boolean,
       conf: SQLConf): Option[BuildSide] = {
+    //todo 左边可广播
     val buildLeft = if (hintOnly) {
       hintToBroadcastLeft(hint)
     } else {
       canBroadcastBySize(left, conf) && !hintToNotBroadcastLeft(hint)
     }
+    //todo 右边可广播
     val buildRight = if (hintOnly) {
       hintToBroadcastRight(hint)
     } else {
@@ -425,6 +427,7 @@ trait JoinSelectionHelper {
     if (canBuildLeft && canBuildRight) {
       // returns the smaller side base on its estimated physical size, if we want to build the
       // both sides.
+      //todo 取更小
       Some(getSmallerSide(left, right))
     } else if (canBuildLeft) {
       Some(BuildLeft)

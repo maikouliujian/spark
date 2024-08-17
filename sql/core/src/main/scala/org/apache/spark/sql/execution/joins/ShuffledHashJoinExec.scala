@@ -96,6 +96,7 @@ case class ShuffledHashJoinExec(
   protected override def doExecute(): RDD[InternalRow] = {
     val numOutputRows = longMetric("numOutputRows")
     streamedPlan.execute().zipPartitions(buildPlan.execute()) { (streamIter, buildIter) =>
+      //todo 对build侧每一个分区的数据构建hash表
       val hashed = buildHashedRelation(buildIter)
       joinType match {
         case FullOuter => fullOuterJoin(streamIter, hashed, numOutputRows)
@@ -109,13 +110,16 @@ case class ShuffledHashJoinExec(
       hashedRelation: HashedRelation,
       numOutputRows: SQLMetric): Iterator[InternalRow] = {
     val joinKeys = streamSideKeyGenerator()
+    //todo join结果
     val joinRow = new JoinedRow
     val (joinRowWithStream, joinRowWithBuild) = {
       buildSide match {
+        //todo 方法转为函数
         case BuildLeft => (joinRow.withRight _, joinRow.withLeft _)
         case BuildRight => (joinRow.withLeft _, joinRow.withRight _)
       }
     }
+    //todo 构建空行
     val buildNullRow = new GenericInternalRow(buildOutput.length)
     val streamNullRow = new GenericInternalRow(streamedOutput.length)
     lazy val streamNullJoinRowWithBuild = {
@@ -161,6 +165,7 @@ case class ShuffledHashJoinExec(
       joinRowWithBuild: InternalRow => JoinedRow,
       streamNullJoinRowWithBuild: => InternalRow => JoinedRow,
       buildNullRow: GenericInternalRow): Iterator[InternalRow] = {
+    //todo bitset
     val matchedKeys = new BitSet(hashedRelation.maxNumKeysIndex)
     longMetric("buildDataSize") += matchedKeys.capacity / 8
 
@@ -169,6 +174,7 @@ case class ShuffledHashJoinExec(
       joinRowWithStream(srow)
       val keys = joinKeys(srow)
       if (keys.anyNull) {
+        //todo 迭代器模式
         joinRowWithBuild(buildNullRow)
       } else {
         val matched = hashedRelation.getValueWithKeyIndex(keys)
@@ -177,6 +183,7 @@ case class ShuffledHashJoinExec(
           val buildRow = matched.getValue
           val joinRow = joinRowWithBuild(buildRow)
           if (boundCondition(joinRow)) {
+            //todo 记录join上的keyindex
             matchedKeys.set(keyIndex)
             joinRow
           } else {
@@ -193,6 +200,7 @@ case class ShuffledHashJoinExec(
       valueRowWithKeyIndex =>
         val keyIndex = valueRowWithKeyIndex.getKeyIndex
         val isMatched = matchedKeys.get(keyIndex)
+        //todo 只处理上面没有join上的
         if (!isMatched) {
           val buildRow = valueRowWithKeyIndex.getValue
           Some(streamNullJoinRowWithBuild(buildRow))

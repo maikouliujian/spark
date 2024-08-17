@@ -134,6 +134,7 @@ case class BroadcastExchangeExec(
               interruptOnCancel = true)
             val beforeCollect = System.nanoTime()
             // Use executeCollect/executeCollectIterator to avoid conversion to Scala types
+            //todo input是广播数据
             val (numRows, input) = child.executeCollectIterator()
             longMetric("numOutputRows") += numRows
             if (numRows >= maxBroadcastRows) {

@@ -57,6 +57,7 @@ public final class UnsafeSorterSpillWriter {
   private final File file;
   private final BlockId blockId;
   private final int numRecordsToWrite;
+  //todo 真正写数据的类
   private DiskBlockObjectWriter writer;
   private int numRecordsSpilled = 0;
 
@@ -109,6 +110,7 @@ public final class UnsafeSorterSpillWriter {
    * @param recordLength the length of the record.
    * @param keyPrefix a sort key prefix
    */
+  //todo 写数据到磁盘
   public void write(
       Object baseObject,
       long baseOffset,
@@ -133,6 +135,7 @@ public final class UnsafeSorterSpillWriter {
         writeBuffer,
         Platform.BYTE_ARRAY_OFFSET + (diskWriteBufferSize - freeSpaceInWriteBuffer),
         toTransfer);
+      //todo 真正写数据
       writer.write(writeBuffer, 0, (diskWriteBufferSize - freeSpaceInWriteBuffer) + toTransfer);
       recordReadPosition += toTransfer;
       dataRemaining -= toTransfer;

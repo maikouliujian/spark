@@ -44,7 +44,7 @@ import org.apache.spark.util.collection.BitSet
 abstract class QueryPlan[PlanType <: QueryPlan[PlanType]]
   extends TreeNode[PlanType] with SQLConfHelper {
   self: PlanType =>
-
+  //todo 输出字段
   def output: Seq[Attribute]
 
   /**

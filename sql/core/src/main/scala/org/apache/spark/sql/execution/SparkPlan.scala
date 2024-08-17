@@ -203,6 +203,7 @@ abstract class SparkPlan extends QueryPlan[SparkPlan] with Logging with Serializ
    *
    * Concrete implementations of SparkPlan should override `doExecuteBroadcast`.
    */
+    //todo 执行广播操作
   final def executeBroadcast[T](): broadcast.Broadcast[T] = executeQuery {
     if (isCanonicalizedPlan) {
       throw new IllegalStateException("A canonicalized plan is not supposed to be executed.")

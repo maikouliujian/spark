@@ -135,11 +135,12 @@ case class BroadcastHashJoinExec(
       generateExprCombinations(partitioning.expressions, Nil)
         .map(HashPartitioning(_, partitioning.numPartitions)))
   }
-
+  //todo broadcast hash join exec
   protected override def doExecute(): RDD[InternalRow] = {
     val numOutputRows = longMetric("numOutputRows")
-
+    //todo 获取广播变量map
     val broadcastRelation = buildPlan.executeBroadcast[HashedRelation]()
+    //todo isNullAwareAntiJoin 会排除null
     if (isNullAwareAntiJoin) {
       streamedPlan.execute().mapPartitionsInternal { streamedIter =>
         val hashed = broadcastRelation.value.asReadOnlyCopy()
@@ -169,6 +170,7 @@ case class BroadcastHashJoinExec(
       streamedPlan.execute().mapPartitions { streamedIter =>
         val hashed = broadcastRelation.value.asReadOnlyCopy()
         TaskContext.get().taskMetrics().incPeakExecutionMemory(hashed.estimatedSize)
+        //todo join
         join(streamedIter, hashed, numOutputRows)
       }
     }

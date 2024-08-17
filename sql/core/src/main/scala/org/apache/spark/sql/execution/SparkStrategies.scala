@@ -199,8 +199,10 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
       //   4. Pick cartesian product if join type is inner like.
       //   5. Pick broadcast nested loop join as the final solution. It may OOM but we don't have
       //      other choice.
+      //todo 等值join
       case j @ ExtractEquiJoinKeys(joinType, leftKeys, rightKeys, nonEquiCond,
           _, left, right, hint) =>
+        //todo broadcast hash join
         def createBroadcastHashJoin(onlyLookingAtHint: Boolean) = {
           val buildSide = getBroadcastBuildSide(
             left, right, joinType, hint, onlyLookingAtHint, conf)
@@ -217,7 +219,7 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
                 planLater(right)))
           }
         }
-
+        //todo shuffle hash join
         def createShuffleHashJoin(onlyLookingAtHint: Boolean) = {
           val buildSide = getShuffleHashJoinBuildSide(
             left, right, joinType, hint, onlyLookingAtHint, conf)
@@ -234,8 +236,9 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
                 planLater(right)))
           }
         }
-
+        //todo sort merge join
         def createSortMergeJoin() = {
+          //todo sort merge join要求key是可以排序的
           if (RowOrdering.isOrderable(leftKeys)) {
             Some(Seq(joins.SortMergeJoinExec(
               leftKeys, rightKeys, joinType, nonEquiCond, planLater(left), planLater(right))))
@@ -256,7 +259,7 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
             None
           }
         }
-
+        //todo 如果没有hint，join的核心方法
         def createJoinWithoutHint() = {
           createBroadcastHashJoin(false)
             .orElse(createShuffleHashJoin(false))
@@ -269,7 +272,7 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
                 planLater(left), planLater(right), buildSide, joinType, j.condition))
             }
         }
-
+        //todo 如果没有hint
         if (hint.isEmpty) {
           createJoinWithoutHint()
         } else {

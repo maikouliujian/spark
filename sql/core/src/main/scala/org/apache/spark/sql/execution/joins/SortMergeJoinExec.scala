@@ -126,7 +126,9 @@ case class SortMergeJoinExec(
   protected override def doExecute(): RDD[InternalRow] = {
     val numOutputRows = longMetric("numOutputRows")
     val spillSize = longMetric("spillSize")
+    //todo 溢写阈值【行数】
     val spillThreshold = getSpillThreshold
+    //todo 内存阈值【行数】
     val inMemoryThreshold = getInMemoryThreshold
     left.execute().zipPartitions(right.execute()) { (leftIter, rightIter) =>
       val boundCondition: (InternalRow) => Boolean = {
@@ -147,20 +149,23 @@ case class SortMergeJoinExec(
             private[this] var currentLeftRow: InternalRow = _
             private[this] var currentRightMatches: ExternalAppendOnlyUnsafeRowArray = _
             private[this] var rightMatchesIterator: Iterator[UnsafeRow] = null
+            //todo 核心类
             private[this] val smjScanner = new SortMergeJoinScanner(
               createLeftKeyGenerator(),
               createRightKeyGenerator(),
               keyOrdering,
-              RowIterator.fromScala(leftIter),
-              RowIterator.fromScala(rightIter),
+              RowIterator.fromScala(leftIter), //todo streamedIter
+              RowIterator.fromScala(rightIter), //todo bufferedIter
               inMemoryThreshold,
               spillThreshold,
               spillSize,
               cleanupResources
             )
+            //todo join结果
             private[this] val joinRow = new JoinedRow
 
             if (smjScanner.findNextInnerJoinRows()) {
+              //todo 获取当前streamedRow匹配上的所有的bufferedRow，会出现多条
               currentRightMatches = smjScanner.getBufferedMatches
               currentLeftRow = smjScanner.getStreamedRow
               rightMatchesIterator = currentRightMatches.generateIterator()
@@ -180,6 +185,7 @@ case class SortMergeJoinExec(
                     return false
                   }
                 }
+                //todo join结果！！！！！！
                 joinRow(currentLeftRow, rightMatchesIterator.next())
                 if (boundCondition(joinRow)) {
                   numOutputRows += 1
@@ -204,6 +210,7 @@ case class SortMergeJoinExec(
             spillSize,
             cleanupResources
           )
+          //todo 构建空行
           val rightNullRow = new GenericInternalRow(right.output.length)
           new LeftOuterIterator(
             smjScanner, rightNullRow, boundCondition, resultProj, numOutputRows).toScala
@@ -223,7 +230,7 @@ case class SortMergeJoinExec(
           val leftNullRow = new GenericInternalRow(left.output.length)
           new RightOuterIterator(
             smjScanner, leftNullRow, boundCondition, resultProj, numOutputRows).toScala
-
+         //todo 全外联接
         case FullOuter =>
           val leftNullRow = new GenericInternalRow(left.output.length)
           val rightNullRow = new GenericInternalRow(right.output.length)
@@ -1291,6 +1298,7 @@ private[joins] class SortMergeJoinScanner(
   })
 
   // Initialization (note: do _not_ want to advance streamed here).
+  //todo 1、先更新bufferedRow 和 bufferedRowKey！！！！！！！
   advancedBufferedToRowWithNullFreeJoinKey()
 
   // --- Public methods ---------------------------------------------------------------------------
@@ -1307,6 +1315,7 @@ private[joins] class SortMergeJoinScanner(
    *         results.
    */
   final def findNextInnerJoinRows(): Boolean = {
+    //todo streamedRowKey不能有null
     while (advancedStreamed() && streamedRowKey.anyNull) {
       // Advance the streamed side of the join until we find the next row whose join key contains
       // no nulls or we hit the end of the streamed iterator.
@@ -1327,12 +1336,14 @@ private[joins] class SortMergeJoinScanner(
       false
     } else {
       // Advance both the streamed and buffered iterators to find the next pair of matching rows.
+      //todo 比较streamedRowKey 和 bufferedRowKey
       var comp = keyOrdering.compare(streamedRowKey, bufferedRowKey)
       do {
         if (streamedRowKey.anyNull) {
           advancedStreamed()
         } else {
           assert(!bufferedRowKey.anyNull)
+          //todo join的核心逻辑
           comp = keyOrdering.compare(streamedRowKey, bufferedRowKey)
           if (comp > 0) advancedBufferedToRowWithNullFreeJoinKey()
           else if (comp < 0) advancedStreamed()
@@ -1347,6 +1358,7 @@ private[joins] class SortMergeJoinScanner(
         // The streamed row's join key matches the current buffered row's join, so walk through the
         // buffered iterator to buffer the rest of the matching rows.
         assert(comp == 0)
+        //todo 添加所有匹配上的 bufferedRow ！！！！！！
         bufferMatchingRows()
         true
       }
@@ -1362,6 +1374,7 @@ private[joins] class SortMergeJoinScanner(
    *         then [[getStreamedRow]] and [[getBufferedMatches]] can be called to produce the outer
    *         join results.
    */
+    //todo
   final def findNextOuterJoinRows(): Boolean = {
     val found = if (!advancedStreamed()) {
       // We have consumed the entire streamed iterator, so there can be no more matches.
@@ -1375,6 +1388,7 @@ private[joins] class SortMergeJoinScanner(
         // The streamed row does not match the current group.
         matchJoinKey = null
         bufferedMatches.clear()
+        //todo
         if (bufferedRow != null && !streamedRowKey.anyNull) {
           // The buffered iterator could still contain matching rows, so we'll need to walk through
           // it until we either find matches or pass where they would be found.
@@ -1384,9 +1398,11 @@ private[joins] class SortMergeJoinScanner(
           } while (comp > 0 && advancedBufferedToRowWithNullFreeJoinKey())
           if (comp == 0) {
             // We have found matches, so buffer them (this updates matchJoinKey)
+            //todo join上了，更新matchJoinKey，更新bufferedMatches
             bufferMatchingRows()
           } else {
             // We have overshot the position where the row would be found, hence no matches.
+            //todo 如何streamedRowKey比bufferedRowKey小，那么streamedRowKey找不大能join上的，但是由于left join，streamedRowKey的结果还得保留
           }
         }
       }
@@ -1445,10 +1461,13 @@ private[joins] class SortMergeJoinScanner(
     assert(!bufferedRowKey.anyNull)
     assert(keyOrdering.compare(streamedRowKey, bufferedRowKey) == 0)
     // This join key may have been produced by a mutable projection, so we need to make a copy:
+    //todo matchJoinKey
     matchJoinKey = streamedRowKey.copy()
+    //todo 添加之前，先把上一次的清空
     bufferedMatches.clear()
     do {
       if (!onlyBufferFirstMatch || bufferedMatches.isEmpty) {
+        //todo 添加所有匹配上的 bufferedRow ！！！！！！
         bufferedMatches.add(bufferedRow.asInstanceOf[UnsafeRow])
       }
       advancedBufferedToRowWithNullFreeJoinKey()
@@ -1503,6 +1522,7 @@ private class RightOuterIterator(
  * @param resultProj how the output should be projected
  * @param numOutputRows an accumulator metric for the number of rows output
  */
+//todo oneside outer iterator
 private abstract class OneSideOuterIterator(
     smjScanner: SortMergeJoinScanner,
     bufferedSideNullRow: InternalRow,
@@ -1511,6 +1531,7 @@ private abstract class OneSideOuterIterator(
     numOutputRows: SQLMetric) extends RowIterator {
 
   // A row to store the joined result, reused many times
+  //todo 由于是迭代器模式，所以可以复用
   protected[this] val joinedRow: JoinedRow = new JoinedRow()
 
   // Index of the buffered rows, reset to 0 whenever we advance to a new streamed row
@@ -1530,12 +1551,15 @@ private abstract class OneSideOuterIterator(
   private def advanceStream(): Boolean = {
     rightMatchesIterator = null
     if (smjScanner.findNextOuterJoinRows()) {
+      //todo 设置streamside
       setStreamSideOutput(smjScanner.getStreamedRow)
       if (smjScanner.getBufferedMatches.isEmpty) {
         // There are no matching rows in the buffer, so return the null row
+        //todo streamside找不到匹配的，则赋值为null
         setBufferedSideOutput(bufferedSideNullRow)
       } else {
         // Find the next row in the buffer that satisfied the bound condition
+        //todo 将streamside匹配的，对bufferside进行赋值
         if (!advanceBufferUntilBoundConditionSatisfied()) {
           setBufferedSideOutput(bufferedSideNullRow)
         }
@@ -1558,6 +1582,7 @@ private abstract class OneSideOuterIterator(
     }
 
     while (!foundMatch && rightMatchesIterator.hasNext) {
+      //todo 设置BufferedSide
       setBufferedSideOutput(rightMatchesIterator.next())
       foundMatch = boundCondition(joinedRow)
     }
@@ -1565,6 +1590,8 @@ private abstract class OneSideOuterIterator(
   }
 
   override def advanceNext(): Boolean = {
+    //todo 1、迭代满足条件的BufferedMatches
+    //todo 2、迭代StreamedRow
     val r = advanceBufferUntilBoundConditionSatisfied() || advanceStream()
     if (r) numOutputRows += 1
     r
@@ -1582,6 +1609,7 @@ private class SortMergeFullOuterJoinScanner(
     boundCondition: InternalRow => Boolean,
     leftNullRow: InternalRow,
     rightNullRow: InternalRow)  {
+  //todo 结果对象
   private[this] val joinedRow: JoinedRow = new JoinedRow()
   private[this] var leftRow: InternalRow = _
   private[this] var leftRowKey: InternalRow = _
@@ -1594,7 +1622,7 @@ private class SortMergeFullOuterJoinScanner(
   private[this] val rightMatches: ArrayBuffer[InternalRow] = new ArrayBuffer[InternalRow]
   private[this] var leftMatched: BitSet = new BitSet(1)
   private[this] var rightMatched: BitSet = new BitSet(1)
-
+  //todo 分别更新left、right
   advancedLeft()
   advancedRight()
 
@@ -1641,11 +1669,12 @@ private class SortMergeFullOuterJoinScanner(
     rightMatches.clear()
     leftIndex = 0
     rightIndex = 0
-
+    //todo 取出左边所有匹配的
     while (leftRowKey != null && keyOrdering.compare(leftRowKey, matchingKey) == 0) {
       leftMatches += leftRow.copy()
       advancedLeft()
     }
+    //todo 取出右边所有匹配的
     while (rightRowKey != null && keyOrdering.compare(rightRowKey, matchingKey) == 0) {
       rightMatches += rightRow.copy()
       advancedRight()
@@ -1672,6 +1701,7 @@ private class SortMergeFullOuterJoinScanner(
    *
    * @return true if a valid match is found, false otherwise.
    */
+    //todo 对left和right做笛卡尔积join，注意迭代器模式，每次只返回一条
   private def scanNextInBuffered(): Boolean = {
     while (leftIndex < leftMatches.size) {
       while (rightIndex < rightMatches.size) {
@@ -1711,7 +1741,7 @@ private class SortMergeFullOuterJoinScanner(
   // --- Public methods --------------------------------------------------------------------------
 
   def getJoinedRow(): JoinedRow = joinedRow
-
+   //todo join逻辑
   def advanceNext(): Boolean = {
     // If we already buffered some matching rows, use them directly
     if (leftIndex < leftMatches.size || rightIndex < rightMatches.size) {
@@ -1730,6 +1760,7 @@ private class SortMergeFullOuterJoinScanner(
       true
     } else if (leftRow != null && rightRow != null) {
       // Both rows are present and neither have null values.
+      //todo
       val comp = keyOrdering.compare(leftRowKey, rightRowKey)
       if (comp < 0) {
         joinedRow(leftRow.copy(), rightNullRow)
@@ -1739,6 +1770,7 @@ private class SortMergeFullOuterJoinScanner(
         advancedRight()
       } else {
         // Populate the buffers with rows matching the next key.
+        //todo left和right匹配上了
         findMatchingRows(leftRowKey.copy())
         scanNextInBuffered()
       }

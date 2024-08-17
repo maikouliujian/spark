@@ -166,9 +166,11 @@ trait HashJoin extends JoinCodegenSupport {
 
     if (hashedRelation == EmptyHashedRelation) {
       Iterator.empty
+      //todo key唯一
     } else if (hashedRelation.keyIsUnique) {
       streamIter.flatMap { srow =>
         joinRow.withLeft(srow)
+        //todo 通过key取value
         val matched = hashedRelation.getValue(joinKeys(srow))
         if (matched != null) {
           Some(joinRow.withRight(matched)).filter(boundCondition)
@@ -179,6 +181,7 @@ trait HashJoin extends JoinCodegenSupport {
     } else {
       streamIter.flatMap { srow =>
         joinRow.withLeft(srow)
+        //todo 一个key会返回多个value
         val matches = hashedRelation.get(joinKeys(srow))
         if (matches != null) {
           matches.map(joinRow.withRight).filter(boundCondition)
@@ -244,6 +247,7 @@ trait HashJoin extends JoinCodegenSupport {
     if (hashedRelation == EmptyHashedRelation) {
       Iterator.empty
     } else if (hashedRelation.keyIsUnique) {
+      //todo 只取左侧
       streamIter.filter { current =>
         val key = joinKeys(current)
         lazy val matched = hashedRelation.getValue(key)
@@ -323,7 +327,7 @@ trait HashJoin extends JoinCodegenSupport {
       streamedIter: Iterator[InternalRow],
       hashed: HashedRelation,
       numOutputRows: SQLMetric): Iterator[InternalRow] = {
-
+    //todo 根据不同的jointype，走不同的join逻辑
     val joinedIter = joinType match {
       case _: InnerLike =>
         innerJoin(streamedIter, hashed)

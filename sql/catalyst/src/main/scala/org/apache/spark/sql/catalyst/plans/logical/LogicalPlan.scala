@@ -30,7 +30,7 @@ import org.apache.spark.sql.types.StructType
 abstract class LogicalPlan
   extends QueryPlan[LogicalPlan]
   with AnalysisHelper
-  with LogicalPlanStats
+  with LogicalPlanStats //todo 逻辑计划的统计信息
   with LogicalPlanDistinctKeys
   with QueryPlanConstraints
   with Logging {

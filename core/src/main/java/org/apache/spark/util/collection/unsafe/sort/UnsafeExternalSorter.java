@@ -73,6 +73,7 @@ public final class UnsafeExternalSorter extends MemoryConsumer {
   /**
    * Force this sorter to spill when there are this many elements in memory.
    */
+  //todo 溢写磁盘的阈值
   private final int numElementsForSpillThreshold;
 
   /**
@@ -82,7 +83,7 @@ public final class UnsafeExternalSorter extends MemoryConsumer {
    * itself).
    */
   private final LinkedList<MemoryBlock> allocatedPages = new LinkedList<>();
-
+  //todo 记录每一个writer，是为了读取数据时候使用
   private final LinkedList<UnsafeSorterSpillWriter> spillWriters = new LinkedList<>();
 
   // These variables are reset after spilling:
@@ -197,6 +198,7 @@ public final class UnsafeExternalSorter extends MemoryConsumer {
   /**
    * Sort and spill the current records in response to memory pressure.
    */
+  //todo 溢写磁盘
   @Override
   public long spill(long size, MemoryConsumer trigger) throws IOException {
     if (trigger != this) {
@@ -221,17 +223,19 @@ public final class UnsafeExternalSorter extends MemoryConsumer {
       spillWriters.size() > 1 ? " times" : " time");
 
     ShuffleWriteMetrics writeMetrics = new ShuffleWriteMetrics();
-
+    //todo 每一次溢写磁盘，都新建一个溢写的writer
     final UnsafeSorterSpillWriter spillWriter =
       new UnsafeSorterSpillWriter(blockManager, fileBufferSizeBytes, writeMetrics,
         inMemSorter.numRecords());
     spillWriters.add(spillWriter);
+    //todo 溢写磁盘！！！！！！
     spillIterator(inMemSorter.getSortedIterator(), spillWriter);
 
     final long spillSize = freeMemory();
     // Note that this is more-or-less going to be a multiple of the page size, so wasted space in
     // pages will currently be counted as memory spilled even though that space isn't actually
     // written to disk. This also counts the space needed to store the sorter's pointer array.
+    //todo 内存写完直接释放，下次直接写内存
     inMemSorter.freeMemory();
     // Reset the in-memory sorter's pointer array only after freeing up the memory pages holding the
     // records. Otherwise, if the task is over allocated memory, then without freeing the memory
@@ -476,20 +480,24 @@ public final class UnsafeExternalSorter extends MemoryConsumer {
     if (inMemSorter.numRecords() >= numElementsForSpillThreshold) {
       logger.info("Spilling data because number of spilledRecords crossed the threshold " +
         numElementsForSpillThreshold);
+      //todo 溢写磁盘！！！！！！
       spill();
     }
 
     final int uaoSize = UnsafeAlignedOffset.getUaoSize();
     // Need 4 or 8 bytes to store the record length.
     final int required = length + uaoSize;
+    //todo 申请能够存储recordBase的内存
     allocateMemoryForRecordIfNecessary(required);
 
     final Object base = currentPage.getBaseObject();
     final long recordAddress = taskMemoryManager.encodePageNumberAndOffset(currentPage, pageCursor);
     UnsafeAlignedOffset.putSize(base, pageCursor, length);
     pageCursor += uaoSize;
+    //todo 将recordBase的数据拷贝到base中
     Platform.copyMemory(recordBase, recordOffset, base, pageCursor, length);
     pageCursor += length;
+    //todo 写入对外内存
     inMemSorter.insertRecord(recordAddress, prefix, prefixIsNull);
   }
 
@@ -571,6 +579,7 @@ public final class UnsafeExternalSorter extends MemoryConsumer {
       final Object baseObject = inMemIterator.getBaseObject();
       final long baseOffset = inMemIterator.getBaseOffset();
       final int recordLength = inMemIterator.getRecordLength();
+      //todo 将内存中的数据写入到磁盘
       spillWriter.write(baseObject, baseOffset, recordLength, inMemIterator.getKeyPrefix());
     }
     spillWriter.close();
@@ -750,8 +759,10 @@ public final class UnsafeExternalSorter extends MemoryConsumer {
    *
    * TODO: support forced spilling
    */
+  //todo 读取数据！！！！！！
   public UnsafeSorterIterator getIterator(int startIndex) throws IOException {
     if (spillWriters.isEmpty()) {
+      //todo 只从内存中取数据
       assert(inMemSorter != null);
       UnsafeSorterIterator iter = inMemSorter.getSortedIterator();
       moveOver(iter, startIndex);
@@ -759,14 +770,19 @@ public final class UnsafeExternalSorter extends MemoryConsumer {
     } else {
       LinkedList<UnsafeSorterIterator> queue = new LinkedList<>();
       int i = 0;
+      //todo 遍历每一个writer
       for (UnsafeSorterSpillWriter spillWriter : spillWriters) {
+        //todo 判断读取index
         if (i + spillWriter.recordsSpilled() > startIndex) {
           UnsafeSorterIterator iter = spillWriter.getReader(serializerManager);
+          //todo 处理需要跳过的数据
           moveOver(iter, startIndex - i);
+          //todo 将迭代器加入队列
           queue.add(iter);
         }
         i += spillWriter.recordsSpilled();
       }
+      //todo 内存数据是最后写入的数据！
       if (inMemSorter != null && inMemSorter.numRecords() > 0) {
         UnsafeSorterIterator iter = inMemSorter.getSortedIterator();
         moveOver(iter, startIndex - i);
@@ -797,6 +813,7 @@ public final class UnsafeExternalSorter extends MemoryConsumer {
 
     private final Queue<UnsafeSorterIterator> iterators;
     private UnsafeSorterIterator current;
+    //todo 数据总条数
     private int numRecords;
 
     ChainedIterator(Queue<UnsafeSorterIterator> iterators) {
@@ -818,20 +835,22 @@ public final class UnsafeExternalSorter extends MemoryConsumer {
     public long getCurrentPageNumber() {
       return current.getCurrentPageNumber();
     }
-
+    //todo
     @Override
     public boolean hasNext() {
       while (!current.hasNext() && !iterators.isEmpty()) {
         current = iterators.remove();
       }
+      //todo 判断每一个迭代器的hashnext
       return current.hasNext();
     }
-
+    //todo
     @Override
     public void loadNext() throws IOException {
       while (!current.hasNext() && !iterators.isEmpty()) {
         current = iterators.remove();
       }
+      //todo 每一个迭代器loadnext
       current.loadNext();
     }
 

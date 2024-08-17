@@ -154,6 +154,7 @@ private[execution] object HashedRelation {
       EmptyHashedRelation
     } else if (key.length == 1 && key.head.dataType == LongType && !allowsNullKey) {
       // NOTE: LongHashedRelation does not support NULL keys.
+      //todo 在内存中构建map，不支持null keys
       LongHashedRelation(input, key, sizeEstimate, mm, isNullAware)
     } else {
       UnsafeHashedRelation(input, key, sizeEstimate, mm, isNullAware, allowsNullKey,
@@ -1057,7 +1058,7 @@ private[joins] object LongHashedRelation {
       sizeEstimate: Int,
       taskMemoryManager: TaskMemoryManager,
       isNullAware: Boolean = false): HashedRelation = {
-
+    //todo 在内存中构建map
     val map = new LongToUnsafeRowMap(taskMemoryManager, sizeEstimate)
     val keyGenerator = UnsafeProjection.create(key)
 

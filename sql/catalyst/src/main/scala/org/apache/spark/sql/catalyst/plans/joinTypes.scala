@@ -78,11 +78,11 @@ case object RightOuter extends JoinType {
 case object FullOuter extends JoinType {
   override def sql: String = "FULL OUTER"
 }
-
+//todo a left semi join b：【取a、b可以关联上的a的部分】
 case object LeftSemi extends JoinType {
   override def sql: String = "LEFT SEMI"
 }
-
+//todo a left anti join b：【取a、b关联不上的a的部分】
 case object LeftAnti extends JoinType {
   override def sql: String = "LEFT ANTI"
 }

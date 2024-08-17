@@ -60,7 +60,7 @@ case class ResolvedHint(child: LogicalPlan, hints: HintInfo = HintInfo())
  * Hint that is associated with a [[Join]] node, with [[HintInfo]] on its left child and on its
  * right child respectively.
  */
-//todo join hints
+//todo join hints，包含左右hintinfo
 case class JoinHint(leftHint: Option[HintInfo], rightHint: Option[HintInfo]) {
 
   def isEmpty: Boolean = leftHint.isEmpty && rightHint.isEmpty
@@ -123,7 +123,7 @@ sealed abstract class JoinStrategyHint {
  * BROADCAST over SHUFFLE_MERGE over SHUFFLE_HASH over SHUFFLE_REPLICATE_NL.
  */
 object JoinStrategyHint {
-
+  //todo join hint策略
   val strategies: Set[JoinStrategyHint] = Set(
     BROADCAST,
     SHUFFLE_MERGE,
