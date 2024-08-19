@@ -113,6 +113,7 @@ case class BroadcastNestedLoopJoinExec(
   /**
    * The implementation for InnerJoin.
    */
+    //todo 两两组合，再过滤，不补null
   private def innerJoin(relation: Broadcast[Array[InternalRow]]): RDD[InternalRow] = {
     streamed.execute().mapPartitionsInternal { streamedIter =>
       val buildRows = relation.value
@@ -165,12 +166,14 @@ case class BroadcastNestedLoopJoinExec(
           while (nextIndex < buildRows.length) {
             resultRow = joinedRow(streamRow, buildRows(nextIndex))
             nextIndex += 1
+            //todo 两两组合，判断是否满足join条件
             if (boundCondition(resultRow)) {
               foundMatch = true
               return true
             }
           }
           if (!foundMatch) {
+            //todo 不满足join条件，补null
             resultRow = joinedRow(streamRow, nulls)
             streamRow = null
             true
@@ -215,6 +218,7 @@ case class BroadcastNestedLoopJoinExec(
             Iterator.empty
           }
         }
+        //todo build left，则left为广播
       case BuildLeft if condition.isEmpty =>
         // If condition is empty, do not need to read rows from streamed side at all.
         // Only need to know whether streamed side is empty or not.
@@ -351,6 +355,7 @@ case class BroadcastNestedLoopJoinExec(
         var i = 0
         while (i < buildRows.length) {
           if (boundCondition(joinedRow(streamedRow, buildRows(i)))) {
+            //todo 标记能够join上的index
             matched.set(i)
           }
           i += 1
@@ -358,11 +363,12 @@ case class BroadcastNestedLoopJoinExec(
       }
       Seq(matched).iterator
     }
-
+    //todo 取处能够join上的结果
     matchedBuildRows.fold(new BitSet(relation.value.length))(_ | _)
   }
-
+  //todo 执行
   protected override def doExecute(): RDD[InternalRow] = {
+    //todo 获取广播的结果
     val broadcastedRelation = broadcast.executeBroadcast[Array[InternalRow]]()
 
     val resultRdd = (joinType, buildSide) match {

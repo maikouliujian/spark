@@ -130,6 +130,7 @@ case class SortMergeJoinExec(
     val spillThreshold = getSpillThreshold
     //todo 内存阈值【行数】
     val inMemoryThreshold = getInMemoryThreshold
+    //todo 处理相同分区内的数据！！！！！！
     left.execute().zipPartitions(right.execute()) { (leftIter, rightIter) =>
       val boundCondition: (InternalRow) => Boolean = {
         condition.map { cond =>

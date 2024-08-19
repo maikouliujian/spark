@@ -40,23 +40,26 @@ class UnsafeCartesianRDD(
   extends CartesianRDD[UnsafeRow, UnsafeRow](left.sparkContext, left, right) {
 
   override def compute(split: Partition, context: TaskContext): Iterator[(UnsafeRow, UnsafeRow)] = {
+    //todo 构建ExternalAppendOnlyUnsafeRowArray
     val rowArray = new ExternalAppendOnlyUnsafeRowArray(inMemoryBufferThreshold, spillThreshold)
-
+    //todo 将right的一个分区的数据加入到array中，因为right数据会重复使用；
     val partition = split.asInstanceOf[CartesianPartition]
     rdd2.iterator(partition.s2, context).foreach(rowArray.add)
 
     // Create an iterator from rowArray
     def createIter(): Iterator[UnsafeRow] = rowArray.generateIterator()
 
-    val resultIter =
+    val resultIter = {
+      //todo 遍历执行left一个分区的数据，笛卡尔积的逻辑
       for (x <- rdd1.iterator(partition.s1, context);
            y <- createIter()) yield (x, y)
+    }
     CompletionIterator[(UnsafeRow, UnsafeRow), Iterator[(UnsafeRow, UnsafeRow)]](
       resultIter, rowArray.clear())
   }
 }
 
-
+//todo 笛卡尔积join
 case class CartesianProductExec(
     left: SparkPlan,
     right: SparkPlan,
@@ -76,13 +79,15 @@ case class CartesianProductExec(
 
     val leftResults = left.execute().asInstanceOf[RDD[UnsafeRow]]
     val rightResults = right.execute().asInstanceOf[RDD[UnsafeRow]]
-
+    //todo 构建笛卡尔积rdd
     val pair = new UnsafeCartesianRDD(
       leftResults,
       rightResults,
       conf.cartesianProductExecBufferInMemoryThreshold,
       conf.cartesianProductExecBufferSpillThreshold)
     pair.mapPartitionsWithIndexInternal { (index, iter) =>
+      //todo 这里的iter就是UnsafeCartesianRDD用compute执行的结果
+      //todo 笛卡尔积结束后，再根据join条件做过滤！！！！！！
       val joiner = GenerateUnsafeRowJoiner.create(left.schema, right.schema)
       val filtered = if (condition.isDefined) {
         val boundCondition = Predicate.create(condition.get, left.output ++ right.output)
