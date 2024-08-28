@@ -98,7 +98,7 @@ import org.apache.spark.util.{Clock, SystemClock, ThreadUtils, Utils}
  *
  */
 private[spark] class ExecutorAllocationManager(
-    client: ExecutorAllocationClient,
+    client: ExecutorAllocationClient,//todo 用于和集群管理器通信
     listenerBus: LiveListenerBus,
     conf: SparkConf,
     cleaner: Option[ContextCleaner] = None,
@@ -109,8 +109,8 @@ private[spark] class ExecutorAllocationManager(
   allocationManager =>
 
   import ExecutorAllocationManager._
-
   // Lower and upper bounds on the number of executors.
+  //todo excutors的数量
   private val minNumExecutors = conf.get(DYN_ALLOCATION_MIN_EXECUTORS)
   private val maxNumExecutors = conf.get(DYN_ALLOCATION_MAX_EXECUTORS)
   private val initialNumExecutors = Utils.getDynamicAllocationInitialExecutors(conf)
@@ -142,6 +142,7 @@ private[spark] class ExecutorAllocationManager(
   // is the number of executors we would immediately want from the cluster manager.
   // Note every profile will be allowed to have initial number,
   // we may want to make this configurable per Profile in the future
+  //todo 每一个PerResourceProfileId对应的executor数量
   private[spark] val numExecutorsTargetPerResourceProfileId = new mutable.HashMap[Int, Int]
   numExecutorsTargetPerResourceProfileId(defaultProfileId) = initialNumExecutors
 
@@ -225,6 +226,7 @@ private[spark] class ExecutorAllocationManager(
    * Register for scheduler callbacks to decide when to add and remove executors, and start
    * the scheduling task.
    */
+    //todo 第一步：启动
   def start(): Unit = {
     listenerBus.addToManagementQueue(listener)
     listenerBus.addToManagementQueue(executorMonitor)
@@ -233,6 +235,7 @@ private[spark] class ExecutorAllocationManager(
     val scheduleTask = new Runnable() {
       override def run(): Unit = {
         try {
+          //todo 定期执行调度
           schedule()
         } catch {
           case ct: ControlThrowable =>
@@ -287,13 +290,16 @@ private[spark] class ExecutorAllocationManager(
    * The maximum number of executors, for the ResourceProfile id passed in, that we would need
    * under the current load to satisfy all running and pending tasks, rounded up.
    */
+    //todo 计算每一个ResourceProfile需要的最大Executor数量
   private[spark] def maxNumExecutorsNeededPerResourceProfile(rpId: Int): Int = {
+      //todo 获取每一个ResourceProfile pengdingTask数量
     val pendingTask = listener.pendingTasksPerResourceProfile(rpId)
     val pendingSpeculative = listener.pendingSpeculativeTasksPerResourceProfile(rpId)
     val unschedulableTaskSets = listener.pendingUnschedulableTaskSetsPerResourceProfile(rpId)
     val running = listener.totalRunningTasksPerResourceProfile(rpId)
     val numRunningOrPendingTasks = pendingTask + pendingSpeculative + running
     val rp = resourceProfileManager.resourceProfileFromId(rpId)
+      //todo 每一个executor最大的task数量
     val tasksPerExecutor = rp.maxTasksPerExecutor(conf)
     logDebug(s"max needed for rpId: $rpId numpending: $numRunningOrPendingTasks," +
       s" tasksperexecutor: $tasksPerExecutor")
@@ -336,12 +342,14 @@ private[spark] class ExecutorAllocationManager(
    * This is factored out into its own method for testing.
    */
   private def schedule(): Unit = synchronized {
+    //todo 返回超时的executors
     val executorIdsToBeRemoved = executorMonitor.timedOutExecutors()
     if (executorIdsToBeRemoved.nonEmpty) {
       initializing = false
     }
 
     // Update executor target number only after initializing flag is unset
+    //todo 核心逻辑！！！！！！：如果之前申请的超过了当前需要的，那么就减少executor数量，并告知集群管理者；反之，增加executor数量，并告知集群管理者
     updateAndSyncNumExecutorsTarget(clock.nanoTime())
     if (executorIdsToBeRemoved.nonEmpty) {
       removeExecutors(executorIdsToBeRemoved)
@@ -367,9 +375,11 @@ private[spark] class ExecutorAllocationManager(
       // Otherwise the first job may have to ramp up unnecessarily
       0
     } else {
+      //todo TargetNumUpdates(delta: Int, oldNumExecutorsTarget: Int)
       val updatesNeeded = new mutable.HashMap[Int, ExecutorAllocationManager.TargetNumUpdates]
 
       // Update targets for all ResourceProfiles then do a single request to the cluster manager
+      //todo 计算每一个ResourceProfile需要的最大Executor数量
       numExecutorsTargetPerResourceProfileId.foreach { case (rpId, targetExecs) =>
         val maxNeeded = maxNumExecutorsNeededPerResourceProfile(rpId)
         if (maxNeeded < targetExecs) {
@@ -386,6 +396,7 @@ private[spark] class ExecutorAllocationManager(
           addExecutorsToTarget(maxNeeded, rpId, updatesNeeded)
         }
       }
+      //todo 像集群管理着发送资源更新请求
       doUpdateRequest(updatesNeeded.toMap, now)
     }
   }
@@ -394,6 +405,7 @@ private[spark] class ExecutorAllocationManager(
       maxNeeded: Int,
       rpId: Int,
       updatesNeeded: mutable.HashMap[Int, ExecutorAllocationManager.TargetNumUpdates]): Int = {
+    //todo 更新Executor数
     updateTargetExecs(addExecutors, maxNeeded, rpId, updatesNeeded)
   }
 
@@ -426,6 +438,7 @@ private[spark] class ExecutorAllocationManager(
       val requestAcknowledged = try {
         logDebug("requesting updates: " + updates)
         testing ||
+        //todo 发送请求
           client.requestTotalExecutors(
             numExecutorsTargetPerResourceProfileId.toMap,
             numLocalityAwareTasksPerResourceProfileId.toMap,
@@ -480,7 +493,7 @@ private[spark] class ExecutorAllocationManager(
       0
     }
   }
-
+  //
   private def decrementExecutors(maxNeeded: Int, rpId: Int): Int = {
     val oldNumExecutorsTarget = numExecutorsTargetPerResourceProfileId(rpId)
     numExecutorsTargetPerResourceProfileId(rpId) = math.max(maxNeeded, minNumExecutors)
@@ -499,9 +512,11 @@ private[spark] class ExecutorAllocationManager(
    * @return the number of additional executors actually requested.
    */
   private def addExecutors(maxNumExecutorsNeeded: Int, rpId: Int): Int = {
+    //todo 每一个ResourceProfileId(对应的老的Executor数
     val oldNumExecutorsTarget = numExecutorsTargetPerResourceProfileId(rpId)
     // Do not request more executors if it would put our target over the upper bound
     // this is doing a max check per ResourceProfile
+    //todo 不能超过maxNumExecutors
     if (oldNumExecutorsTarget >= maxNumExecutors) {
       logDebug("Not adding executors because our current target total " +
         s"is already ${oldNumExecutorsTarget} (limit $maxNumExecutors)")
@@ -517,6 +532,7 @@ private[spark] class ExecutorAllocationManager(
     // Ensure that our target doesn't exceed what we need at the present moment:
     numExecutorsTarget = math.min(numExecutorsTarget, maxNumExecutorsNeeded)
     // Ensure that our target fits within configured bounds:
+    //todo 计算executor数
     numExecutorsTarget = math.max(math.min(numExecutorsTarget, maxNumExecutors), minNumExecutors)
     val delta = numExecutorsTarget - oldNumExecutorsTarget
     numExecutorsTargetPerResourceProfileId(rpId) = numExecutorsTarget
@@ -645,6 +661,7 @@ private[spark] class ExecutorAllocationManager(
    * This class is intentionally conservative in its assumptions about the relative ordering
    * and consistency of events returned by the listener.
    */
+  //todo ExecutorAllocationManager就是通过它来监听资源使用情况，然后调整Executor数量
   private[spark] class ExecutorAllocationListener extends SparkListener {
 
     private val stageAttemptToNumTasks = new mutable.HashMap[StageAttempt, Int]

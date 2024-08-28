@@ -32,6 +32,7 @@ import org.apache.spark.network.protocol.Encoders;
 /** Contains all configuration necessary for locating the shuffle files of an executor. */
 public class ExecutorShuffleInfo implements Encodable {
   /** The base set of local directories that the executor stores its shuffle files in. */
+  //todo shuffle的文件
   public final String[] localDirs;
   /** Number of subdirectories created within each localDir. */
   public final int subDirsPerLocalDir;

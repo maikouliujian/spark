@@ -2655,6 +2655,7 @@ private[spark] object Utils extends Logging {
     if (pushBasedShuffleEnabled) {
       val canDoPushBasedShuffle = {
         val isTesting = conf.get(IS_TESTING).getOrElse(false)
+        //todo isShuffleServiceAndYarn
         val isShuffleServiceAndYarn = conf.get(SHUFFLE_SERVICE_ENABLED) &&
             conf.get(SparkLauncher.SPARK_MASTER, null) == "yarn"
         lazy val serializerIsSupported = {
@@ -2716,7 +2717,7 @@ private[spark] object Utils extends Logging {
     instantiateSerializerOrShuffleManager[T](
       conf.get(propertyName), conf, isDriver)
   }
-
+  //todo 返回是否开启动态资源申请
   /**
    * Return whether dynamic allocation is enabled in the given conf.
    */

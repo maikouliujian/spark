@@ -60,6 +60,7 @@ import org.apache.spark.network.util.TransportConf;
  * (local dirs) and how (shuffle manager). The logic for retrieval of individual files is replicated
  * from Spark's IndexShuffleBlockResolver.
  */
+//todo【存储每一个executor产出的shuffle数据file的位置信息】
 public class ExternalShuffleBlockResolver {
   private static final Logger logger = LoggerFactory.getLogger(ExternalShuffleBlockResolver.class);
 
@@ -73,6 +74,7 @@ public class ExternalShuffleBlockResolver {
   private static final StoreVersion CURRENT_VERSION = new StoreVersion(1, 0);
 
   // Map containing all registered executors' metadata.
+  //todo 每一个AppExecId【appid + execid】对应的ExecutorShuffleInfo
   @VisibleForTesting
   final ConcurrentMap<AppExecId, ExecutorShuffleInfo> executors;
 

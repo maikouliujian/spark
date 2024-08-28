@@ -94,6 +94,7 @@ public class RemoteBlockPushResolver implements MergedShuffleFileManager {
    * the application attemptId, merged shuffle local directories and the metadata
    * for actively being merged shuffle partitions.
    */
+  //todo <appid, AppShuffleInfo>
   private final ConcurrentMap<String, AppShuffleInfo> appsShuffleInfo;
 
   private final Executor mergedShuffleCleaner;
@@ -108,11 +109,13 @@ public class RemoteBlockPushResolver implements MergedShuffleFileManager {
   public RemoteBlockPushResolver(TransportConf conf) {
     this.conf = conf;
     this.appsShuffleInfo = new ConcurrentHashMap<>();
+    //todo 数据清理线程
     this.mergedShuffleCleaner = Executors.newSingleThreadExecutor(
       // Add `spark` prefix because it will run in NM in Yarn mode.
       NettyUtils.createThreadFactory("spark-shuffle-merged-shuffle-directory-cleaner"));
     this.minChunkSize = conf.minChunkSizeInMergedShuffleFile();
     this.ioExceptionsThresholdDuringMerge = conf.ioExceptionsThresholdDuringMerge();
+    //todo shuffle index信息缓存
     CacheLoader<String, ShuffleIndexInformation> indexCacheLoader =
       new CacheLoader<String, ShuffleIndexInformation>() {
         public ShuffleIndexInformation load(String filePath) throws IOException {
@@ -297,6 +300,7 @@ public class RemoteBlockPushResolver implements MergedShuffleFileManager {
     try {
       // If we get here, the merged shuffle file should have been properly finalized. Thus we can
       // use the file length to determine the size of the merged shuffle block.
+      //todo 获取index信息
       ShuffleIndexInformation shuffleIndexInformation = indexCache.get(indexFilePath);
       ShuffleIndexRecord shuffleIndexRecord = shuffleIndexInformation.getIndex(chunkId);
       return new FileSegmentManagedBuffer(
@@ -491,7 +495,7 @@ public class RemoteBlockPushResolver implements MergedShuffleFileManager {
       };
     }
   }
-
+  //todo 完成ShuffleMerge
   @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
   @Override
   public MergeStatuses finalizeShuffleMerge(FinalizeShuffleMerge msg) {
@@ -534,6 +538,7 @@ public class RemoteBlockPushResolver implements MergedShuffleFileManager {
           //  1. finalization of determinate stage
           //  2. finalization of indeterminate stage if the shuffleMergeId related to it is the one
           //  for which the message is received.
+          //todo shuffle merge
           shuffleMergePartitionsRef.set(mergePartitionsInfo.shuffleMergePartitions);
         }
       }
@@ -550,6 +555,7 @@ public class RemoteBlockPushResolver implements MergedShuffleFileManager {
         new MergeStatuses(msg.shuffleId, msg.shuffleMergeId,
           new RoaringBitmap[0], new int[0], new long[0]);
     } else {
+      //todo ！！！！！！
       List<RoaringBitmap> bitmaps = new ArrayList<>(shuffleMergePartitions.size());
       List<Integer> reduceIds = new ArrayList<>(shuffleMergePartitions.size());
       List<Long> sizes = new ArrayList<>(shuffleMergePartitions.size());
@@ -560,6 +566,7 @@ public class RemoteBlockPushResolver implements MergedShuffleFileManager {
                 "partition {} ", msg.appId, msg.appAttemptId, msg.shuffleId,
                 msg.shuffleMergeId, partition.reduceId);
             // This can throw IOException which will marks this shuffle partition as not merged.
+            //todo
             partition.finalizePartition();
             if (partition.mapTracker.getCardinality() > 0) {
               bitmaps.add(partition.mapTracker);
@@ -588,7 +595,7 @@ public class RemoteBlockPushResolver implements MergedShuffleFileManager {
         msg.appId, msg.appAttemptId, msg.shuffleId, msg.shuffleMergeId);
     return mergeStatuses;
   }
-
+  //todo 注册executor对应的shuffle文件信息
   @Override
   public void registerExecutor(String appId, ExecutorShuffleInfo executorInfo) {
     if (logger.isDebugEnabled()) {
@@ -616,6 +623,7 @@ public class RemoteBlockPushResolver implements MergedShuffleFileManager {
         if (attemptId == UNDEFINED_ATTEMPT_ID) {
           // When attemptId is -1, there is no attemptId stored in the ExecutorShuffleInfo.
           // Only the first ExecutorRegister message can register the merge dirs
+          //todo 注册
           appsShuffleInfo.computeIfAbsent(appId, id ->
             new AppShuffleInfo(
               appId, UNDEFINED_ATTEMPT_ID,
@@ -1003,7 +1011,7 @@ public class RemoteBlockPushResolver implements MergedShuffleFileManager {
     // Marker to identify finalized shuffle partitions.
     private static final Map<Integer, AppShufflePartitionInfo> SHUFFLE_FINALIZED_MARKER =
         Collections.emptyMap();
-    private final int shuffleMergeId;
+    private final int shuffleMergeId; //todo shuffle merge id
     private final Map<Integer, AppShufflePartitionInfo> shuffleMergePartitions;
 
     public AppShuffleMergePartitionsInfo(int shuffleMergeId, boolean shuffleFinalized) {
@@ -1042,6 +1050,7 @@ public class RemoteBlockPushResolver implements MergedShuffleFileManager {
     // Track the map index whose block is being merged for this shuffle partition
     private int currentMapIndex;
     // Bitmap tracking which mapper's blocks have been merged for this shuffle partition
+    //todo
     private RoaringBitmap mapTracker;
     // The offset for the last chunk tracked in the index file for this shuffle partition
     private long lastChunkOffset;
@@ -1174,6 +1183,7 @@ public class RemoteBlockPushResolver implements MergedShuffleFileManager {
       // Get rid of any partial block data at the end of the file. This could either
       // be due to failure, or a request still being processed when the shuffle
       // merge gets finalized, or any exceptions while updating index/meta files.
+      //todo 文件或数据库通道截断
       dataChannel.truncate(lastChunkOffset);
       indexFile.getChannel().truncate(indexFile.getPos());
       metaFile.getChannel().truncate(metaFile.getPos());

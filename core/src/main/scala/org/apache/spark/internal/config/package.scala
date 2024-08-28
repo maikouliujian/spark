@@ -592,7 +592,7 @@ package object config {
 
   private[spark] val CPUS_PER_TASK =
     ConfigBuilder("spark.task.cpus").version("0.5.0").intConf.createWithDefault(1)
-
+  //todo 是否开启dynamicAllocation
   private[spark] val DYN_ALLOCATION_ENABLED =
     ConfigBuilder("spark.dynamicAllocation.enabled")
       .version("1.2.0")
@@ -604,18 +604,18 @@ package object config {
       .version("1.2.0")
       .booleanConf
       .createWithDefault(false)
-
+  //todo 动态资源最小executor数
   private[spark] val DYN_ALLOCATION_MIN_EXECUTORS =
     ConfigBuilder("spark.dynamicAllocation.minExecutors")
       .version("1.2.0")
       .intConf
       .createWithDefault(0)
-
+  //todo 动态资源初始化executor数
   private[spark] val DYN_ALLOCATION_INITIAL_EXECUTORS =
     ConfigBuilder("spark.dynamicAllocation.initialExecutors")
       .version("1.3.0")
       .fallbackConf(DYN_ALLOCATION_MIN_EXECUTORS)
-
+  //todo 动态资源最大executor数
   private[spark] val DYN_ALLOCATION_MAX_EXECUTORS =
     ConfigBuilder("spark.dynamicAllocation.maxExecutors")
       .version("1.2.0")
@@ -679,7 +679,7 @@ package object config {
     .version("0.5.0")
     .timeConf(TimeUnit.MILLISECONDS)
     .createWithDefaultString("3s")
-
+  //todo 是否启动shuffle.service
   private[spark] val SHUFFLE_SERVICE_ENABLED =
     ConfigBuilder("spark.shuffle.service.enabled")
       .version("1.2.0")

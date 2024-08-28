@@ -46,6 +46,7 @@ import org.apache.spark.network.util.TransportConf;
  * (outside of executor) server. This is instead of reading blocks directly from other executors
  * (via BlockTransferService), which has the downside of losing the data if we lose the executors.
  */
+//todo for External Shuffle Service：
 public class ExternalBlockStoreClient extends BlockStoreClient {
   private static final ErrorHandler PUSH_ERROR_HANDLER = new ErrorHandler.BlockPushErrorHandler();
 
@@ -272,6 +273,7 @@ public class ExternalBlockStoreClient extends BlockStoreClient {
    * @param execId This Executor's id.
    * @param executorInfo Contains all info necessary for the service to find our shuffle files.
    */
+  //todo 将executors注册到ess上
   public void registerWithShuffleServer(
       String host,
       int port,

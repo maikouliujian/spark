@@ -53,6 +53,7 @@ class ExternalShuffleService(sparkConf: SparkConf, securityManager: SecurityMana
 
   private val transportConf =
     SparkTransportConf.fromSparkConf(sparkConf, "shuffle", numUsableCores = 0)
+  //todo 处理shuffle block的handler，会注册到netty里
   private val blockHandler = newShuffleBlockHandler(transportConf)
   private var transportContext: TransportContext = _
 
@@ -77,6 +78,7 @@ class ExternalShuffleService(sparkConf: SparkConf, securityManager: SecurityMana
   }
 
   /** Create a new shuffle block handler. Factored out for subclasses to override. */
+    //todo
   protected def newShuffleBlockHandler(conf: TransportConf): ExternalBlockHandler = {
     if (sparkConf.get(config.SHUFFLE_SERVICE_DB_ENABLED) && enabled) {
       new ExternalBlockHandler(conf, findRegisteredExecutorsDBFile(registeredExecutorsDB))
@@ -93,6 +95,7 @@ class ExternalShuffleService(sparkConf: SparkConf, securityManager: SecurityMana
   }
 
   /** Start the external shuffle service */
+    //todo 启动ExternalShuffleService
   def start(): Unit = {
     require(server == null, "Shuffle server already started")
     val authEnabled = securityManager.isAuthenticationEnabled()
@@ -162,6 +165,7 @@ object ExternalShuffleService extends Logging {
     // we override this value since this service is started from the command line
     // and we assume the user really wants it to be running
     sparkConf.set(config.SHUFFLE_SERVICE_ENABLED.key, "true")
+    //todo 创建ExternalShuffleService
     server = newShuffleService(sparkConf, securityManager)
     server.start()
 

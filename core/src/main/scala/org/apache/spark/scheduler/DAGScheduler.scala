@@ -1790,6 +1790,7 @@ private[spark] class DAGScheduler(
                         "or zombie tasks for this job")
                       // ResultStage is only used by this job. It's safe to kill speculative or
                       // zombie tasks in this stage.
+                      //todo
                       taskScheduler.killAllTaskAttempts(
                         stageId,
                         shouldInterruptTaskThread(job),

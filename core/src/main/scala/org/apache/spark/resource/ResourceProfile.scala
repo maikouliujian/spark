@@ -43,6 +43,7 @@ import org.apache.spark.util.Utils
  * @param taskResources Resource requests for tasks. Mapped from the resource
  *                      name (e.g., cores, memory, CPU) to its specific request.
  */
+// ResourceProfile是一个资源配置文件，用于关联RDD。ResourceProfile允许用户为RDD指定执行程序和任务要求，
 @Evolving
 @Since("3.1.0")
 class ResourceProfile(
@@ -159,6 +160,7 @@ class ResourceProfile(
    * resource address.
    */
   private def calculateTasksAndLimitingResource(sparkConf: SparkConf): Unit = synchronized {
+    //todo 是否检测执行器核心
     val shouldCheckExecCores = shouldCheckExecutorCores(sparkConf)
     var (taskLimit, limitingResource) = if (shouldCheckExecCores) {
       val cpusPerTask = taskResources.get(ResourceProfile.CPUS)

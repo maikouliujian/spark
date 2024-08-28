@@ -324,7 +324,7 @@ object SparkEnv extends Logging {
     } else {
       conf.get(BLOCK_MANAGER_PORT)
     }
-
+    //todo 开启spark.shuffle.service
     val externalShuffleClient = if (conf.get(config.SHUFFLE_SERVICE_ENABLED)) {
       val transConf = SparkTransportConf.fromSparkConf(conf, "shuffle", numUsableCores)
       Some(new ExternalBlockStoreClient(transConf, securityManager,

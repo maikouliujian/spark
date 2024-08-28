@@ -28,6 +28,7 @@ private[spark] object SchedulerBackendUtils {
    * enabled.
    * If not using dynamic allocation it gets the number of executors requested by the user.
    */
+  //todo 获取Executor初始化数量
   def getInitialTargetExecutorNumber(
       conf: SparkConf,
       numExecutors: Int = DEFAULT_NUMBER_EXECUTORS): Int = {

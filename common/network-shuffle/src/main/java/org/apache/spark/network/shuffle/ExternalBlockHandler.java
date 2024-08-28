@@ -63,6 +63,7 @@ import org.apache.spark.network.util.TransportConf;
  * Blocks are registered with the "one-for-one" strategy, meaning each Transport-layer Chunk
  * is equivalent to one block.
  */
+//todo 处理ess逻辑的核心类
 public class ExternalBlockHandler extends RpcHandler
     implements RpcHandler.MergedBlockMetaReqHandler {
   private static final Logger logger = LoggerFactory.getLogger(ExternalBlockHandler.class);
@@ -136,7 +137,7 @@ public class ExternalBlockHandler extends RpcHandler
       throw new UnsupportedOperationException("Unexpected message with #receiveStream: " + msgObj);
     }
   }
-
+  //todo 接收ess客户端的请求
   protected void handleMessage(
       BlockTransferMessage msgObj,
       TransportClient client,
@@ -185,7 +186,7 @@ public class ExternalBlockHandler extends RpcHandler
       try {
         RegisterExecutor msg = (RegisterExecutor) msgObj;
         checkAuth(client, msg.appId);
-        //todo 注册到blockManager中
+        //todo 注册到blockManager：ExternalShuffleBlockResolver中
         blockManager.registerExecutor(msg.appId, msg.execId, msg.executorInfo);
         mergeManager.registerExecutor(msg.appId, msg.executorInfo);
         callback.onSuccess(ByteBuffer.wrap(new byte[0]));
