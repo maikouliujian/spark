@@ -101,6 +101,16 @@ private[spark] class ShuffleBlockPusher(conf: SparkConf) extends Logging {
    *                         services to push local shuffle blocks
    * @param mapIndex      map index of the shuffle map task
    */
+
+  /***
+   * todo 在initiateBlockPush主要做了以下三步工作：
+   *
+   * [1] 将map task的shuffle数据转换为PushRequest请求
+   *
+   * [2] 将PushRequest请求列表变为随机请求，这样不同的mapper同时推送块不会推送相同范围的 shuffle 分区
+   *
+   * [3] 尽力而为的push shuffle数据到shuffle merge service
+   */
   private[shuffle] def initiateBlockPush(
       dataFile: File,
       partitionLengths: Array[Long],
@@ -111,15 +121,18 @@ private[spark] class ShuffleBlockPusher(conf: SparkConf) extends Logging {
     this.shuffleId = dep.shuffleId
     this.shuffleMergeId = dep.shuffleMergeId
     this.mapIndex = mapIndex
+    //todo [1] 将map task的shuffle数据转换为PushRequest请求
     val requests = prepareBlockPushRequests(numPartitions, mapIndex, dep.shuffleId,
       dep.shuffleMergeId, dataFile, partitionLengths, dep.getMergerLocs, transportConf)
     // Randomize the orders of the PushRequest, so different mappers pushing blocks at the same
     // time won't be pushing the same ranges of shuffle partitions.
+    //todo [2] 将PushRequest请求列表变为随机请求，这样不同的mapper同时推送块不会推送相同范围的 shuffle 分区
     pushRequests ++= Utils.randomize(requests)
     if (pushRequests.isEmpty) {
       notifyDriverAboutPushCompletion()
     } else {
       submitTask(() => {
+        //todo [3] 尽力而为的push shuffle数据到shuffle merge service
         tryPushUpToMax()
       })
     }
@@ -127,6 +140,7 @@ private[spark] class ShuffleBlockPusher(conf: SparkConf) extends Logging {
 
   private[shuffle] def tryPushUpToMax(): Unit = {
     try {
+      //todo
       pushUpToMax()
     } catch {
       case e: FileNotFoundException =>
@@ -166,6 +180,7 @@ private[spark] class ShuffleBlockPusher(conf: SparkConf) extends Logging {
           val request = defReqQueue.dequeue()
           logDebug(s"Processing deferred push request for $remoteAddress with "
             + s"${request.blocks.length} blocks")
+          //todo 发送请求
           sendRequest(request)
           if (defReqQueue.isEmpty) {
             deferredPushRequests -= remoteAddress
@@ -183,6 +198,7 @@ private[spark] class ShuffleBlockPusher(conf: SparkConf) extends Logging {
         deferredPushRequests.getOrElseUpdate(remoteAddress, new Queue[PushRequest]())
           .enqueue(request)
       } else {
+        //todo 发送请求
         sendRequest(request)
       }
     }
@@ -261,6 +277,7 @@ private[spark] class ShuffleBlockPusher(conf: SparkConf) extends Logging {
     // the in-memory sliced buffers post reading.
     val (blockPushIds, blockPushBuffers) = Utils.randomize(blockIds.zip(
       sliceReqBufferIntoBlockBuffers(request.reqBuffer, request.blocks.map(_._2)))).unzip
+    //todo 发送数据块
     SparkEnv.get.blockManager.blockStoreClient.pushBlocks(
       address.host, address.port, blockPushIds.toArray,
       blockPushBuffers.toArray, blockPushListener)
@@ -413,6 +430,8 @@ private[spark] class ShuffleBlockPusher(conf: SparkConf) extends Logging {
           reduceId)} is of size $blockSize")
       // Skip 0-length blocks and blocks that are large enough
       if (blockSize > 0) {
+        //todo 将shuffle中连续的块分到同一个请求中，可以允许更有效的数据读取。
+        //todo 分区块进行合并按照chunk进行发送，通过上面的公式进行划分合并块的，同时会跳过空的分区块和超过maxBlockSizeToPush，从而避免数据倾斜。
         val mergerId = math.min(math.floor(reduceId * 1.0 / numPartitions * numMergers),
           numMergers - 1).asInstanceOf[Int]
         // Start a new PushRequest if the current request goes beyond the max batch size,

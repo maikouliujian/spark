@@ -164,6 +164,7 @@ public class OneForOneBlockPusher {
         new PushBlockStream(appId, appAttemptId, Integer.parseInt(blockIdParts[1]),
           Integer.parseInt(blockIdParts[2]), Integer.parseInt(blockIdParts[3]),
             Integer.parseInt(blockIdParts[4]), i).toByteBuffer();
+      //todo 上传
       client.uploadStream(new NioManagedBuffer(header), buffers.get(blockIds[i]),
         new BlockPushCallback(i, blockIds[i]));
     }

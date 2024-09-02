@@ -2648,16 +2648,37 @@ private[spark] object Utils extends Logging {
    *   - IO encryption disabled
    *   - serializer(such as KryoSerializer) supports relocation of serialized objects
    */
+
+  /****
+   * todo 从上述代码可以看出，开启push-based shuffle 需要满足下面的条件：
+   *
+   * [1] spark.shuffle.push.enabled 设置为true
+   *
+   * [2] spark.shuffle.service.enabled 必须设置为true, shuffle merge 就是在ess上进行合并的
+   *
+   * [3] 目前resource manager资源管理的方式，只支持yarn模式
+   *
+   * [4] 序列化程序支持对象重定位relocation
+   *
+   * [5] spark.io.encryption.enabled 需要关闭
+   *
+   * @param conf
+   * @param isDriver
+   * @param checkSerializer
+   * @return
+   */
   def isPushBasedShuffleEnabled(conf: SparkConf,
       isDriver: Boolean,
       checkSerializer: Boolean = true): Boolean = {
+    //todo 1、PUSH_BASED_SHUFFLE_ENABLED
     val pushBasedShuffleEnabled = conf.get(PUSH_BASED_SHUFFLE_ENABLED)
     if (pushBasedShuffleEnabled) {
       val canDoPushBasedShuffle = {
         val isTesting = conf.get(IS_TESTING).getOrElse(false)
-        //todo isShuffleServiceAndYarn
+        //todo 2、isShuffleServiceAndYarn【shuffle merge 就是在ess上进行合并的】
         val isShuffleServiceAndYarn = conf.get(SHUFFLE_SERVICE_ENABLED) &&
             conf.get(SparkLauncher.SPARK_MASTER, null) == "yarn"
+        //todo 3、支持序列化relocation
         lazy val serializerIsSupported = {
           if (checkSerializer) {
             Option(SparkEnv.get)
@@ -2671,6 +2692,7 @@ private[spark] object Utils extends Logging {
           }
         }
         // TODO: [SPARK-36744] needs to support IO encryption for push-based shuffle
+        //todo 4）IO_ENCRYPTION_ENABLED = false
         val ioEncryptionDisabled = !conf.get(IO_ENCRYPTION_ENABLED)
         (isShuffleServiceAndYarn || isTesting) && ioEncryptionDisabled && serializerIsSupported
       }

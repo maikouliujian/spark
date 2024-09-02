@@ -122,7 +122,7 @@ public class ExternalBlockHandler extends RpcHandler
     BlockTransferMessage msgObj = BlockTransferMessage.Decoder.fromByteBuffer(message);
     handleMessage(msgObj, client, callback);
   }
-
+  //todo
   @Override
   public StreamCallbackWithID receiveStream(
       TransportClient client,
@@ -132,6 +132,7 @@ public class ExternalBlockHandler extends RpcHandler
     if (msgObj instanceof PushBlockStream) {
       PushBlockStream message = (PushBlockStream) msgObj;
       checkAuth(client, message.appId);
+      //todo 接收block数据
       return mergeManager.receiveBlockDataAsStream(message);
     } else {
       throw new UnsupportedOperationException("Unexpected message with #receiveStream: " + msgObj);
@@ -284,6 +285,7 @@ public class ExternalBlockHandler extends RpcHandler
    * Removes an application (once it has been terminated), and optionally will clean up any
    * local directories associated with the executors of that application in a separate thread.
    */
+  //todo appid移除后，移除其shuffle中间数据
   public void applicationRemoved(String appId, boolean cleanupLocalDirs) {
     blockManager.applicationRemoved(appId, cleanupLocalDirs);
     mergeManager.applicationRemoved(appId, cleanupLocalDirs);

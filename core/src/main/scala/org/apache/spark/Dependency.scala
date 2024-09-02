@@ -120,6 +120,7 @@ class ShuffleDependency[K: ClassTag, V: ClassTag, C: ClassTag](
    * Stores the location of the list of chosen external shuffle services for handling the
    * shuffle merge requests from mappers in this shuffle map stage.
    */
+    //todo shuffle merge locations
   private[spark] var mergerLocs: Seq[BlockManagerId] = Nil
 
   /**

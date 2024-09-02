@@ -390,6 +390,7 @@ final class ShuffleBlockFetcherIterator(
     val localExecIds = Set(blockManager.blockManagerId.executorId, fallback)
     for ((address, blockInfos) <- blocksByAddress) {
       checkBlockSizes(blockInfos)
+      //todo PushMergedShuffle
       if (pushBasedFetchHelper.isPushMergedShuffleBlockAddress(address)) {
         // These are push-merged blocks or shuffle chunks of these blocks.
         if (address.host == blockManager.blockManagerId.host) {
@@ -397,6 +398,7 @@ final class ShuffleBlockFetcherIterator(
           pushMergedLocalBlocks ++= blockInfos.map(_._1)
           pushMergedLocalBlockBytes += blockInfos.map(_._2).sum
         } else {
+          //todo
           collectFetchRequests(address, blockInfos, collectedRemoteRequests)
         }
       } else if (localExecIds.contains(address.executorId)) {
@@ -506,6 +508,7 @@ final class ShuffleBlockFetcherIterator(
               collectedRemoteRequests, enableBatchFetch = false)
             curRequestSize = curBlocks.map(_.size).sum
           }
+          //todo forMergedMetas可以看出先向 shuffle service 上请求一次 meta 信息
         case ShuffleMergedBlockId(_, _, _) =>
           if (curBlocks.size >= maxBlocksInFlightPerAddress) {
             curBlocks = createFetchRequests(curBlocks.toSeq, address, isLast = false,
@@ -690,6 +693,7 @@ final class ShuffleBlockFetcherIterator(
     val pushMergedLocalBlocks = mutable.LinkedHashSet[BlockId]()
     // Partition blocks by the different fetch modes: local, host-local, push-merged-local and
     // remote blocks.
+    //todo 划分数据源的请求：local, host-local, push-merged-local and remote blocks.
     val remoteRequests = partitionBlocksByFetchMode(
       blocksByAddress, localBlocks, hostLocalBlocksByExecutor, pushMergedLocalBlocks)
     // Add the remote requests into our queue in a random order
@@ -699,6 +703,7 @@ final class ShuffleBlockFetcherIterator(
       ", expected bytesInFlight = 0 but found bytesInFlight = " + bytesInFlight)
 
     // Send out initial requests for blocks, up to our maxBytesInFlight
+    //todo 发送remoteRequests
     fetchUpToMaxBytes()
 
     val numDeferredRequest = deferredFetchRequests.values.map(_.size).sum
@@ -750,6 +755,7 @@ final class ShuffleBlockFetcherIterator(
     // For local shuffle block, throw FailureFetchResult for the first IOException.
     while (result == null) {
       val startFetchWait = System.nanoTime()
+      //todo
       result = results.take()
       val fetchWaitTime = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startFetchWait)
       shuffleMetrics.incFetchWaitTime(fetchWaitTime)
@@ -1107,6 +1113,7 @@ final class ShuffleBlockFetcherIterator(
           val request = defReqQueue.dequeue()
           logDebug(s"Processing deferred fetch request for $remoteAddress with "
             + s"${request.blocks.length} blocks")
+          //todo 发送请求
           send(remoteAddress, request)
           if (defReqQueue.isEmpty) {
             deferredFetchRequests -= remoteAddress
@@ -1131,6 +1138,7 @@ final class ShuffleBlockFetcherIterator(
 
     def send(remoteAddress: BlockManagerId, request: FetchRequest): Unit = {
       if (request.forMergedMetas) {
+        //todo 先获取MergedBlockMeta
         pushBasedFetchHelper.sendFetchMergedStatusRequest(request)
       } else {
         sendRequest(request)

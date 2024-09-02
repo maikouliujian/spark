@@ -172,6 +172,7 @@ public class ExternalBlockStoreClient extends BlockStoreClient {
               assert inputListener instanceof BlockPushingListener :
                 "Expecting a BlockPushingListener, but got " + inputListener.getClass();
               TransportClient client = clientFactory.createClient(host, port);
+              //todo 真正发送的地方
               new OneForOneBlockPusher(client, appId, comparableAppAttemptId, inputBlockId,
                 (BlockPushingListener) inputListener, buffersWithId).start();
             } else {

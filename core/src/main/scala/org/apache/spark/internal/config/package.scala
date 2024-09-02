@@ -2157,7 +2157,7 @@ package object config {
       .intConf
       .checkValue(_ >= 0, "needs to be a non-negative value")
       .createWithDefault(5)
-
+  //todo 是否开启push based shuffle
   private[spark] val PUSH_BASED_SHUFFLE_ENABLED =
     ConfigBuilder("spark.shuffle.push.enabled")
       .doc("Set to true to enable push-based shuffle on the client side and this works in " +

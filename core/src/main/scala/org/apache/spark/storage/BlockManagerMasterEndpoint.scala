@@ -161,7 +161,7 @@ class BlockManagerMasterEndpoint(
 
     case GetBlockStatus(blockId, askStorageEndpoints) =>
       context.reply(blockStatus(blockId, askStorageEndpoints))
-
+     //todo 获取ShufflePushMergerLocations
     case GetShufflePushMergerLocations(numMergersNeeded, hostsToFilter) =>
       context.reply(getShufflePushMergerLocations(numMergersNeeded, hostsToFilter))
 
@@ -756,10 +756,11 @@ class BlockManagerMasterEndpoint(
       Seq.empty
     }
   }
-
+  //todo 获取ShufflePushMergerLocations
   private def getShufflePushMergerLocations(
       numMergersNeeded: Int,
       hostsToFilter: Set[String]): Seq[BlockManagerId] = {
+    //todo 【1】通过blockManagerIdByExecutor过滤非driver的Executor如果满足numMergersNeeded则直接返回
     val blockManagerHosts = blockManagerIdByExecutor
       .filterNot(_._2.isDriver).values.map(_.host).toSet
     val filteredBlockManagerHosts = blockManagerHosts.diff(hostsToFilter)
@@ -770,6 +771,7 @@ class BlockManagerMasterEndpoint(
       filteredMergersWithExecutors.toSeq
     } else {
       // Delta mergers added from inactive mergers list to the active mergers list
+      //todo [2] 否则需要激活过去使用的Executor(最多 500 个)用于进行合并。
       val filteredMergersWithExecutorsHosts = filteredMergersWithExecutors.map(_.host)
       val filteredMergersWithoutExecutors = shuffleMergerLocations.values
         .filterNot(x => hostsToFilter.contains(x.host))

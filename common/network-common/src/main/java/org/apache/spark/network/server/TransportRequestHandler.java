@@ -112,6 +112,7 @@ public class TransportRequestHandler extends MessageHandler<RequestMessage> {
     } else if (request instanceof StreamRequest) {
       processStreamRequest((StreamRequest) request);
     } else if (request instanceof UploadStream) {
+      //todo 处理shuffle merge data
       processStreamUpload((UploadStream) request);
     } else if (request instanceof MergedBlockMetaRequest) {
       processMergedBlockMetaRequest((MergedBlockMetaRequest) request);
@@ -200,6 +201,7 @@ public class TransportRequestHandler extends MessageHandler<RequestMessage> {
       TransportFrameDecoder frameDecoder = (TransportFrameDecoder)
           channel.pipeline().get(TransportFrameDecoder.HANDLER_NAME);
       ByteBuffer meta = req.meta.nioByteBuffer();
+      //todo 接收数据
       StreamCallbackWithID streamHandler = rpcHandler.receiveStream(reverseClient, meta, callback);
       if (streamHandler == null) {
         throw new NullPointerException("rpcHandler returned a null streamHandler");
@@ -213,6 +215,7 @@ public class TransportRequestHandler extends MessageHandler<RequestMessage> {
         @Override
         public void onComplete(String streamId) throws IOException {
            try {
+             //todo 完成时进行数据合并：RemoteBlockPushResolver
              streamHandler.onComplete(streamId);
              callback.onSuccess(streamHandler.getCompletionResponse());
            } catch (BlockPushNonFatalFailure ex) {

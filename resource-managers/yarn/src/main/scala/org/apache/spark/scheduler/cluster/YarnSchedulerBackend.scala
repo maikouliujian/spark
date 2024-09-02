@@ -193,6 +193,7 @@ private[spark] abstract class YarnSchedulerBackend(
 
     // Request for numMergersDesired shuffle mergers to BlockManagerMasterEndpoint
     // and if it's less than minMergersNeeded, we disable push based shuffle.
+    //todo [3] 请求blockManagerMaster获取mergerLocations
     val mergerLocations = blockManagerMaster
       .getShufflePushMergerLocations(numMergersDesired, scheduler.excludedNodes())
     if (mergerLocations.size < numMergersDesired && mergerLocations.size < minMergersNeeded) {

@@ -145,6 +145,7 @@ private class PushBasedFetchHelper(
         logDebug(s"Received the meta of push-merged block for ($shuffleId, $shuffleMergeId," +
           s" $reduceId) from ${req.address.host}:${req.address.port}")
         try {
+          //todo 将PushMerged meta result结果加入queue
           iterator.addToResultsQueue(PushMergedRemoteMetaFetchResult(shuffleId, shuffleMergeId,
             reduceId, sizeMap((shuffleId, reduceId)), meta.readChunkBitmaps(), address))
         } catch {
@@ -168,6 +169,7 @@ private class PushBasedFetchHelper(
     }
     req.blocks.foreach { block =>
       val shuffleBlockId = block.blockId.asInstanceOf[ShuffleMergedBlockId]
+      //todo 获取MergedBlockMeta
       shuffleClient.getMergedBlockMeta(address.host, address.port, shuffleBlockId.shuffleId,
         shuffleBlockId.shuffleMergeId, shuffleBlockId.reduceId, mergedBlocksMetaListener)
     }

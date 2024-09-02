@@ -60,6 +60,8 @@ private[spark] class ShuffleWriteProcessor extends Serializable with Logging {
       val mapStatus = writer.stop(success = true)
       if (mapStatus.isDefined) {
         // Check if sufficient shuffle mergers are available now for the ShuffleMapTask to push
+        //todo 执行完map端的writer后，会判断shuffleMergeEnabled是否开启, 要求dependency中MergerLocs不为空，其次就是shuffleMerge还未执行完成。
+        // 如果满足这些条件，则会创建ShuffleBlockPusher类，并调用其initiateBlockPush方法。
         if (dep.shuffleMergeAllowed && dep.getMergerLocs.isEmpty) {
           val mapOutputTracker = SparkEnv.get.mapOutputTracker
           val mergerLocs =
@@ -81,6 +83,7 @@ private[spark] class ShuffleWriteProcessor extends Serializable with Logging {
               val dataFile = resolver.getDataFile(dep.shuffleId, mapId)
               //todo push shuffle
               new ShuffleBlockPusher(SparkEnv.get.conf)
+              //todo ！！！！！！
                 .initiateBlockPush(dataFile, writer.getPartitionLengths(), dep, partition.index)
             case _ =>
           }

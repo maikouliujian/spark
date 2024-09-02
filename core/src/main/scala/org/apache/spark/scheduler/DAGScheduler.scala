@@ -253,7 +253,7 @@ private[spark] class DAGScheduler(
 
   private[spark] val eventProcessLoop = new DAGSchedulerEventProcessLoop(this)
   taskScheduler.setDAGScheduler(this)
-
+  //todo pushBasedShuffleEnabled
   private val pushBasedShuffleEnabled = Utils.isPushBasedShuffleEnabled(sc.getConf, isDriver = true)
 
   private val blockManagerMasterDriverHeartbeatTimeout =
@@ -1371,6 +1371,7 @@ private[spark] class DAGScheduler(
   private def prepareShuffleServicesForShuffleMapStage(stage: ShuffleMapStage): Unit = {
     assert(stage.shuffleDep.shuffleMergeAllowed && !stage.shuffleDep.isShuffleMergeFinalizedMarked)
     if (stage.shuffleDep.getMergerLocs.isEmpty) {
+      //todo 获取ShufflePushMergerLocations
       getAndSetShufflePushMergerLocations(stage)
     }
 
@@ -1388,9 +1389,11 @@ private[spark] class DAGScheduler(
   }
 
   private def getAndSetShufflePushMergerLocations(stage: ShuffleMapStage): Seq[BlockManagerId] = {
+     //todo [2]根据schedulerBackend获取ShufflePushMergerLocations
     val mergerLocs = sc.schedulerBackend.getShufflePushMergerLocations(
       stage.shuffleDep.partitioner.numPartitions, stage.resourceProfileId)
     if (mergerLocs.nonEmpty) {
+      //todo 这时shuffle merge service已经准备好了，同时其被记录在shuffleDependency的mergerLocs 属性中。
       stage.shuffleDep.setMergerLocs(mergerLocs)
     }
 
@@ -1431,6 +1434,7 @@ private[spark] class DAGScheduler(
       case s: ShuffleMapStage =>
         outputCommitCoordinator.stageStart(stage = s.id, maxPartitionId = s.numPartitions - 1)
         // Only generate merger location for a given shuffle dependency once.
+        //todo [1]如果开启shuffleMerge,并且shuffleMerge还没完成，为ShuffleMapStage准备ShuffleServices
         if (s.shuffleDep.shuffleMergeAllowed) {
           if (!s.shuffleDep.isShuffleMergeFinalizedMarked) {
             prepareShuffleServicesForShuffleMapStage(s)
@@ -1698,8 +1702,10 @@ private[spark] class DAGScheduler(
       }
 
       if (totalSize < shuffleMergeWaitMinSizeThreshold) {
+        //todo
         scheduleShuffleMergeFinalize(shuffleStage, delay = 0, registerMergeResults = false)
       } else {
+        //todo
         scheduleShuffleMergeFinalize(shuffleStage, shuffleMergeFinalizeWaitSec)
       }
     }
@@ -1837,6 +1843,7 @@ private[spark] class DAGScheduler(
             if (runningStages.contains(shuffleStage) && shuffleStage.pendingPartitions.isEmpty) {
               if (!shuffleStage.shuffleDep.isShuffleMergeFinalizedMarked &&
                 shuffleStage.shuffleDep.getMergerLocs.nonEmpty) {
+                //todo 标记ShuffleMergeFinalize
                 checkAndScheduleShuffleMergeFinalize(shuffleStage)
               } else {
                 processShuffleMapStageCompletion(shuffleStage)
@@ -2177,6 +2184,7 @@ private[spark] class DAGScheduler(
           shuffleDep.setFinalizeTask(
             shuffleMergeFinalizeScheduler.schedule(
               new Runnable {
+                //todo finalizeShuffleMerge
                 override def run(): Unit = finalizeShuffleMerge(stage, registerMergeResults)
               },
               0,
@@ -2236,6 +2244,7 @@ private[spark] class DAGScheduler(
                 // Sends async request to shuffle service to finalize shuffle merge on that host.
                 // Since merge statuses will not be registered in this case,
                 // we pass a no-op listener.
+                //todo ！！！！！！！
                 shuffleClient.finalizeShuffleMerge(shuffleServiceLoc.host,
                   shuffleServiceLoc.port, shuffleId, shuffleMergeId,
                   new MergeFinalizerListener {
@@ -2856,6 +2865,7 @@ private[scheduler] class DAGSchedulerEventProcessLoop(dagScheduler: DAGScheduler
       dagScheduler.handleGetTaskResult(taskInfo)
 
     case completion: CompletionEvent =>
+      //todo task完成
       dagScheduler.handleTaskCompletion(completion)
 
     case TaskSetFailed(taskSet, reason, exception) =>
