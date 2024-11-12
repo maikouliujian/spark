@@ -36,6 +36,7 @@ import org.apache.spark.sql.types.StructType;
 /**
  * Contains necessary information representing a Parquet column, either of primitive or nested type.
  */
+//todo 代表一列
 final class ParquetColumnVector {
   private final ParquetColumn column;
   //todo 通常用于表示复杂类型列（例如结构体、嵌套结构、重复组等）中的子列

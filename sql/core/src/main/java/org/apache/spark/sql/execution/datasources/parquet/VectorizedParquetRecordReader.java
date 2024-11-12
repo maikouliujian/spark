@@ -209,6 +209,7 @@ public class VectorizedParquetRecordReader extends SpecificParquetRecordReaderBa
   //todo Spark可以通过nextKeyValue方法【逐个批次】地读取Parquet文件
   @Override
   public boolean nextKeyValue() throws IOException {
+    //todo 初始化一批数据的空间
     resultBatch();
 
     if (returnColumnarBatch) return nextBatch();
@@ -312,13 +313,13 @@ public class VectorizedParquetRecordReader extends SpecificParquetRecordReaderBa
     }
     columnarBatch.setNumRows(0);
     if (rowsReturned >= totalRowCount) return false;
-    //todo 检查是否达到了rowgroup end
+    //todo 检查是否达到了rowgroup end，如果没到直接返回，如果到了读取下一个rowgroup
     checkEndOfRowGroup();
 
     int num = (int) Math.min(capacity, totalCountLoadedSoFar - rowsReturned);
     //todo 遍历该batch中每一列
     for (ParquetColumnVector cv : columnVectors) {
-      //todo 获取当前列cv的子message对应的列
+      //todo 获取当前列cv的子message对应的列（包括自己）
       for (ParquetColumnVector leafCv : cv.getLeaves()) {
         VectorizedColumnReader columnReader = leafCv.getColumnReader();
         if (columnReader != null) {

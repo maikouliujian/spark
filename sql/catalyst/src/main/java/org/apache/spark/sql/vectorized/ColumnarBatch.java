@@ -26,9 +26,11 @@ import org.apache.spark.sql.catalyst.InternalRow;
  * batch so that Spark can access the data row by row. Instance of it is meant to be reused during
  * the entire data loading process. A data source may extend this class with customized logic.
  */
+//todo 代表一批数据
 @DeveloperApi
 public class ColumnarBatch implements AutoCloseable {
   protected int numRows;
+  //todo 每一列对应一个ColumnVector
   protected final ColumnVector[] columns;
 
   // Staging row returned from `getRow`.

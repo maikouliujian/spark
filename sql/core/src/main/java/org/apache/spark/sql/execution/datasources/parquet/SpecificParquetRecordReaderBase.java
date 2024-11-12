@@ -98,7 +98,9 @@ public abstract class SpecificParquetRecordReaderBase<T> extends RecordReader<Vo
       .build();
     ParquetFileReader fileReader = new ParquetFileReader(
         HadoopInputFile.fromPath(file, configuration), options);
+    //todo 初始化ParquetRowGroupReader
     this.reader = new ParquetRowGroupReaderImpl(fileReader);
+    //todo parquet footer 元数据schema
     this.fileSchema = fileReader.getFileMetaData().getSchema();
     try {
       this.writerVersion = VersionParser.parse(fileReader.getFileMetaData().getCreatedBy());
@@ -186,6 +188,7 @@ public abstract class SpecificParquetRecordReaderBase<T> extends RecordReader<Vo
     this.parquetColumn = new ParquetToSparkSchemaConverter(config)
       .convertParquetColumn(requestedSchema, Option.empty());
     this.sparkSchema = (StructType) parquetColumn.sparkType();
+    //todo 获取过滤的RecordCount
     this.totalRowCount = fileReader.getFilteredRecordCount();
   }
 

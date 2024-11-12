@@ -169,7 +169,7 @@ public class VectorizedColumnReader {
   /**
    * Reads `total` rows from this columnReader into column.
    */
-  //todo 读取数据
+  //todo 读取数据!!!!!!
   void readBatch(
       int total,//todo 这一批次的行数
       WritableColumnVector column,
@@ -264,6 +264,7 @@ public class VectorizedColumnReader {
   }
   //todo 读取columnchunk中一个page的数据,返回value个数
   private int readPage() {
+    //todo 【ColumnChunkPageReader，从queue中取DataPage】
     DataPage page = pageReader.readPage();
     if (page == null) {
       return -1;

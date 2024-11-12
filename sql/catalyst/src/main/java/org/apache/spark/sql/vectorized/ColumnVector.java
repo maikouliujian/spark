@@ -48,6 +48,7 @@ import org.apache.spark.unsafe.types.UTF8String;
  * format. Since it is expected to reuse the ColumnVector instance while loading data, the storage
  * footprint is negligible.
  */
+//todo 代表一列的数据
 @Evolving
 public abstract class ColumnVector implements AutoCloseable {
 
