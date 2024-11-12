@@ -246,9 +246,10 @@ class SparkSession private(
    *
    * @since 2.0.0
    */
+    //todo 不同的session共享同一个sparkContext，做到了资源共享
   def newSession(): SparkSession = {
     new SparkSession(
-      sparkContext,
+      sparkContext,//todo 共享的sparkContext
       Some(sharedState),
       parentSessionState = None,
       extensions,
