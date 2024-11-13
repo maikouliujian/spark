@@ -247,6 +247,7 @@ private[spark] class ExecutorAllocationManager(
     }
 
     if (!testing || conf.get(TEST_DYNAMIC_ALLOCATION_SCHEDULE_ENABLED)) {
+      //todo 100ms执行一次
       executor.scheduleWithFixedDelay(scheduleTask, 0, intervalMillis, TimeUnit.MILLISECONDS)
     }
 
@@ -256,7 +257,7 @@ private[spark] class ExecutorAllocationManager(
       val numLocality = numLocalityAwareTasksPerResourceProfileId.toMap
       (numTarget, numLocality)
     }
-
+    //todo 通过CoarseGrainedSchedulerBackend申请初始化资源
     client.requestTotalExecutors(numExecutorsTarget, numLocalityAware, rpIdToHostToLocalTaskCount)
   }
 
@@ -303,6 +304,7 @@ private[spark] class ExecutorAllocationManager(
     val tasksPerExecutor = rp.maxTasksPerExecutor(conf)
     logDebug(s"max needed for rpId: $rpId numpending: $numRunningOrPendingTasks," +
       s" tasksperexecutor: $tasksPerExecutor")
+      //todo 需要的executor数 = 通过监听器得到总task数 / 每一个executor上最大的task数
     val maxNeeded = math.ceil(numRunningOrPendingTasks * executorAllocationRatio /
       tasksPerExecutor).toInt
 
@@ -351,6 +353,7 @@ private[spark] class ExecutorAllocationManager(
     // Update executor target number only after initializing flag is unset
     //todo 核心逻辑！！！！！！：如果之前申请的超过了当前需要的，那么就减少executor数量，并告知集群管理者；反之，增加executor数量，并告知集群管理者
     updateAndSyncNumExecutorsTarget(clock.nanoTime())
+    //todo 移除超时的Executors
     if (executorIdsToBeRemoved.nonEmpty) {
       removeExecutors(executorIdsToBeRemoved)
     }
@@ -391,12 +394,14 @@ private[spark] class ExecutorAllocationManager(
           // the target number in case an executor just happens to get lost (e.g., bad hardware,
           // or the cluster manager preempts it) -- in that case, there is no point in trying
           // to immediately  get a new executor, since we wouldn't even use it yet.
+          //todo 减小rpId的Executors
           decrementExecutorsFromTarget(maxNeeded, rpId, updatesNeeded)
         } else if (addTime != NOT_SET && now >= addTime) {
+          //todo 增加rpId的Executors
           addExecutorsToTarget(maxNeeded, rpId, updatesNeeded)
         }
       }
-      //todo 像集群管理着发送资源更新请求
+      //todo 向集群管理着发送资源更新请求
       doUpdateRequest(updatesNeeded.toMap, now)
     }
   }
