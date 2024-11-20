@@ -26,5 +26,5 @@ package org.apache.spark
  */
 //todo shuffle中间结果
 //todo shuffleId shuffleid
-//todo Array: bytesByPartitionId 每一个map输出分区的大小
+//todo Array: bytesByPartitionId 每一个maptask输出分区的大小
 private[spark] class MapOutputStatistics(val shuffleId: Int, val bytesByPartitionId: Array[Long])

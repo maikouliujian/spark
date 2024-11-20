@@ -75,6 +75,7 @@ private[spark] object MapStatus {
       loc: BlockManagerId,
       uncompressedSizes: Array[Long],
       mapTaskId: Long): MapStatus = {
+    //todo 当map分区数大于2000时，使用HighlyCompressedMapStatus
     if (uncompressedSizes.length > minPartitionsToUseHighlyCompressMapStatus) {
       HighlyCompressedMapStatus(loc, uncompressedSizes, mapTaskId)
     } else {
@@ -262,6 +263,7 @@ private[spark] object HighlyCompressedMapStatus {
       Option(SparkEnv.get)
         .map(_.conf.get(config.SHUFFLE_ACCURATE_BLOCK_THRESHOLD))
         .getOrElse(config.SHUFFLE_ACCURATE_BLOCK_THRESHOLD.defaultValue.get)
+    //todo 倾斜阈值
     val threshold =
       if (accurateBlockSkewedFactor > 0) {
         val sortedSizes = uncompressedSizes.sorted
@@ -292,9 +294,11 @@ private[spark] object HighlyCompressedMapStatus {
         // Huge blocks are not included in the calculation for average size, thus size for smaller
         // blocks is more accurate.
         if (size < threshold) {
+          //todo 如果未倾斜就不单独记录
           totalSmallBlockSize += size
           numSmallBlocks += 1
         } else {
+          //todo 如果倾斜就单独记录
           hugeBlockSizes(i) = MapStatus.compressSize(uncompressedSizes(i))
         }
       } else {

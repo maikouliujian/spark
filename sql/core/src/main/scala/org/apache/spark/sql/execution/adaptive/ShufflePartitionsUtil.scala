@@ -320,7 +320,7 @@ object ShufflePartitionsUtil extends Logging {
    */
   // Visible for testing
   private[sql] def splitSizeListByTargetSize(
-      sizes: Array[Long],
+      sizes: Array[Long], //todo 上游每一个maptask输出分区的大小
       targetSize: Long,
       smallPartitionFactor: Double): Array[Int] = {
     val partitionStartIndices = ArrayBuffer[Int]()
@@ -333,6 +333,7 @@ object ShufflePartitionsUtil extends Logging {
       // When we are going to start a new partition, it's possible that the current partition or
       // the previous partition is very small and it's better to merge the current partition into
       // the previous partition.
+      //todo 如果切开的分区较小，还需要合并相邻的分区
       val shouldMergePartitions = lastPartitionSize > -1 &&
         ((currentPartitionSize + lastPartitionSize) < targetSize * MERGED_PARTITION_FACTOR ||
         (currentPartitionSize < targetSize * smallPartitionFactor ||
@@ -368,6 +369,7 @@ object ShufflePartitionsUtil extends Logging {
    * missing due to issues like executor lost. The size will be -1 for missing map outputs and the
    * caller side should take care of it.
    */
+    //todo 获取分区reducerId的上游每一个map分区数据大小
   private def getMapSizesForReduceId(shuffleId: Int, partitionId: Int): Array[Long] = {
     val mapOutputTracker = SparkEnv.get.mapOutputTracker.asInstanceOf[MapOutputTrackerMaster]
     mapOutputTracker.shuffleStatuses(shuffleId).withMapStatuses(_.map { stat =>
@@ -385,9 +387,10 @@ object ShufflePartitionsUtil extends Logging {
       targetSize: Long,
       smallPartitionFactor: Double = SMALL_PARTITION_FACTOR)
   : Option[Seq[PartialReducerPartitionSpec]] = {
+    //todo 获取分区reducerId的上游每一个map分区数据大小
     val mapPartitionSizes = getMapSizesForReduceId(shuffleId, reducerId)
     if (mapPartitionSizes.exists(_ < 0)) return None
-    //todo 切分
+    //todo 切分逻辑【切分按照reducerId的上游每一个map分区数据的大小为粒度切分的，如果切开的分区较小，还需要合并相邻的分区！！！！！！】
     val mapStartIndices = splitSizeListByTargetSize(
       mapPartitionSizes, targetSize, smallPartitionFactor)
     if (mapStartIndices.length > 1) {

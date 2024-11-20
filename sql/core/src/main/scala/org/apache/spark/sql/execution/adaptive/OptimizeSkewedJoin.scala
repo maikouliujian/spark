@@ -63,6 +63,7 @@ case class OptimizeSkewedJoin(ensureRequirements: EnsureRequirements)
    * SKEW_JOIN_SKEWED_PARTITION_THRESHOLD. Thus we pick the larger one as the skew threshold.
    */
   def getSkewThreshold(medianSize: Long): Long = {
+    //todo 两者取最大
     conf.getConf(SQLConf.SKEW_JOIN_SKEWED_PARTITION_THRESHOLD).max(
       medianSize * conf.getConf(SQLConf.SKEW_JOIN_SKEWED_PARTITION_FACTOR))
   }
@@ -116,15 +117,17 @@ case class OptimizeSkewedJoin(ensureRequirements: EnsureRequirements)
     val canSplitLeft = canSplitLeftSide(joinType)
     val canSplitRight = canSplitRightSide(joinType)
     if (!canSplitLeft && !canSplitRight) return None
-    //todo 左分区数
+    //todo 左边算子产出的每一个分区的大小
     val leftSizes = left.mapStats.get.bytesByPartitionId
-    //todo 右分区数
+    //todo 右边算子产出的每一个分区的大小
     val rightSizes = right.mapStats.get.bytesByPartitionId
     assert(leftSizes.length == rightSizes.length)
-    //todo 分区数
+    //todo 分区个数
     val numPartitions = leftSizes.length
     // We use the median size of the original shuffle partitions to detect skewed partitions.
+    //todo 计算左算子分区大小的中位数
     val leftMedSize = Utils.median(leftSizes, false)
+    //todo 计算右算子分区大小的中位数
     val rightMedSize = Utils.median(rightSizes, false)
     logDebug(
       s"""
@@ -134,9 +137,10 @@ case class OptimizeSkewedJoin(ensureRequirements: EnsureRequirements)
          |Right side partitions size info:
          |${getSizeInfo(rightMedSize, rightSizes)}
       """.stripMargin)
-    //todo 计算倾斜的阈值
+    //todo 根据中位数计算倾斜的阈值max(256m, 5 * MedSize)
     val leftSkewThreshold = getSkewThreshold(leftMedSize)
     val rightSkewThreshold = getSkewThreshold(rightMedSize)
+    //todo 目标大小max(64m, nonSkewSizes.sum / nonSkewSizes.length)
     val leftTargetSize = targetSize(leftSizes, leftSkewThreshold)
     val rightTargetSize = targetSize(rightSizes, rightSkewThreshold)
 
@@ -157,6 +161,7 @@ case class OptimizeSkewedJoin(ensureRequirements: EnsureRequirements)
         Seq(CoalescedPartitionSpec(partitionIndex, partitionIndex + 1, rightSize))
       //todo 处理左切
       val leftParts = if (isLeftSkew) {
+        //todo 切分逻辑！！！！！！
         val skewSpecs = ShufflePartitionsUtil.createSkewPartitionSpecs(
           left.mapStats.get.shuffleId, partitionIndex, leftTargetSize)
         if (skewSpecs.isDefined) {
@@ -183,7 +188,8 @@ case class OptimizeSkewedJoin(ensureRequirements: EnsureRequirements)
       } else {
         rightNoSkewPartitionSpec
       }
-
+      //todo 在这进行笛卡尔积！！！！！！
+      //todo 如leftParts是[1,2,3],rightParts是[1]，则会产生[1,1],[2,1],[3,1]
       for {
         leftSidePartition <- leftParts
         rightSidePartition <- rightParts
