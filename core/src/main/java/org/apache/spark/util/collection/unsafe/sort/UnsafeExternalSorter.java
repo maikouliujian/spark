@@ -46,6 +46,9 @@ import org.apache.spark.util.Utils;
 /**
  * External sorter based on {@link UnsafeInMemorySorter}.
  */
+//todo 【UnsafeExternalSorter是Spark里面一个非常重要的组件，它可以实现对于大规模的、超过内存大小的数据量的保存、提取和排序。
+// 排序算子SortExec使用它来对数据进行排序;SortMergeJoinExec使用它来保存join过程中匹配上的记录】
+//todo https://mp.weixin.qq.com/s/erBF_MEWzDaeLji3zgmG6Q
 public final class UnsafeExternalSorter extends MemoryConsumer {
 
   private static final Logger logger = LoggerFactory.getLogger(UnsafeExternalSorter.class);
@@ -82,11 +85,13 @@ public final class UnsafeExternalSorter extends MemoryConsumer {
    * this might not be necessary if we maintained a pool of re-usable pages in the TaskMemoryManager
    * itself).
    */
+  //todo allocatedPages里面保存的是输入的数据
   private final LinkedList<MemoryBlock> allocatedPages = new LinkedList<>();
-  //todo 记录每一个writer，是为了读取数据时候使用
+  //todo spillWriters则是当发生spill的时候生成的，每发生一次 spill就会生成一个 spill writer保存到这个 spillWriters 里面。
   private final LinkedList<UnsafeSorterSpillWriter> spillWriters = new LinkedList<>();
 
   // These variables are reset after spilling:
+  //todo inMemSorter是用来排序的。
   @Nullable private volatile UnsafeInMemorySorter inMemSorter;
 
   private MemoryBlock currentPage = null;
@@ -223,7 +228,7 @@ public final class UnsafeExternalSorter extends MemoryConsumer {
       spillWriters.size() > 1 ? " times" : " time");
 
     ShuffleWriteMetrics writeMetrics = new ShuffleWriteMetrics();
-    //todo 每一次溢写磁盘，都新建一个溢写的writer
+    //todo 将内存中的数据写入磁盘，每一次溢写磁盘，都新建一个溢写的writer
     final UnsafeSorterSpillWriter spillWriter =
       new UnsafeSorterSpillWriter(blockManager, fileBufferSizeBytes, writeMetrics,
         inMemSorter.numRecords());
@@ -472,6 +477,12 @@ public final class UnsafeExternalSorter extends MemoryConsumer {
   /**
    * Write a record to the sorter.
    */
+  //todo 插入数据，核心方法！！！！！！
+  //todo 在数据插入的时候UnsafeExternalSorter会做两个事情，一是把数据本身保存下来，另外还会构造一个指向这个数据的一个“索引”结构用来优化排序的速度。
+  //todo recordBase是说这个内存是由哪个对象所持有的，
+  // recordOffset是说要插入的数据在这段内存里面的偏移量，
+  // length是要插入的数据的长度，
+  // prefix则是可以代表这个插入数据的一个前缀
   public void insertRecord(
       Object recordBase, long recordOffset, int length, long prefix, boolean prefixIsNull)
     throws IOException {
@@ -495,9 +506,10 @@ public final class UnsafeExternalSorter extends MemoryConsumer {
     UnsafeAlignedOffset.putSize(base, pageCursor, length);
     pageCursor += uaoSize;
     //todo 将recordBase的数据拷贝到base中
+    //todo 把内存从入参里面复制到 MemoryBlock 里面去
     Platform.copyMemory(recordBase, recordOffset, base, pageCursor, length);
     pageCursor += length;
-    //todo 写入对外内存
+    //todo 对数据排序！！！！！！
     inMemSorter.insertRecord(recordAddress, prefix, prefixIsNull);
   }
 
@@ -759,7 +771,7 @@ public final class UnsafeExternalSorter extends MemoryConsumer {
    *
    * TODO: support forced spilling
    */
-  //todo 读取数据！！！！！！
+  //todo 读取数据！！！！！！读取磁盘 + 内存中数据
   public UnsafeSorterIterator getIterator(int startIndex) throws IOException {
     if (spillWriters.isEmpty()) {
       //todo 只从内存中取数据

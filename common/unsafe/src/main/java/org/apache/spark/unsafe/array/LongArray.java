@@ -27,6 +27,10 @@ import org.apache.spark.unsafe.memory.MemoryBlock;
  *   <li>has no bound checking, and thus can crash the JVM process when assert is turned off</li>
  * </ul>
  */
+//todo 奇数为存储记录的地址，偶数位置存储记录的prefix。地址和prefix都是Long类型。
+//todo 对记录进行排序时，首先判断两条记录的prefix是否相等，如果根据prefix就可以判断出两条记录的大小，那么直接返回结果。
+// 否则从相应的地址中拿出两条记录进行进一步的比较。相对于真实存储的记录来说，他们的地址和prefix占用的空间都比较小，在比较时遍历较小的数据结构更有利于提高cache命中率。
+
 public final class LongArray {
 
   // This is a long so that we perform long multiplications when computing offsets.

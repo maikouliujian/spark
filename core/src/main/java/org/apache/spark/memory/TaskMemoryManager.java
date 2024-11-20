@@ -61,9 +61,11 @@ public class TaskMemoryManager {
   private static final Logger logger = LoggerFactory.getLogger(TaskMemoryManager.class);
 
   /** The number of bits used to address the page table. */
+  //todo 数据地址
   private static final int PAGE_NUMBER_BITS = 13;
 
   /** The number of bits used to encode offsets in data pages. */
+  //todo 数据offset
   @VisibleForTesting
   static final int OFFSET_BITS = 64 - PAGE_NUMBER_BITS;  // 51
 
@@ -80,6 +82,7 @@ public class TaskMemoryManager {
   public static final long MAXIMUM_PAGE_SIZE_BYTES = ((1L << 31) - 1) * 8L;
 
   /** Bit mask for the lower 51 bits of a long. */
+  //todo 低51位是1，其余是0
   private static final long MASK_LONG_LOWER_51_BITS = 0x7FFFFFFFFFFFFL;
 
   /**
@@ -90,6 +93,7 @@ public class TaskMemoryManager {
    * When using an on-heap allocator, the entries in this map will point to pages' base objects.
    * Entries are added to this map as new data pages are allocated.
    */
+  //todo 一个MemoryBlock就是一个page
   private final MemoryBlock[] pageTable = new MemoryBlock[PAGE_TABLE_SIZE];
 
   /**
@@ -392,7 +396,7 @@ public class TaskMemoryManager {
     assert (pageNumber >= 0) : "encodePageNumberAndOffset called with invalid page";
     return (((long) pageNumber) << OFFSET_BITS) | (offsetInPage & MASK_LONG_LOWER_51_BITS);
   }
-
+  //todo 右移51位，得出page地址
   @VisibleForTesting
   public static int decodePageNumber(long pagePlusOffsetAddress) {
     return (int) (pagePlusOffsetAddress >>> OFFSET_BITS);

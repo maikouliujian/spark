@@ -53,12 +53,14 @@ public final class UnsafeSorterSpillWriter {
   // be an API to directly transfer bytes from managed memory to the disk writer, we buffer
   // data through a byte array.
   private byte[] writeBuffer = new byte[diskWriteBufferSize];
-
+  //todo 数据文件
   private final File file;
+  //todo 数据id
   private final BlockId blockId;
   private final int numRecordsToWrite;
   //todo 真正写数据的类
   private DiskBlockObjectWriter writer;
+  //todo 写入磁盘的数据条数
   private int numRecordsSpilled = 0;
 
   public UnsafeSorterSpillWriter(
@@ -66,6 +68,7 @@ public final class UnsafeSorterSpillWriter {
       int fileBufferSize,
       ShuffleWriteMetrics writeMetrics,
       int numRecordsToWrite) throws IOException {
+    //todo 返回一个blockid和block对应的文件路径
     final Tuple2<TempLocalBlockId, File> spilledFileInfo =
       blockManager.diskBlockManager().createTempLocalBlock();
     this.file = spilledFileInfo._2();
@@ -75,6 +78,7 @@ public final class UnsafeSorterSpillWriter {
     // Our write path doesn't actually use this serializer (since we end up calling the `write()`
     // OutputStream methods), but DiskBlockObjectWriter still calls some methods on it. To work
     // around this, we pass a dummy no-op serializer.
+    //todo 获取block disk writer
     writer = blockManager.getDiskWriter(
       blockId, file, DummySerializerInstance.INSTANCE, fileBufferSize, writeMetrics);
     // Write the number of records
@@ -157,7 +161,7 @@ public final class UnsafeSorterSpillWriter {
   public File getFile() {
     return file;
   }
-
+  //todo 获取读取数据的类
   public UnsafeSorterSpillReader getReader(SerializerManager serializerManager) throws IOException {
     return new UnsafeSorterSpillReader(serializerManager, file, blockId);
   }

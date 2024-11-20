@@ -58,9 +58,11 @@ public final class UnsafeInMemorySorter {
 
     @Override
     public int compare(RecordPointerAndKeyPrefix r1, RecordPointerAndKeyPrefix r2) {
+      //todo  1、先按照prefix key排序
       final int prefixComparisonResult = prefixComparator.compare(r1.keyPrefix, r2.keyPrefix);
       int uaoSize = UnsafeAlignedOffset.getUaoSize();
       if (prefixComparisonResult == 0) {
+        //todo 2、如果prefix key相等，再按照真实的数据进行排序
         final Object baseObject1 = memoryManager.getPage(r1.recordPointer);
         final long baseOffset1 = memoryManager.getOffsetInPage(r1.recordPointer) + uaoSize;
         final int baseLength1 = UnsafeAlignedOffset.getSize(baseObject1, baseOffset1 - uaoSize);
@@ -93,6 +95,16 @@ public final class UnsafeInMemorySorter {
    * Only part of the array will be used to store the pointers, the rest part is preserved as
    * temporary buffer for sorting.
    */
+  //todo 排序时候的指针，我们说的“索引”结构就是它。
+  //todo 每个“数据”在这个 array 里面占用两个slot，一个是指向真实数据的指针，一个是数据的一个 prefix【数据的排序key】
+  //todo 它为什么要维护这么一个 pointer array呢？这其实是一个常见的提高 cache 命中率的优化。
+  // 真正的数据每条一般都比较大，占用的内存比较多，如果直接对它进行排序会在内存空间做大范围的跳转和挪动，
+  // 对cache是不友好的。这个pointer array本身是一大块连续的内存，每条数据只占相对来说很小的 16bytes,
+  // 这样可以保证大量的数据都是在 cache 里面，排序的时候算法先基于64 位的prefix进行排序，
+  // 只有当prefix相等的时候我们才真正的通过内存地址去获取数据的真正的内容进一步排序。
+  // 这样在大多数据情况下我们不需要真的去加载数据的内容，从而使得我们的内存访问大多数时候是对于这个 LongArray 的连续的内存访问，
+  // 提高了Cache命中率，从而提升了性能。这种pointer array + RowContainer 的方式是一种挺常见的优化，Velox 里面的 HashTable 也是类似的内存布局。
+  // todo index + key
   private LongArray array;
 
   /**
@@ -342,6 +354,7 @@ public final class UnsafeInMemorySorter {
    * Return an iterator over record pointers in sorted order. For efficiency, all calls to
    * {@code next()} will return the same mutable object.
    */
+  //todo 以迭代器方式返回内存中的数据，数据是排序的
   public UnsafeSorterIterator getSortedIterator() {
     if (numRecords() == 0) {
       // `array` might be null, so make sure that it is not accessed by returning early.
@@ -351,6 +364,7 @@ public final class UnsafeInMemorySorter {
     int offset = 0;
     long start = System.nanoTime();
     if (sortComparator != null) {
+      //todo 基数排序
       if (this.radixSortSupport != null) {
         offset = RadixSort.sortKeyPrefixArray(
           array, nullBoundaryPos, (pos - nullBoundaryPos) / 2L, 0, 7,
