@@ -22,6 +22,7 @@ import org.apache.spark.sql.catalyst.plans.logical._
 /**
  * A trait to add statistics propagation to [[LogicalPlan]].
  */
+//todo 逻辑计划的统计信息
 trait LogicalPlanStats { self: LogicalPlan =>
 
   /**

@@ -108,7 +108,9 @@ object PartitionPruning extends Rule[LogicalPlan] with PredicateHelper with Join
       partScan: LogicalPlan): LogicalPlan = {
     val reuseEnabled = conf.exchangeReuseEnabled
     val index = joinKeys.indexOf(filteringKey)
+    //todo 裁剪是否有收益
     lazy val hasBenefit = pruningHasBenefit(pruningKey, partScan, filteringKey, filteringPlan)
+    //todo 如果开启重用exchange或有收益侧插入一个Filter的过滤子查询算子
     if (reuseEnabled || hasBenefit) {
       // insert a DynamicPruning wrapper to identify the subquery during query planning
       Filter(
@@ -215,16 +217,18 @@ object PartitionPruning extends Rule[LogicalPlan] with PredicateHelper with Join
   private def hasPartitionPruningFilter(plan: LogicalPlan): Boolean = {
     !plan.isStreaming && hasSelectivePredicate(plan)
   }
-
+  //todo 动态分区裁剪
   private def prune(plan: LogicalPlan): LogicalPlan = {
     plan transformUp {
+      //todo [1] 跳过子查询中包含DPP的情况
       // skip this rule if there's already a DPP subquery on the LHS of a join
       case j @ Join(Filter(_: DynamicPruningSubquery, _), _, _, _, _) => j
       case j @ Join(_, Filter(_: DynamicPruningSubquery, _), _, _, _) => j
+      //todo 处理dpp
       case j @ Join(left, right, joinType, Some(condition), hint) =>
         var newLeft = left
         var newRight = right
-
+        // todo [2] 提取出等值Join的左右join keys
         // extract the left and right keys of the join condition
         val (leftKeys, rightKeys) = j match {
           case ExtractEquiJoinKeys(_, lkeys, rkeys, _, _, _, _, _) => (lkeys, rkeys)
@@ -238,7 +242,7 @@ object PartitionPruning extends Rule[LogicalPlan] with PredicateHelper with Join
               !y.references.isEmpty && y.references.subsetOf(right.outputSet)
           fromLeftRight(x, y) || fromLeftRight(y, x)
         }
-
+        //todo [3] 遍历查询条件谓词，使用 DPP 优化
         splitConjunctivePredicates(condition).foreach {
           case EqualTo(a: Expression, b: Expression)
               if fromDifferentSides(a, b) =>
@@ -251,9 +255,12 @@ object PartitionPruning extends Rule[LogicalPlan] with PredicateHelper with Join
 
             // there should be a partitioned table and a filter on the dimension table,
             // otherwise the pruning will not trigger
+            //todo // 这里区分左表和右表
             var filterableScan = getFilterableTableScan(l, left)
+            //todo // filterableScan定义表示是否可以分区列剪裁，canPruneLeft是否能剪裁左， hasPartitionPruningFilter能进行剪裁分区
             if (filterableScan.isDefined && canPruneLeft(joinType) &&
                 hasPartitionPruningFilter(right)) {
+              //todo // 插入谓词
               newLeft = insertPredicate(l, newLeft, r, right, rightKeys, filterableScan.get)
             } else {
               filterableScan = getFilterableTableScan(r, right)
@@ -272,6 +279,7 @@ object PartitionPruning extends Rule[LogicalPlan] with PredicateHelper with Join
     // Do not rewrite subqueries.
     case s: Subquery if s.correlated => plan
     case _ if !conf.dynamicPartitionPruningEnabled => plan
+    //todo 动态分区裁剪dpp
     case _ => prune(plan)
   }
 }
