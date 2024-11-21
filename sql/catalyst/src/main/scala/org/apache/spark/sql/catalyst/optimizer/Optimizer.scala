@@ -159,6 +159,7 @@ abstract class Optimizer(catalogManager: CatalogManager)
     // - Call CombineUnions again in Batch("Operator Optimizations"),
     //   since the other rules might make two separate Unions operators adjacent.
     Batch("Inline CTE", Once,
+      //todo inline cte
       InlineCTE()) ::
     Batch("Union", Once,
       RemoveNoopOperators,

@@ -53,6 +53,7 @@ object ReplaceCTERefWithRepartition extends Rule[LogicalPlan] {
             // scalar subquery, we do not need to add an extra repartition shuffle.
             inlined
           } else {
+            //todo 包装成Repartition，供下游引用 CTE 的地方来拉数据。
             Repartition(conf.numShufflePartitions, shuffle = true, inlined)
           }
         cteMap.put(cteDef.id, withRepartition)

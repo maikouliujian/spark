@@ -38,6 +38,7 @@ import org.apache.spark.sql.catalyst.trees.TreePattern.{CTE, PLAN_EXPRESSION}
  *
  * @param alwaysInline if true, inline all CTEs in the query plan.
  */
+//todo inline cte
 case class InlineCTE(alwaysInline: Boolean = false) extends Rule[LogicalPlan] {
 
   override def apply(plan: LogicalPlan): LogicalPlan = {
@@ -57,14 +58,18 @@ case class InlineCTE(alwaysInline: Boolean = false) extends Rule[LogicalPlan] {
       plan
     }
   }
-
+  //todo 判断是否应该inline
+  //todo Inline 意味着对应的算子跟 SQL 其它部分是在一起执行的，很可能会在同一个 Stage 里面执行从而避免一次 Shuffle。
+  // 而不 Inline(物化)的话是必然会引入一个 Shuffle 的, 引入额外的执行开销。
+  // 所以如果一个 CTE 只被引用了一次那么 Inline 肯定是最佳选择。对于确定性这个因素，
+  // 我们来看它的反面：如果一个 CTE 的结果是不确定的，并且被SQL 里面多个地方引用，那么它一定要物化，否则不同的引用点得到的结果不一样，这影响 SQL 的正确性/一致性。
   private def shouldInline(cteDef: CTERelationDef, refCount: Int): Boolean = alwaysInline || {
     // We do not need to check enclosed `CTERelationRef`s for `deterministic` or `OuterReference`,
     // because:
     // 1) It is fine to inline a CTE if it references another CTE that is non-deterministic;
     // 2) Any `CTERelationRef` that contains `OuterReference` would have been inlined first.
     refCount == 1 ||
-      cteDef.deterministic ||
+      cteDef.deterministic || //todo 无类似rand() 这种函数
       cteDef.child.exists(_.expressions.exists(_.isInstanceOf[OuterReference]))
   }
 
@@ -107,6 +112,7 @@ case class InlineCTE(alwaysInline: Boolean = false) extends Rule[LogicalPlan] {
       notInlined: mutable.ArrayBuffer[CTERelationDef]): LogicalPlan = {
     plan match {
       case WithCTE(child, cteDefs) =>
+        //todo 把 CTE 的 child 也就是CTE 对应的执行计划拿出来，内嵌到引用这个 CTE 的地方的执行计划里面去
         cteDefs.foreach { cteDef =>
           val (cte, refCount) = cteMap(cteDef.id)
           if (refCount > 0) {

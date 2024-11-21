@@ -717,7 +717,7 @@ case class CTERelationRef(
  * through unique IDs instead of relation aliases.
  *
  * @param plan    The query plan.
- * @param cteDefs The CTE definitions.
+ * @param cteDefs The CTE definitions. //todo cte的引用
  */
 case class WithCTE(plan: LogicalPlan, cteDefs: Seq[CTERelationDef]) extends LogicalPlan {
 

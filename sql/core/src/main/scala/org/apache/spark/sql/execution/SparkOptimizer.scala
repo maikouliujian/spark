@@ -79,6 +79,7 @@ class SparkOptimizer(
       PushPredicateThroughNonJoin,
       RemoveNoopOperators) :+
     Batch("User Provided Optimizers", fixedPoint, experimentalMethods.extraOptimizations: _*) :+
+    //todo 物化cte
     Batch("Replace CTE with Repartition", Once, ReplaceCTERefWithRepartition)
 
   override def nonExcludableRules: Seq[String] = super.nonExcludableRules :+
