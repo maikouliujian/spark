@@ -98,6 +98,7 @@ object PartitionPruning extends Rule[LogicalPlan] with PredicateHelper with Join
    *  should run regardless of the join strategy, or is too expensive and it should be run only if
    *  we can reuse the results of a broadcast
    */
+  //todo 判断是否可以应用动态分区剪枝
   private def insertPredicate(
       pruningKey: Expression,
       pruningPlan: LogicalPlan,

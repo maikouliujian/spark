@@ -36,6 +36,7 @@ class SparkPlanner(val session: SparkSession, val experimentalMethods: Experimen
       LogicalQueryStageStrategy ::
       PythonEvals ::
       new DataSourceV2Strategy(session) ::
+        //todo 读取file策略
       FileSourceStrategy ::
       DataSourceStrategy ::
       SpecialLimits ::

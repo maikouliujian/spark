@@ -1632,7 +1632,7 @@ object SQLConf {
     .version("2.2.0")
     .longConf
     .createWithDefault(0)
-
+  //todo plan重用
   val EXCHANGE_REUSE_ENABLED = buildConf("spark.sql.exchange.reuse")
     .internal()
     .doc("When true, the planner will try to find out duplicated exchanges and re-use them.")

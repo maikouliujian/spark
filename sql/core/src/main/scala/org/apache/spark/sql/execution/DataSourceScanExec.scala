@@ -243,7 +243,7 @@ case class FileSourceScanExec(
     SQLMetrics.postDriverMetricUpdates(sparkContext, executionId,
       metrics.filter(e => driverMetrics.contains(e._1)).values.toSeq)
   }
-
+  //todo 是否为动态剪枝【PlanExpression，子查询类型=>true】
   private def isDynamicPruningFilter(e: Expression): Boolean =
     e.exists(_.isInstanceOf[PlanExpression[_]])
 
