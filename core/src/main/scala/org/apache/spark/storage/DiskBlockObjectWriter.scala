@@ -40,6 +40,8 @@ import org.apache.spark.util.collection.PairsWriter
  * This class does not support concurrent writes. Also, once the writer has been opened it cannot be
  * reopened again.
  */
+//todo BypassMergeSortShuffleWriter 写磁盘，一个分区一个文件，一个文件一个DiskBlockObjectWriter
+//todo SortShuffleWriter 写磁盘，溢写一次一个文件，一个文件一个DiskBlockObjectWriter
 private[spark] class DiskBlockObjectWriter(
     val file: File,
     serializerManager: SerializerManager,
@@ -207,6 +209,7 @@ private[spark] class DiskBlockObjectWriter(
    *
    * @return file segment with previous offset and length committed on this call.
    */
+    //todo flush，生成FileSegment
   def commitAndGet(): FileSegment = {
     if (streamOpen) {
       // NOTE: Because Kryo doesn't flush the underlying stream we explicitly flush both the
@@ -301,6 +304,7 @@ private[spark] class DiskBlockObjectWriter(
   /**
    * Writes a key-value pair.
    */
+    //todo 写k-v
   override def write(key: Any, value: Any): Unit = {
     if (!streamOpen) {
       open()

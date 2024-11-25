@@ -127,7 +127,9 @@ private[spark] class ExternalSorter[K, V, C](
   // Data structures to store in-memory objects before we spill. Depending on whether we have an
   // Aggregator set, we either put objects into an AppendOnlyMap where we combine them, or we
   // store them in an array buffer.
+  //todo 聚合用
   @volatile private var map = new PartitionedAppendOnlyMap[K, C]
+  //todo 非聚合用
   @volatile private var buffer = new PartitionedPairBuffer[K, C]
 
   // Total spilling statistics
@@ -171,9 +173,9 @@ private[spark] class ExternalSorter[K, V, C](
   private[this] case class SpilledFile(
     file: File,
     blockId: BlockId,
-    serializerBatchSizes: Array[Long],
-    elementsPerPartition: Array[Long])
-
+    serializerBatchSizes: Array[Long],//todo 记录了每一个fileSegment中数据大小，一个fileSegment代表一批次的数据
+    elementsPerPartition: Array[Long]) //todo 记录每一个分区的数据条数
+  //todo 记录了所有溢写的文件
   private val spills = new ArrayBuffer[SpilledFile]
 
   /**
@@ -185,19 +187,22 @@ private[spark] class ExternalSorter[K, V, C](
   def insertAll(records: Iterator[Product2[K, V]]): Unit = {
     // TODO: stop combining if we find that the reduction factor isn't high
     val shouldCombine = aggregator.isDefined
-
+    //todo [1] 是否需要在mapSide的聚合
     if (shouldCombine) {
       // Combine values in-memory first using our AppendOnlyMap
+      //todo [1.1] 通过aggregator获取mergeValue和createCombiner
       val mergeValue = aggregator.get.mergeValue
       val createCombiner = aggregator.get.createCombiner
       var kv: Product2[K, V] = null
       val update = (hadValue: Boolean, oldValue: C) => {
         if (hadValue) mergeValue(oldValue, kv._2) else createCombiner(kv._2)
       }
+      //todo [2] 如果需要map端聚合，将数据写入map缓存中
       while (records.hasNext) {
         addElementsRead()
         kv = records.next()
         map.changeValue((getPartition(kv._1), kv._1), update)
+        //todo 判断是否溢写
         maybeSpillCollection(usingMap = true)
       }
     } else {
@@ -205,7 +210,9 @@ private[spark] class ExternalSorter[K, V, C](
       while (records.hasNext) {
         addElementsRead()
         val kv = records.next()
+        //todo [2] 如果不需要map端聚合，将数据写入buffer缓存中
         buffer.insert(getPartition(kv._1), kv._1, kv._2.asInstanceOf[C])
+        //todo [3] 判断是否需要溢写，并进行溢写
         maybeSpillCollection(usingMap = false)
       }
     }
@@ -221,11 +228,13 @@ private[spark] class ExternalSorter[K, V, C](
     if (usingMap) {
       estimatedSize = map.estimateSize()
       if (maybeSpill(map, estimatedSize)) {
+        //todo 如果溢写，则新建一个内存结构
         map = new PartitionedAppendOnlyMap[K, C]
       }
     } else {
       estimatedSize = buffer.estimateSize()
       if (maybeSpill(buffer, estimatedSize)) {
+        //todo 如果溢写，则新建一个内存结构
         buffer = new PartitionedPairBuffer[K, C]
       }
     }
@@ -241,8 +250,11 @@ private[spark] class ExternalSorter[K, V, C](
    *
    * @param collection whichever collection we're using (map or buffer)
    */
+  //todo 溢写到磁盘
   override protected[this] def spill(collection: WritablePartitionedPairCollection[K, C]): Unit = {
+    //todo 将内存中的数据进行排序【先按照分区id排序，分区id相同再按照key排序】
     val inMemoryIterator = collection.destructiveSortedWritablePartitionedIterator(comparator)
+    //todo 将内存中的数据写到磁盘
     val spillFile = spillMemoryIteratorToDisk(inMemoryIterator)
     spills += spillFile
   }
@@ -285,6 +297,7 @@ private[spark] class ExternalSorter[K, V, C](
     val batchSizes = new ArrayBuffer[Long]
 
     // How many elements we have in each partition
+    //todo 记录每一个分区中元素个数
     val elementsPerPartition = new Array[Long](numPartitions)
 
     // Flush the disk writer's contents to disk, and update relevant variables.
@@ -299,13 +312,15 @@ private[spark] class ExternalSorter[K, V, C](
     var success = false
     try {
       while (inMemoryIterator.hasNext) {
+        //todo 分区id
         val partitionId = inMemoryIterator.nextPartition()
         require(partitionId >= 0 && partitionId < numPartitions,
           s"partition Id: ${partitionId} should be in the range [0, ${numPartitions})")
+        //todo 写 key-value
         inMemoryIterator.writeNext(writer)
         elementsPerPartition(partitionId) += 1
         objectsWritten += 1
-
+        //todo 默认每1000条生成一个fileSegement
         if (objectsWritten == serializerBatchSize) {
           flush()
         }
@@ -324,7 +339,7 @@ private[spark] class ExternalSorter[K, V, C](
         writer.closeAndDelete()
       }
     }
-
+    //todo 返回一个SpilledFile
     SpilledFile(file, blockId, batchSizes.toArray, elementsPerPartition)
   }
 
@@ -340,6 +355,7 @@ private[spark] class ExternalSorter[K, V, C](
    */
   private def merge(spills: Seq[SpilledFile], inMemory: Iterator[((Int, K), C)])
       : Iterator[(Int, Iterator[Product2[K, C]])] = {
+    //todo 将每一个SpilledFile转化为SpillReader
     val readers = spills.map(new SpillReader(_))
     val inMemBuffered = inMemory.buffered
     (0 until numPartitions).iterator.map { p =>
@@ -367,8 +383,10 @@ private[spark] class ExternalSorter[K, V, C](
     val bufferedIters = iterators.filter(_.hasNext).map(_.buffered)
     type Iter = BufferedIterator[Product2[K, C]]
     // Use the reverse order (compare(y,x)) because PriorityQueue dequeues the max
+    //todo 使用一个堆来进行多路归并！！！！！！！
     val heap = new mutable.PriorityQueue[Iter]()(
       (x: Iter, y: Iter) => comparator.compare(y.head._1, x.head._1))
+    //todo 将每一个迭代器的第一个元素加入队列
     heap.enqueue(bufferedIters: _*)  // Will contain only the iterators with hasNext = true
     new Iterator[Product2[K, C]] {
       override def hasNext: Boolean = heap.nonEmpty
@@ -475,6 +493,7 @@ private[spark] class ExternalSorter[K, V, C](
    */
   private[this] class SpillReader(spill: SpilledFile) {
     // Serializer batch offsets; size will be batchSize.length + 1
+    //todo 记录每一个批次数据的大小
     val batchOffsets = spill.serializerBatchSizes.scanLeft(0L)(_ + _)
 
     // Track which partition and which batch stream we're in. These will be the indices of
@@ -497,6 +516,7 @@ private[spark] class ExternalSorter[K, V, C](
     var finished = false
 
     /** Construct a stream that only reads from the next batch */
+      //todo 返回一个文件一个批次数据的Stream
     def nextBatchStream(): DeserializationStream = {
       // Note that batchOffsets.length = numBatches + 1 since we did a scan above; check whether
       // we're still in a valid batch.
@@ -563,6 +583,7 @@ private[spark] class ExternalSorter[K, V, C](
       }
       // Update the partition location of the element we're reading
       indexInPartition += 1
+      //todo 是否跳到下一个分区
       skipToNextPartition()
       // If we've finished reading the last partition, remember that we're done
       if (partitionId == numPartitions) {
@@ -642,6 +663,7 @@ private[spark] class ExternalSorter[K, V, C](
    * support hierarchical merging.
    * Exposed for testing.
    */
+    //todo (分区，迭代器)
   def partitionedIterator: Iterator[(Int, Iterator[Product2[K, C]])] = {
     val usingMap = aggregator.isDefined
     val collection: WritablePartitionedPairCollection[K, C] = if (usingMap) map else buffer
@@ -650,6 +672,7 @@ private[spark] class ExternalSorter[K, V, C](
       // we don't even need to sort by anything other than partition ID
       if (ordering.isEmpty) {
         // The user hasn't requested sorted keys, so only sort by partition ID, not key
+        //todo 如果没有溢写，直接groupByPartition
         groupByPartition(destructiveIterator(collection.partitionedDestructiveSortedIterator(None)))
       } else {
         // We do need to sort by both partition ID and key
@@ -658,6 +681,7 @@ private[spark] class ExternalSorter[K, V, C](
       }
     } else {
       // Merge spilled and in-memory data
+      //todo 合并内存和磁盘中的数据
       merge(spills.toSeq, destructiveIterator(
         collection.partitionedDestructiveSortedIterator(comparator)))
     }
@@ -740,6 +764,7 @@ private[spark] class ExternalSorter[K, V, C](
    *
    * @return array of lengths, in bytes, of each partition of the file (used by map output tracker)
    */
+  //todo 【内存 + 溢写磁盘的文件】 ==合并到=> 一个新的文件
   def writePartitionedMapOutput(
       shuffleId: Int,
       mapId: Long,
@@ -747,6 +772,7 @@ private[spark] class ExternalSorter[K, V, C](
     var nextPartitionId = 0
     if (spills.isEmpty) {
       // Case where we only have in-memory data
+      //todo 只有内存数据
       val collection = if (aggregator.isDefined) map else buffer
       val it = collection.destructiveSortedWritablePartitionedIterator(comparator)
       while (it.hasNext) {
@@ -775,6 +801,7 @@ private[spark] class ExternalSorter[K, V, C](
       }
     } else {
       // We must perform merge-sort; get an iterator by partition and write everything directly.
+      //todo 磁盘数据 + 内存数据 （分区，迭代器）
       for ((id, elements) <- this.partitionedIterator) {
         val blockId = ShuffleBlockId(shuffleId, mapId, id)
         var partitionWriter: ShufflePartitionWriter = null
@@ -790,6 +817,7 @@ private[spark] class ExternalSorter[K, V, C](
             if (partitionChecksums.nonEmpty) partitionChecksums(id) else null)
           if (elements.hasNext) {
             for (elem <- elements) {
+              //todo 写数据！！！！！！！
               partitionPairsWriter.write(elem._1, elem._2)
             }
           }
@@ -840,7 +868,7 @@ private[spark] class ExternalSorter[K, V, C](
    */
   private[this] class IteratorForPartition(partitionId: Int, data: BufferedIterator[((Int, K), C)])
     extends Iterator[Product2[K, C]]
-  {
+  { //todo 只读取固定分区中的数据
     override def hasNext: Boolean = data.hasNext && data.head._1._1 == partitionId
 
     override def next(): Product2[K, C] = {

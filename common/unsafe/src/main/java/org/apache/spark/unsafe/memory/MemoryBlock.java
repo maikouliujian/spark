@@ -24,6 +24,7 @@ import org.apache.spark.unsafe.Platform;
 /**
  * A consecutive block of memory, starting at a {@link MemoryLocation} with a fixed size.
  */
+//todo 一个内存页可以存储多个数据条目
 public class MemoryBlock extends MemoryLocation {
 
   /** Special `pageNumber` value for pages which were not allocated by TaskMemoryManagers */
@@ -45,7 +46,7 @@ public class MemoryBlock extends MemoryLocation {
    */
   public static final int FREED_IN_ALLOCATOR_PAGE_NUMBER = -3;
 
-  private final long length;
+  private final long length; //todo 数据大小
 
   /**
    * Optional page number; used when this MemoryBlock represents a page allocated by a
@@ -53,7 +54,7 @@ public class MemoryBlock extends MemoryLocation {
    * which lives in a different package.
    */
   public int pageNumber = NO_PAGE_NUMBER;
-
+   //todo [4] 每个page 由Object，offset 确定， length 表示页大小
   public MemoryBlock(@Nullable Object obj, long offset, long length) {
     super(obj, offset);
     this.length = length;

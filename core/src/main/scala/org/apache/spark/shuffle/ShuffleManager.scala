@@ -36,11 +36,13 @@ private[spark] trait ShuffleManager {
   /**
    * Register a shuffle with the manager and obtain a handle for it to pass to tasks.
    */
+  //todo 向shuffleManager注册shuffle,并返回handle
   def registerShuffle[K, V, C](
       shuffleId: Int,
       dependency: ShuffleDependency[K, V, C]): ShuffleHandle
 
   /** Get a writer for a given partition. Called on executors by map tasks. */
+  //todo getWriter()方法用于获取ShuffleWriter。它是executor执行map任务时调用的
   def getWriter[K, V](
       handle: ShuffleHandle,
       mapId: Long,
@@ -54,6 +56,7 @@ private[spark] trait ShuffleManager {
    *
    * Called on executors by reduce tasks.
    */
+  //todo getReader()方法用于获取ShuffleReader。它是executor执行reduce任务时调用的。
   final def getReader[K, C](
       handle: ShuffleHandle,
       startPartition: Int,

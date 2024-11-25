@@ -339,7 +339,9 @@ private[spark] class IndexShuffleBlockResolver(
       lengths: Array[Long],
       checksums: Array[Long],
       dataTmp: File): Unit = {
+    //todo 索引文件
     val indexFile = getIndexFile(shuffleId, mapId)
+    //todo 索引文件的临时文件
     val indexTmp = createTempFile(indexFile)
 
     val checksumEnabled = checksums.nonEmpty
@@ -354,6 +356,7 @@ private[spark] class IndexShuffleBlockResolver(
     }
 
     try {
+      //todo 数据文件
       val dataFile = getDataFile(shuffleId, mapId)
       // There is only one IndexShuffleBlockResolver per executor, this synchronization make sure
       // the following check and rename are atomic.
@@ -383,11 +386,13 @@ private[spark] class IndexShuffleBlockResolver(
           // so override any existing index and data files with the ones we wrote.
 
           val offsets = lengths.scanLeft(0L)(_ + _)
+          //todo 写index文件，记录offset
           writeMetadataFile(offsets, indexTmp, indexFile, true)
 
           if (dataFile.exists()) {
             dataFile.delete()
           }
+          //todo 临时文件rename成正式文件
           if (dataTmp != null && dataTmp.exists() && !dataTmp.renameTo(dataFile)) {
             throw new IOException("fail to rename file " + dataTmp + " to " + dataFile)
           }
@@ -460,7 +465,7 @@ private[spark] class IndexShuffleBlockResolver(
     if (targetFile.exists()) {
       targetFile.delete()
     }
-
+    //todo 索引临时文件rename成正式文件
     if (!tmpFile.renameTo(targetFile)) {
       val errorMsg = s"fail to rename file $tmpFile to $targetFile"
       if (propagateError) {

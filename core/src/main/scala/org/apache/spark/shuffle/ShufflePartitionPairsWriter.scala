@@ -50,7 +50,7 @@ private[spark] class ShufflePartitionPairsWriter(
   // this would be only initialized when checksum != null,
   // which indicates shuffle checksum is enabled.
   private var checksumOutputStream: MutableCheckedOutputStream = _
-
+  //todo 写数据
   override def write(key: Any, value: Any): Unit = {
     if (isClosed) {
       throw new IOException("Partition pairs writer is already closed.")
@@ -65,6 +65,7 @@ private[spark] class ShufflePartitionPairsWriter(
 
   private def open(): Unit = {
     try {
+      //todo 复用的同一个流
       partitionStream = partitionWriter.openStream
       timeTrackingStream = new TimeTrackingOutputStream(writeMetrics, partitionStream)
       if (checksum != null) {

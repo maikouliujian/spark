@@ -55,6 +55,7 @@ class AppendOnlyMap[K, V](initialCapacity: Int = 64)
 
   // Holds keys and values in the same array for memory locality; specifically, the order of
   // elements is key0, value0, key1, value1, key2, value2, etc.
+  //todo 核心数据结构
   private var data = new Array[AnyRef](2 * capacity)
 
   // Treat the null key differently so we can use nulls in "data" to represent empty items.
@@ -257,6 +258,7 @@ class AppendOnlyMap[K, V](initialCapacity: Int = 64)
    * Return an iterator of the map in sorted order. This provides a way to sort the map without
    * using additional memory, at the expense of destroying the validity of the map.
    */
+  //todo 溢写的时候进行排序
   def destructiveSortedIterator(keyComparator: Comparator[K]): Iterator[(K, V)] = {
     destroyed = true
     // Pack KV pairs into the front of the underlying array
@@ -270,7 +272,7 @@ class AppendOnlyMap[K, V](initialCapacity: Int = 64)
       keyIndex += 1
     }
     assert(curSize == newIndex + (if (haveNullValue) 1 else 0))
-
+    //todo timsort排序【先按照分区id排序，分区id相同再按照key排序】
     new Sorter(new KVArraySortDataFormat[K, AnyRef]).sort(data, 0, newIndex, keyComparator)
 
     new Iterator[(K, V)] {

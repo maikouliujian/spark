@@ -55,9 +55,11 @@ private[spark] class ShuffleWriteProcessor extends Serializable with Logging {
         mapId,
         context,
         createMetricsReporter(context))
+      //todo 写shuffle数据
       writer.write(
         rdd.iterator(partition, context).asInstanceOf[Iterator[_ <: Product2[Any, Any]]])
       val mapStatus = writer.stop(success = true)
+      //todo 如果shuffleWriter执行成功，初始化push-based shuffle
       if (mapStatus.isDefined) {
         // Check if sufficient shuffle mergers are available now for the ShuffleMapTask to push
         //todo 执行完map端的writer后，会判断shuffleMergeEnabled是否开启, 要求dependency中MergerLocs不为空，其次就是shuffleMerge还未执行完成。
@@ -81,7 +83,7 @@ private[spark] class ShuffleWriteProcessor extends Serializable with Logging {
                 s" for stage ${context.stageId()} with shuffle ID ${dep.shuffleId}")
               logDebug(s"Starting pushing blocks for the task ${context.taskAttemptId()}")
               val dataFile = resolver.getDataFile(dep.shuffleId, mapId)
-              //todo push shuffle
+              //todo push-based shuffle
               new ShuffleBlockPusher(SparkEnv.get.conf)
               //todo ！！！！！！
                 .initiateBlockPush(dataFile, writer.getPartitionLengths(), dep, partition.index)

@@ -140,6 +140,7 @@ public class UnsafeShuffleWriter<K, V> extends ShuffleWriter<K, V> {
       (int) (long) sparkConf.get(package$.MODULE$.SHUFFLE_SORT_INIT_BUFFER_SIZE());
     this.inputBufferSizeInBytes =
       (int) (long) sparkConf.get(package$.MODULE$.SHUFFLE_FILE_BUFFER_SIZE()) * 1024;
+    //todo 初始化
     open();
   }
 
@@ -174,16 +175,20 @@ public class UnsafeShuffleWriter<K, V> extends ShuffleWriter<K, V> {
     // Keep track of success so we know if we encountered an exception
     // We do this rather than a standard try/catch/re-throw to handle
     // generic throwables.
+    //todo [1] 使用success记录write是否成功，判断是write阶段的异常还是clean阶段
     boolean success = false;
     try {
       while (records.hasNext()) {
+        //todo [2] 遍历所有的数据插入ShuffleExternalSorter
         insertRecordIntoSorter(records.next());
       }
+      //todo [3] close排序器使所有数据写出到磁盘，并将多个溢写文件合并到一起
       closeAndWriteOutput();
       success = true;
     } finally {
       if (sorter != null) {
         try {
+          //todo [4] 清除并释放资源
           sorter.cleanupResources();
         } catch (Exception e) {
           // Only throw this error if we won't be masking another
@@ -209,18 +214,23 @@ public class UnsafeShuffleWriter<K, V> extends ShuffleWriter<K, V> {
       partitioner.numPartitions(),
       sparkConf,
       writeMetrics);
+    //todo // MyByteArrayOutputStream类是ByteArrayOutputStream的简单封装，只是将内部byte[]数组暴露出来】
+    //todo 【DEFAULT_INITIAL_SER_BUFFER_SIZE常量值是1024 * 1024，即缓冲区初始1MB大】
     serBuffer = new MyByteArrayOutputStream(DEFAULT_INITIAL_SER_BUFFER_SIZE);
+    //todo 序列化流，用于写数据
     serOutputStream = serializer.serializeStream(serBuffer);
   }
-
+  //todo 将多个溢写的文件进行合并
   @VisibleForTesting
   void closeAndWriteOutput() throws IOException {
     assert(sorter != null);
     updatePeakMemoryUsed();
     serBuffer = null;
     serOutputStream = null;
+    //todo // [1] 关闭排序器，并将排序器中的数据全部溢写到磁盘，返回SpillInfo数组
     final SpillInfo[] spills = sorter.closeAndGetSpills();
     try {
+      //todo // [2] 将多个溢出文件合并在一起，根据溢出次数和 IO 压缩编解码器选择最快的合并策略
       partitionLengths = mergeSpills(spills);
     } finally {
       sorter = null;
@@ -238,7 +248,9 @@ public class UnsafeShuffleWriter<K, V> extends ShuffleWriter<K, V> {
   void insertRecordIntoSorter(Product2<K, V> record) throws IOException {
     assert(sorter != null);
     final K key = record._1();
+    //todo // [1] 获取record的key和partitionId
     final int partitionId = partitioner.getPartition(key);
+    //todo // [2] 将record序列化为二进制，并写的字节数组输出流serBuffer中
     serBuffer.reset();
     serOutputStream.writeKey(key, OBJECT_CLASS_TAG);
     serOutputStream.writeValue(record._2(), OBJECT_CLASS_TAG);
@@ -246,7 +258,7 @@ public class UnsafeShuffleWriter<K, V> extends ShuffleWriter<K, V> {
 
     final int serializedRecordSize = serBuffer.size();
     assert (serializedRecordSize > 0);
-
+    //todo // [3] 将其插入到ShuffleExternalSorter中
     sorter.insertRecord(
       serBuffer.getBuf(), Platform.BYTE_ARRAY_OFFSET, serializedRecordSize, partitionId);
   }
@@ -265,11 +277,13 @@ public class UnsafeShuffleWriter<K, V> extends ShuffleWriter<K, V> {
    */
   private long[] mergeSpills(SpillInfo[] spills) throws IOException {
     long[] partitionLengths;
+    //todo // [1] 如果根本没有溢写文件，写一个空文件
     if (spills.length == 0) {
       final ShuffleMapOutputWriter mapWriter = shuffleExecutorComponents
           .createMapOutputWriter(shuffleId, mapId, partitioner.numPartitions());
       return mapWriter.commitAllPartitions(
         ShuffleChecksumHelper.EMPTY_CHECKSUM_VALUE).getPartitionLengths();
+      //todo // [2] 如果只有一个溢写文件，就直接将它写入输出文件中
     } else if (spills.length == 1) {
       Optional<SingleSpillShuffleMapOutputWriter> maybeSingleFileWriter =
           shuffleExecutorComponents.createSingleFileMapOutputWriter(shuffleId, mapId);
@@ -282,6 +296,8 @@ public class UnsafeShuffleWriter<K, V> extends ShuffleWriter<K, V> {
         maybeSingleFileWriter.get()
           .transferMapSpillFile(spills[0].file, partitionLengths, sorter.getChecksums());
       } else {
+        //todo // [3] 如果有多个溢写文件,如果启用并支持快速合并，并且启用了transferTo机制，还没有加密,
+        // 就使用NIO zero-copy来合并到输出文件, 不启用transferTo或不支持快速合并，就使用压缩的BIO FileStream来合并到输出文件
         partitionLengths = mergeSpillsUsingStandardWriter(spills);
       }
     } else {
@@ -318,6 +334,7 @@ public class UnsafeShuffleWriter<K, V> extends ShuffleWriter<K, V> {
         // that doesn't need to interpret the spilled bytes.
         if (transferToEnabled && !encryptionEnabled) {
           logger.debug("Using transferTo-based fast merge");
+          //todo transferTo
           mergeSpillsWithTransferTo(spills, mapWriter);
         } else {
           logger.debug("Using fileStream-based fast merge");

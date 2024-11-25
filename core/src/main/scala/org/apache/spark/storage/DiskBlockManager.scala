@@ -226,6 +226,7 @@ private[spark] class DiskBlockManager(
   }
 
   /** Produces a unique block id and File suitable for storing shuffled intermediate results. */
+  //todo 创建一个blockid + blockfile
   def createTempShuffleBlock(): (TempShuffleBlockId, File) = {
     var blockId = new TempShuffleBlockId(UUID.randomUUID())
     while (getFile(blockId).exists()) {

@@ -50,6 +50,7 @@ private[spark] class SortShuffleWriter[K, V, C](
 
   /** Write a bunch of records to this task's output */
   override def write(records: Iterator[Product2[K, V]]): Unit = {
+    //todo [1] 首先创建基于JVM的外排器ExternalSorter， 如果是需要mapSide聚合的，封装进去aggregator和ordering
     sorter = if (dep.mapSideCombine) {
       new ExternalSorter[K, V, C](
         context, dep.aggregator, Some(dep.partitioner), dep.keyOrdering, dep.serializer)
@@ -60,14 +61,19 @@ private[spark] class SortShuffleWriter[K, V, C](
       new ExternalSorter[K, V, V](
         context, aggregator = None, Some(dep.partitioner), ordering = None, dep.serializer)
     }
+    //todo [2] mapTask的records全部insert到外部排序器
     sorter.insertAll(records)
 
     // Don't bother including the time to open the merged output file in the shuffle write time,
     // because it just opens a single file, so is typically too fast to measure accurately
     // (see SPARK-3570).
+    //todo [3] 创建处理mapTask所有分区数据commit提交writer
     val mapOutputWriter = shuffleExecutorComponents.createMapOutputWriter(
       dep.shuffleId, mapId, dep.partitioner.numPartitions)
+    //todo [4] 将写入ExternalSorter中的所有数据写出到一个map output writer中
+    //todo 【内存 + 溢写磁盘的文件】 ===> 一个新的文件
     sorter.writePartitionedMapOutput(dep.shuffleId, mapId, mapOutputWriter)
+    //todo [5] 提交所有分区长度，生成索引文件
     partitionLengths = mapOutputWriter.commitAllPartitions(sorter.getChecksums).getPartitionLengths
     mapStatus = MapStatus(blockManager.shuffleServerId, partitionLengths, mapId)
   }

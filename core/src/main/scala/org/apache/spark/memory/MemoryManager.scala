@@ -228,6 +228,7 @@ private[spark] abstract class MemoryManager(
    * Tracks whether Tungsten memory will be allocated on the JVM heap or off-heap using
    * sun.misc.Unsafe.
    */
+    //todo 在创建TaskMemoryManager会指定MemoryMode，优先使用堆外内存
   final val tungstenMemoryMode: MemoryMode = {
     if (conf.get(MEMORY_OFFHEAP_ENABLED)) {
       require(conf.get(MEMORY_OFFHEAP_SIZE) > 0,

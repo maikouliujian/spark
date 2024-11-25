@@ -93,6 +93,7 @@ private[spark] trait SizeTracker {
   /**
    * Estimate the current size of the collection in bytes. O(1) time.
    */
+    //todo 用o(1)的方式估算内存大小：已记录的总大小 + 每条数据平均大小(采样) * 写入条数
   def estimateSize(): Long = {
     assert(samples.nonEmpty)
     val extrapolatedDelta = bytesPerUpdate * (numUpdates - samples.last.numUpdates)

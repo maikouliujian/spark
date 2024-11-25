@@ -160,6 +160,7 @@ public final class Platform {
     return _UNSAFE.getLong(object, offset);
   }
 
+
   public static void putLong(Object object, long offset, long value) {
     _UNSAFE.putLong(object, offset, value);
   }

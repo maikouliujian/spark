@@ -33,6 +33,7 @@ package org.apache.spark.shuffle.sort;
  * optimization to future work as it will require more careful design to ensure that addresses are
  * properly aligned (e.g. by padding records).
  */
+//todo reuse
 final class PackedRecordPointer {
 
   static final int MAXIMUM_PAGE_SIZE_BYTES = 1 << 27;  // 128 megabytes
@@ -88,7 +89,7 @@ final class PackedRecordPointer {
   public void set(long packedRecordPointer) {
     this.packedRecordPointer = packedRecordPointer;
   }
-
+  //todo 前24位
   public int getPartitionId() {
     return (int) ((packedRecordPointer & MASK_LONG_UPPER_24_BITS) >>> 40);
   }

@@ -42,6 +42,7 @@ import org.apache.spark.shuffle.api.metadata.MapOutputCommitMessage;
  * persisting shuffle data to local disk alongside index files, identical to Spark's historic
  * canonical shuffle storage mechanism.
  */
+//todo 将多个中间文件合并成一个结果文件
 public class LocalDiskShuffleMapOutputWriter implements ShuffleMapOutputWriter {
 
   private static final Logger log =
@@ -75,7 +76,9 @@ public class LocalDiskShuffleMapOutputWriter implements ShuffleMapOutputWriter {
       (int) (long) sparkConf.get(
         package$.MODULE$.SHUFFLE_UNSAFE_FILE_OUTPUT_BUFFER_SIZE()) * 1024;
     this.partitionLengths = new long[numPartitions];
+    //todo 多个中间合并成的一个文件
     this.outputFile = blockResolver.getDataFile(shuffleId, mapId);
+    //todo 多个中间合并成的一个文件的临时文件
     this.outputTempFile = null;
   }
 
@@ -114,6 +117,7 @@ public class LocalDiskShuffleMapOutputWriter implements ShuffleMapOutputWriter {
     File resolvedTmp = outputTempFile != null && outputTempFile.isFile() ? outputTempFile : null;
     log.debug("Writing shuffle index file for mapId {} with length {}", mapId,
         partitionLengths.length);
+    //todo 写入index文件，数据临时文件变为正式文件
     blockResolver
       .writeMetadataFileAndCommit(shuffleId, mapId, partitionLengths, checksums, resolvedTmp);
     return MapOutputCommitMessage.of(partitionLengths);
@@ -141,6 +145,7 @@ public class LocalDiskShuffleMapOutputWriter implements ShuffleMapOutputWriter {
 
   private void initStream() throws IOException {
     if (outputFileStream == null) {
+      //todo 复用同一个outputTempFile
       outputFileStream = new FileOutputStream(outputTempFile, true);
     }
     if (outputBufferedFileStream == null) {
@@ -152,6 +157,7 @@ public class LocalDiskShuffleMapOutputWriter implements ShuffleMapOutputWriter {
     // This file needs to opened in append mode in order to work around a Linux kernel bug that
     // affects transferTo; see SPARK-3948 for more details.
     if (outputFileChannel == null) {
+      //todo 复用同一个outputTempFile
       outputFileChannel = new FileOutputStream(outputTempFile, true).getChannel();
     }
   }
@@ -174,6 +180,7 @@ public class LocalDiskShuffleMapOutputWriter implements ShuffleMapOutputWriter {
               " now an output stream has been requested. Should not be using both channels" +
               " and streams to write.");
         }
+        //todo 复用同一个outputTempFile
         initStream();
         partStream = new PartitionWriterStream(partitionId);
       }

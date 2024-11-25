@@ -92,9 +92,14 @@ private[spark] class SortShuffleManager(conf: SparkConf) extends ShuffleManager 
   /**
    * Obtains a [[ShuffleHandle]] to pass to tasks.
    */
+  //todo 我们都知道在Spark的DAG中，顶点是一个个 RDD，其边则是 RDD 之间通过 dependencies 属性构成的父子关系。
+  // dependencies 又分为宽依赖和窄依赖，分别对应ShuffleDependency和NarrowDependency。
+  //todo 当RDD间的依赖关系为ShuffleDependency时，RDD会通过其SparkEnv向ShuffleManager注册一个shuffle, 并返回当前处理当前shuffle所需要的句柄。
+  //todo 三类句柄对应三类shuffle writer
   override def registerShuffle[K, V, C](
       shuffleId: Int,
       dependency: ShuffleDependency[K, V, C]): ShuffleHandle = {
+    //todo 1、非mapSideCombine并且reduce分区数小于200
     if (SortShuffleWriter.shouldBypassMergeSort(conf, dependency)) {
       // If there are fewer than spark.shuffle.sort.bypassMergeThreshold partitions and we don't
       // need map-side aggregation, then write numPartitions files directly and just concatenate
@@ -103,12 +108,18 @@ private[spark] class SortShuffleManager(conf: SparkConf) extends ShuffleManager 
       // having multiple files open at a time and thus more memory allocated to buffers.
       new BypassMergeSortShuffleHandle[K, V](
         shuffleId, dependency.asInstanceOf[ShuffleDependency[K, V, V]])
+      //todo
+      // 1、使用的序列化器支持序列化对象的重定位（如KryoSerializer,UnsafeRowSerializer）
+      // 2、shuffle依赖中完全没有聚合操作
+      // 3、分区数不大于常量MAX_SHUFFLE_OUTPUT_PARTITIONS_FOR_SERIALIZED_MODE的值（最大分区ID号+1，即2^24=16777216）
     } else if (SortShuffleManager.canUseSerializedShuffle(dependency)) {
       // Otherwise, try to buffer map outputs in a serialized form, since this is more efficient:
+      //todo for unsafeshuffle
       new SerializedShuffleHandle[K, V](
         shuffleId, dependency.asInstanceOf[ShuffleDependency[K, V, V]])
     } else {
       // Otherwise, buffer map outputs in a deserialized form:
+      //todo for sortshuffle
       new BaseShuffleHandle(shuffleId, dependency)
     }
   }
@@ -121,6 +132,9 @@ private[spark] class SortShuffleManager(conf: SparkConf) extends ShuffleManager 
    *
    * Called on executors by reduce tasks.
    */
+  //todo 除了需要从外部存储读取数据和RDD已经做过cache或者checkpoint的Task，一般Task的开始都是从ShuffledRDD的调用getReader()。
+  // 调用getReader()会返回一个ShuffleReader的trait。
+  //todo ShuffleReader也只有BlockStoreShuffleReader一种实现
   override def getReader[K, C](
       handle: ShuffleHandle,
       startMapIndex: Int,
@@ -147,6 +161,8 @@ private[spark] class SortShuffleManager(conf: SparkConf) extends ShuffleManager 
   }
 
   /** Get a writer for a given partition. Called on executors by map tasks. */
+  //todo ShuffleMapStage中的每个Task，叫做ShuffleMapTask，getWriter()方法的调用主要是在ShuffleMapTask中进行。
+  //todo ShuffleWriter目前有BypassMergerSortShuffleWriter, SortShuffleWriter和UnsafeShuffleWriter三种实现。
   override def getWriter[K, V](
       handle: ShuffleHandle,
       mapId: Long,
@@ -230,6 +246,14 @@ private[spark] object SortShuffleManager extends Logging {
   def canUseSerializedShuffle(dependency: ShuffleDependency[_, _, _]): Boolean = {
     val shufId = dependency.shuffleId
     val numPartitions = dependency.partitioner.numPartitions
+    //todo 不支持重定位时的问题：
+    // 需要依赖固定的内存位置，限制了程序的灵活性。
+    // 数据传输和存储过程容易因地址失效导致失败。
+    // 增加了开发的复杂性，因为需要手动处理地址问题。
+    // 支持重定位的好处：
+    // 提升程序的灵活性和兼容性。
+    // 简化分布式系统、持久化存储等场景的开发。
+    // 增强内存管理的鲁棒性和效率。
     if (!dependency.serializer.supportsRelocationOfSerializedObjects) {
       log.debug(s"Can't use serialized shuffle for shuffle $shufId because the serializer, " +
         s"${dependency.serializer.getClass.getName}, does not support object relocation")

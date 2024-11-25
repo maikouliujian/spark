@@ -66,7 +66,9 @@ public final class UnsafeRow extends InternalRow implements Externalizable, Kryo
   //////////////////////////////////////////////////////////////////////////////
   // Static methods
   //////////////////////////////////////////////////////////////////////////////
-
+  //todo 这个方法 calculateBitSetWidthInBytes 计算了在存储一个特定数量的字段 (numFields) 时，
+  // 所需的字节数。这种方法通常用于计算一个位集合（BitSet）的存储需求。
+  //todo null bit set部分有两个作用：1.内存对齐，其长度是8 byte的整数倍数；2. 记录每个字段是否为空，每个字段存储一位。
   public static int calculateBitSetWidthInBytes(int numFields) {
     return ((numFields + 63)/ 64) * 8;
   }
@@ -121,11 +123,13 @@ public final class UnsafeRow extends InternalRow implements Externalizable, Kryo
   //////////////////////////////////////////////////////////////////////////////
   // Private fields and methods
   //////////////////////////////////////////////////////////////////////////////
-
+  //todo 对象
   private Object baseObject;
+  //todo 对象在内存中的offset
   private long baseOffset;
 
   /** The number of fields in this row, used for calculating the bitset width (and in assertions) */
+  //todo 字段个数
   private int numFields;
 
   /** The size of this row's backing data, in bytes) */
@@ -229,6 +233,11 @@ public final class UnsafeRow extends InternalRow implements Externalizable, Kryo
   public void setLong(int ordinal, long value) {
     assertIndexIsValid(ordinal);
     setNotNullAt(ordinal);
+    /***
+     *  baseObject: 通常是一个 Object 类型，表示操作的基础对象。如果为 null，意味着访问的是堆外内存或直接内存。
+     *  getFieldOffset(ordinal): 返回字段的内存偏移量，用来定位目标字段在内存中的位置。 ordinal 通常是字段的序号，用于动态决定哪个字段被操作。
+     *  value: 一个 long 值，要写入目标位置。
+     * */
     Platform.putLong(baseObject, getFieldOffset(ordinal), value);
   }
 
@@ -405,7 +414,7 @@ public final class UnsafeRow extends InternalRow implements Externalizable, Kryo
     final int size = (int) offsetAndSize;
     return UTF8String.fromAddress(baseObject, baseOffset + offset, size);
   }
-
+  //todo getBinary方法首先从固定长度部分读取offset和Size，然后从variable length portion部分拷贝字节。
   @Override
   public byte[] getBinary(int ordinal) {
     if (isNullAt(ordinal)) {

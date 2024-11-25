@@ -95,7 +95,9 @@ final class BypassMergeSortShuffleWriter<K, V>
   private final ShuffleExecutorComponents shuffleExecutorComponents;
 
   /** Array of file writers, one for each partition */
+  //todo 写磁盘的writer
   private DiskBlockObjectWriter[] partitionWriters;
+  //todo 写出去的文件
   private FileSegment[] partitionWriterSegments;
   @Nullable private MapStatus mapStatus;
   private long[] partitionLengths;
@@ -130,10 +132,11 @@ final class BypassMergeSortShuffleWriter<K, V>
     this.shuffleExecutorComponents = shuffleExecutorComponents;
     this.partitionChecksums = createPartitionChecksums(numPartitions, conf);
   }
-
+  //todo 写数据
   @Override
   public void write(Iterator<Product2<K, V>> records) throws IOException {
     assert (partitionWriters == null);
+    //todo [1] 创建处理mapTask所有分区数据commit提交writer
     ShuffleMapOutputWriter mapOutputWriter = shuffleExecutorComponents
         .createMapOutputWriter(shuffleId, mapId, numPartitions);
     try {
@@ -146,13 +149,16 @@ final class BypassMergeSortShuffleWriter<K, V>
       }
       final SerializerInstance serInstance = serializer.newInstance();
       final long openStartTime = System.nanoTime();
+      //todo 一个reduce partition一个writer
       partitionWriters = new DiskBlockObjectWriter[numPartitions];
+      //todo 一个reduce partition一个FileSegment
       partitionWriterSegments = new FileSegment[numPartitions];
       for (int i = 0; i < numPartitions; i++) {
         final Tuple2<TempShuffleBlockId, File> tempShuffleBlockIdPlusFile =
             blockManager.diskBlockManager().createTempShuffleBlock();
         final File file = tempShuffleBlockIdPlusFile._2();
         final BlockId blockId = tempShuffleBlockIdPlusFile._1();
+        //todo 真正写数据的writer
         DiskBlockObjectWriter writer =
           blockManager.getDiskWriter(blockId, file, serInstance, fileBufferSize, writeMetrics);
         if (partitionChecksums.length > 0) {
@@ -168,15 +174,16 @@ final class BypassMergeSortShuffleWriter<K, V>
       while (records.hasNext()) {
         final Product2<K, V> record = records.next();
         final K key = record._1();
+        //todo 根据key的hash值选择对应的writer
         partitionWriters[partitioner.getPartition(key)].write(key, record._2());
       }
-
+      //todo 依次对每个分区提交和flush写入流
       for (int i = 0; i < numPartitions; i++) {
         try (DiskBlockObjectWriter writer = partitionWriters[i]) {
           partitionWriterSegments[i] = writer.commitAndGet();
         }
       }
-
+      //todo 遍历所有分区的FileSegement, 并将其链接为一个文件，同时会调用writeMetadataFileAndCommit，为其生成索引文件！！！！！！
       partitionLengths = writePartitionedData(mapOutputWriter);
       mapStatus = MapStatus$.MODULE$.apply(
         blockManager.shuffleServerId(), partitionLengths, mapId);
@@ -201,13 +208,16 @@ final class BypassMergeSortShuffleWriter<K, V>
    *
    * @return array of lengths, in bytes, of each partition of the file (used by map output tracker).
    */
+  //todo 合并多个中间文件为一个文件，并产生索引文件！！！！！！
   private long[] writePartitionedData(ShuffleMapOutputWriter mapOutputWriter) throws IOException {
     // Track location of the partition starts in the output file
     if (partitionWriters != null) {
       final long writeStartTime = System.nanoTime();
       try {
         for (int i = 0; i < numPartitions; i++) {
+          //todo [1] 获取每个分区的 fileSegement 临时文件，和writer写出流
           final File file = partitionWriterSegments[i].file();
+          //todo [2] 多个ShufflePartitionWriter会依次向同一个临时文件中写数据！！！！！！！
           ShufflePartitionWriter writer = mapOutputWriter.getPartitionWriter(i);
           if (file.exists()) {
             if (transferToEnabled) {
@@ -220,6 +230,7 @@ final class BypassMergeSortShuffleWriter<K, V>
                 writePartitionedDataWithStream(file, writer);
               }
             } else {
+              //todo [3] 将fileSegement合并为一个文件
               writePartitionedDataWithStream(file, writer);
             }
             if (!file.delete()) {
@@ -232,6 +243,8 @@ final class BypassMergeSortShuffleWriter<K, V>
       }
       partitionWriters = null;
     }
+    //todo [4] 提交所有的分区，传入每个分区数据的长度， 调用 writeMetadataFileAndCommit生成索引文件，记录每个分区的偏移量
+    //todo 先写入临时文件，后rename成正式文件
     return mapOutputWriter.commitAllPartitions(getChecksumValues(partitionChecksums))
       .getPartitionLengths();
   }

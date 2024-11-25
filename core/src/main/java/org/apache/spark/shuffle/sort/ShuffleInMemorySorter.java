@@ -25,7 +25,7 @@ import org.apache.spark.unsafe.array.LongArray;
 import org.apache.spark.unsafe.memory.MemoryBlock;
 import org.apache.spark.util.collection.Sorter;
 import org.apache.spark.util.collection.unsafe.sort.RadixSort;
-
+//todo for unsafe shuffle writer
 final class ShuffleInMemorySorter {
 
   private static final class SortComparator implements Comparator<PackedRecordPointer> {
@@ -46,6 +46,7 @@ final class ShuffleInMemorySorter {
    * Only part of the array will be used to store the pointers, the rest part is preserved as
    * temporary buffer for sorting.
    */
+  //todo LongArray 存储的record的位置信息，主要有分区id, page id 和offset in page。
   private LongArray array;
 
   /**
@@ -156,6 +157,7 @@ final class ShuffleInMemorySorter {
 
     private final LongArray pointerArray;
     private final int limit;
+    //todo 不停的复用该对象
     final PackedRecordPointer packedRecordPointer = new PackedRecordPointer();
     private int position = 0;
 
@@ -178,6 +180,7 @@ final class ShuffleInMemorySorter {
   /**
    * Return an iterator over record pointers in sorted order.
    */
+  //todo 内存数据迭代器
   public ShuffleSorterIterator getSortedIterator() {
     int offset = 0;
     if (useRadixSort) {
@@ -193,7 +196,7 @@ final class ShuffleInMemorySorter {
       LongArray buffer = new LongArray(unused);
       Sorter<PackedRecordPointer, LongArray> sorter =
         new Sorter<>(new ShuffleSortDataFormat(buffer));
-
+      //todo 只按照分区排序
       sorter.sort(array, 0, pos, SORT_COMPARATOR);
     }
     return new ShuffleSorterIterator(pos, array, offset);

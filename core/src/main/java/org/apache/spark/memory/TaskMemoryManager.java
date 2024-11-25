@@ -61,11 +61,11 @@ public class TaskMemoryManager {
   private static final Logger logger = LoggerFactory.getLogger(TaskMemoryManager.class);
 
   /** The number of bits used to address the page table. */
-  //todo 数据地址
+  //todo // [1] 页号13位表示
   private static final int PAGE_NUMBER_BITS = 13;
 
   /** The number of bits used to encode offsets in data pages. */
-  //todo 数据offset
+  //todo // [2] 偏移量 64 - 13 = 51 位表示
   @VisibleForTesting
   static final int OFFSET_BITS = 64 - PAGE_NUMBER_BITS;  // 51
 
@@ -94,6 +94,7 @@ public class TaskMemoryManager {
    * Entries are added to this map as new data pages are allocated.
    */
   //todo 一个MemoryBlock就是一个page
+  //todo // [3] page页用MemoryBlock表示，定位一个页如果是：堆内，则前64位存储的是 JVM 堆内对象的引用，堆外，则64 位存储的是 null 值。
   private final MemoryBlock[] pageTable = new MemoryBlock[PAGE_TABLE_SIZE];
 
   /**
@@ -127,6 +128,7 @@ public class TaskMemoryManager {
    * Construct a new TaskMemoryManager.
    */
   public TaskMemoryManager(MemoryManager memoryManager, long taskAttemptId) {
+    //todo 内存模式
     this.tungstenMemoryMode = memoryManager.tungstenMemoryMode();
     this.memoryManager = memoryManager;
     this.taskAttemptId = taskAttemptId;
@@ -386,6 +388,7 @@ public class TaskMemoryManager {
       // In off-heap mode, an offset is an absolute address that may require a full 64 bits to
       // encode. Due to our page size limitation, though, we can convert this into an offset that's
       // relative to the page's base offset; this relative offset will fit in 51 bits.
+      //todo 绝对offset变为相对offset
       offsetInPage -= page.getBaseOffset();
     }
     return encodePageNumberAndOffset(page.pageNumber, offsetInPage);
@@ -396,7 +399,7 @@ public class TaskMemoryManager {
     assert (pageNumber >= 0) : "encodePageNumberAndOffset called with invalid page";
     return (((long) pageNumber) << OFFSET_BITS) | (offsetInPage & MASK_LONG_LOWER_51_BITS);
   }
-  //todo 右移51位，得出page地址
+  //todo 右移51位，只剩下前13位了，得出page地址
   @VisibleForTesting
   public static int decodePageNumber(long pagePlusOffsetAddress) {
     return (int) (pagePlusOffsetAddress >>> OFFSET_BITS);
@@ -427,6 +430,7 @@ public class TaskMemoryManager {
    * Get the offset associated with an address encoded by
    * {@link TaskMemoryManager#encodePageNumberAndOffset(MemoryBlock, long)}
    */
+  //todo 获取内存对象的offset
   public long getOffsetInPage(long pagePlusOffsetAddress) {
     final long offsetInPage = decodeOffset(pagePlusOffsetAddress);
     if (tungstenMemoryMode == MemoryMode.ON_HEAP) {

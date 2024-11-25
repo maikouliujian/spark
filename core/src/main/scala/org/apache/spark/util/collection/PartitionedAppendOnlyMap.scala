@@ -30,6 +30,7 @@ private[spark] class PartitionedAppendOnlyMap[K, V]
 
   def partitionedDestructiveSortedIterator(keyComparator: Option[Comparator[K]])
     : Iterator[((Int, K), V)] = {
+    //todo 先按照分区id排序，分区id相同再按照key排序
     val comparator = keyComparator.map(partitionKeyComparator).getOrElse(partitionComparator)
     destructiveSortedIterator(comparator)
   }

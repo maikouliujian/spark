@@ -23,12 +23,14 @@ import javax.annotation.Nullable;
  * A memory location. Tracked either by a memory address (with off-heap allocation),
  * or by an offset from a JVM object (on-heap allocation).
  */
+//todo 为了统一管理 Off Heap 和 On Heap 内存空间，Tungsten 定义了统一的 128 位内存地址，简称 Tungsten 地址。
+// Tungsten 地址分为两部分：前 64 位预留给 Java Object，后 64 位是偏移地址 Offset。
 public class MemoryLocation {
 
   @Nullable
-  Object obj;
+  Object obj; //todo 64位，如果是Off Heap，则为null
 
-  long offset;
+  long offset; //todo 64位，baseoffset
 
   public MemoryLocation(@Nullable Object obj, long offset) {
     this.obj = obj;
