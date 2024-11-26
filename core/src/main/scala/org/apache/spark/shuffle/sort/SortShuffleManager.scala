@@ -111,7 +111,7 @@ private[spark] class SortShuffleManager(conf: SparkConf) extends ShuffleManager 
       //todo
       // 1、使用的序列化器支持序列化对象的重定位（如KryoSerializer,UnsafeRowSerializer）
       // 2、shuffle依赖中完全没有聚合操作
-      // 3、分区数不大于常量MAX_SHUFFLE_OUTPUT_PARTITIONS_FOR_SERIALIZED_MODE的值（最大分区ID号+1，即2^24=16777216）
+      // 3、分区数不大于常量MAX_SHUFFLE_OUTPUT_PARTITIONS_FOR_SERIALIZED_MODE的值（最大分区ID号+1，即2^24=16777216，long的前24位存储的分区id）
     } else if (SortShuffleManager.canUseSerializedShuffle(dependency)) {
       // Otherwise, try to buffer map outputs in a serialized form, since this is more efficient:
       //todo for unsafeshuffle
@@ -135,6 +135,7 @@ private[spark] class SortShuffleManager(conf: SparkConf) extends ShuffleManager 
   //todo 除了需要从外部存储读取数据和RDD已经做过cache或者checkpoint的Task，一般Task的开始都是从ShuffledRDD的调用getReader()。
   // 调用getReader()会返回一个ShuffleReader的trait。
   //todo ShuffleReader也只有BlockStoreShuffleReader一种实现
+  //todo [startPartition, endPartition) 代表reduceid
   override def getReader[K, C](
       handle: ShuffleHandle,
       startMapIndex: Int,
@@ -144,16 +145,20 @@ private[spark] class SortShuffleManager(conf: SparkConf) extends ShuffleManager 
       context: TaskContext,
       metrics: ShuffleReadMetricsReporter): ShuffleReader[K, C] = {
     val baseShuffleHandle = handle.asInstanceOf[BaseShuffleHandle[K, _, C]]
-    val (blocksByAddress, canEnableBatchFetch) =
+    val (blocksByAddress, canEnableBatchFetch) = {
+      //todo 是否开启了push-based shuffle, 后续再分享，这里先跳过
       if (baseShuffleHandle.dependency.isShuffleMergeFinalizedMarked) {
         val res = SparkEnv.get.mapOutputTracker.getPushBasedShuffleMapSizesByExecutorId(
           handle.shuffleId, startMapIndex, endMapIndex, startPartition, endPartition)
         (res.iter, res.enableBatchFetch)
       } else {
+        //todo // [1] 使用mapOutputTracker获取shuffle块的位置
         val address = SparkEnv.get.mapOutputTracker.getMapSizesByExecutorId(
           handle.shuffleId, startMapIndex, endMapIndex, startPartition, endPartition)
         (address, true)
       }
+    }
+    //todo // [2] 创建一个BlockStoreShuffleReader实例，该实例将负责将shuffle文件从mapper传递到 reducer 任务
     new BlockStoreShuffleReader(
       handle.asInstanceOf[BaseShuffleHandle[K, _, C]], blocksByAddress, context, metrics,
       shouldBatchFetch =

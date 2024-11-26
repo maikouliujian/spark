@@ -89,6 +89,7 @@ private class ShuffleStatus(
    * for each output.
    */
   // Exposed for testing
+  //todo 一个maptask对应一个MapStatus
   val mapStatuses = new Array[MapStatus](numPartitions)
 
   /**
@@ -776,6 +777,7 @@ private[spark] class MapOutputTrackerMaster(
         throw new IllegalArgumentException("Shuffle ID " + shuffleId + " registered twice")
       }
     } else {
+      //todo // 可以看到其实质是在向 shuffleStatuses 放入shuffleid, 创建ShuffleStatus,ShuffleStatus包含一个mapStatus array;
       if (shuffleStatuses.put(shuffleId, new ShuffleStatus(numMaps)).isDefined) {
         throw new IllegalArgumentException("Shuffle ID " + shuffleId + " registered twice")
       }
@@ -1241,13 +1243,14 @@ private[spark] class MapOutputTrackerWorker(conf: SparkConf) extends MapOutputTr
    * the same shuffle block.
    */
   private val fetchingLock = new KeyLock[Int]
-
+  //todo 获取到shuffle status信息
   override def getMapSizesByExecutorId(
       shuffleId: Int,
       startMapIndex: Int,
       endMapIndex: Int,
       startPartition: Int,
       endPartition: Int): Iterator[(BlockManagerId, Seq[(BlockId, Long, Int)])] = {
+    //todo
     val mapSizesByExecutorId = getMapSizesByExecutorIdImpl(
       shuffleId, startMapIndex, endMapIndex, startPartition, endPartition, useMergeResult = false)
     assert(mapSizesByExecutorId.enableBatchFetch == true)
@@ -1263,7 +1266,7 @@ private[spark] class MapOutputTrackerWorker(conf: SparkConf) extends MapOutputTr
     getMapSizesByExecutorIdImpl(
       shuffleId, startMapIndex, endMapIndex, startPartition, endPartition, useMergeResult = true)
   }
-
+  //todo [startPartition, endPartition) 代表reduceid
   private def getMapSizesByExecutorIdImpl(
       shuffleId: Int,
       startMapIndex: Int,
@@ -1272,6 +1275,7 @@ private[spark] class MapOutputTrackerWorker(conf: SparkConf) extends MapOutputTr
       endPartition: Int,
       useMergeResult: Boolean): MapSizesByExecutorId = {
     logDebug(s"Fetching outputs for shuffle $shuffleId")
+    //todo // [1] 获取mapOutputStatuses
     val (mapOutputStatuses, mergedOutputStatuses) = getStatuses(shuffleId, conf,
       // enableBatchFetch can be set to false during stage retry when the
       // shuffleDependency.isShuffleMergeFinalizedMarked is set to false, and Driver
@@ -1372,6 +1376,7 @@ private[spark] class MapOutputTrackerWorker(conf: SparkConf) extends MapOutputTr
       shuffleId: Int,
       conf: SparkConf,
       canFetchMergeResult: Boolean): (Array[MapStatus], Array[MergeStatus]) = {
+    //todo push-based shuffle 开启，获取MergeStatus， 现暂不考虑
     if (canFetchMergeResult) {
       val mapOutputStatuses = mapStatuses.get(shuffleId).orNull
       val mergeOutputStatuses = mergeStatuses.get(shuffleId).orNull
@@ -1409,6 +1414,7 @@ private[spark] class MapOutputTrackerWorker(conf: SparkConf) extends MapOutputTr
         (mapOutputStatuses, mergeOutputStatuses)
       }
     } else {
+      //todo [1] 如果mapStatuses不包含statuses， 就向master tracker发送GetMapOutputStatuses消息
       val statuses = mapStatuses.get(shuffleId).orNull
       if (statuses == null) {
         logInfo("Don't have map outputs for shuffle " + shuffleId + ", fetching them")
@@ -1417,6 +1423,7 @@ private[spark] class MapOutputTrackerWorker(conf: SparkConf) extends MapOutputTr
           var fetchedStatuses = mapStatuses.get(shuffleId).orNull
           if (fetchedStatuses == null) {
             logInfo("Doing the fetch; tracker endpoint = " + trackerEndpoint)
+            //todo 从MapOutputTrackerMaster去拉取mapstatus array信息
             val fetchedBytes = askTracker[Array[Byte]](GetMapOutputStatuses(shuffleId))
             try {
               fetchedStatuses =
@@ -1428,6 +1435,7 @@ private[spark] class MapOutputTrackerWorker(conf: SparkConf) extends MapOutputTr
                     e.getCause)
             }
             logInfo("Got the map output locations")
+            //todo 从master拉取回来，put到本地
             mapStatuses.put(shuffleId, fetchedStatuses)
           }
           logDebug(s"Fetching map output statuses for shuffle $shuffleId took " +
@@ -1589,6 +1597,7 @@ private[spark] object MapOutputTracker extends Logging {
    *         and the second item is a sequence of (shuffle block id, shuffle block size, map index)
    *         tuples describing the shuffle blocks that are stored at that block manager.
    */
+    //todo [startPartition, endPartition) 代表reduceid
   def convertMapStatuses(
       shuffleId: Int,
       startPartition: Int,
@@ -1598,6 +1607,7 @@ private[spark] object MapOutputTracker extends Logging {
       endMapIndex: Int,
       mergeStatuses: Option[Array[MergeStatus]] = None): MapSizesByExecutorId = {
     assert (mapStatuses != null)
+      //todo ListBuffer[(BlockId, Long, Int)] ===> ListBuffer[(BlockId, size, mapindex)]
     val splitsByAddress = new HashMap[BlockManagerId, ListBuffer[(BlockId, Long, Int)]]
     var enableBatchFetch = true
     // Only use MergeStatus for reduce tasks that fetch all map outputs. Since a merged shuffle
@@ -1614,8 +1624,14 @@ private[spark] object MapOutputTracker extends Logging {
       logDebug(s"Disable shuffle batch fetch as Push based shuffle is enabled for $shuffleId.")
       // We have MergeStatus and full range of mapIds are requested so return a merged block.
       val numMaps = mapStatuses.length
+      //todo val list = List("a", "b", "c", "d", "e")
+      //todo val zipped = list.zipWithIndex
+      //todo val sliced = zipped.slice(1, 4)
+      //todo println(sliced)
+      //todo 输出: List((b,1), (c,2), (d,3))
       mergeStatuses.get.zipWithIndex.slice(startPartition, endPartition).foreach {
         case (mergeStatus, partId) =>
+          //todo partId ===> reduceid
           val remainingMapStatuses = if (mergeStatus != null && mergeStatus.totalSize > 0) {
             // If MergeStatus is available for the given partition, add location of the
             // pre-merged shuffle partition for this partition ID. Here we create a
@@ -1647,6 +1663,7 @@ private[spark] object MapOutputTracker extends Logging {
       for ((status, mapIndex) <- iter.slice(startMapIndex, endMapIndex)) {
         validateStatus(status, shuffleId, startPartition)
         for (part <- startPartition until endPartition) {
+          //todo part为reduceid
           val size = status.getSizeForBlock(part)
           if (size != 0) {
             splitsByAddress.getOrElseUpdate(status.location, ListBuffer()) +=

@@ -110,6 +110,7 @@ public class TransportRequestHandler extends MessageHandler<RequestMessage> {
     } else if (request instanceof OneWayMessage) {
       processOneWayMessage((OneWayMessage) request);
     } else if (request instanceof StreamRequest) {
+      //todo 获取shuffle chunk数据
       processStreamRequest((StreamRequest) request);
     } else if (request instanceof UploadStream) {
       //todo 处理shuffle merge data
@@ -138,6 +139,7 @@ public class TransportRequestHandler extends MessageHandler<RequestMessage> {
     }
     ManagedBuffer buf;
     try {
+      //todo 获取shffle chunk数据
       buf = streamManager.openStream(req.streamId);
     } catch (Exception e) {
       logger.error(String.format(

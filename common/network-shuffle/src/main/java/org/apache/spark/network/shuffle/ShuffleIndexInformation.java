@@ -66,6 +66,7 @@ public class ShuffleIndexInformation {
   public ShuffleIndexRecord getIndex(int startReduceId, int endReduceId) {
     long offset = offsets.get(startReduceId);
     long nextOffset = offsets.get(endReduceId);
+    //todo 返回offset + length
     return new ShuffleIndexRecord(offset, nextOffset - offset);
   }
 }

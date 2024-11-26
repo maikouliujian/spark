@@ -60,10 +60,12 @@ public final class FileSegmentManagedBuffer extends ManagedBuffer {
   public ByteBuffer nioByteBuffer() throws IOException {
     FileChannel channel = null;
     try {
+      //todo 随机访问
       channel = new RandomAccessFile(file, "r").getChannel();
       // Just copy the buffer if it's sufficiently small, as memory mapping has a high overhead.
       if (length < conf.memoryMapBytes()) {
         ByteBuffer buf = ByteBuffer.allocate((int) length);
+        //todo 指向offset的位置
         channel.position(offset);
         while (buf.remaining() != 0) {
           if (channel.read(buf) == -1) {

@@ -57,6 +57,7 @@ private[spark] trait ShuffleManager {
    * Called on executors by reduce tasks.
    */
   //todo getReader()方法用于获取ShuffleReader。它是executor执行reduce任务时调用的。
+  //todo [startPartition, endPartition), 代表reduceid
   final def getReader[K, C](
       handle: ShuffleHandle,
       startPartition: Int,

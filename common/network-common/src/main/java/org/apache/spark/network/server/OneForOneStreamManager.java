@@ -42,11 +42,13 @@ public class OneForOneStreamManager extends StreamManager {
   private static final Logger logger = LoggerFactory.getLogger(OneForOneStreamManager.class);
 
   private final AtomicLong nextStreamId;
+  //todo 将streamid和buffer数据注册到streams中
   private final ConcurrentHashMap<Long, StreamState> streams;
 
   /** State of a single stream. */
   private static class StreamState {
     final String appId;
+    //todo block数据
     final Iterator<ManagedBuffer> buffers;
 
     // The channel associated to the stream
@@ -72,7 +74,7 @@ public class OneForOneStreamManager extends StreamManager {
     nextStreamId = new AtomicLong((long) new Random().nextInt(Integer.MAX_VALUE) * 1000);
     streams = new ConcurrentHashMap<>();
   }
-
+  //todo 获取shuffle chunk
   @Override
   public ManagedBuffer getChunk(long streamId, int chunkIndex) {
     StreamState state = streams.get(streamId);
@@ -96,7 +98,7 @@ public class OneForOneStreamManager extends StreamManager {
 
     return nextChunk;
   }
-
+  //todo 获取chunk数据
   @Override
   public ManagedBuffer openStream(String streamChunkId) {
     Pair<Long, Integer> streamChunkIdPair = parseStreamChunkId(streamChunkId);

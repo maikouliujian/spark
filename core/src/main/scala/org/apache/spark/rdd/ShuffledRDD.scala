@@ -102,6 +102,7 @@ class ShuffledRDD[K: ClassTag, V: ClassTag, C: ClassTag](
   override def compute(split: Partition, context: TaskContext): Iterator[(K, C)] = {
     val dep = dependencies.head.asInstanceOf[ShuffleDependency[K, V, C]]
     val metrics = context.taskMetrics().createTempShuffleReadMetrics()
+    //todo 获取reader，并读取数据，[split.index, split.index + 1),split.index代表reduceid
     SparkEnv.get.shuffleManager.getReader(
       dep.shuffleHandle, split.index, split.index + 1, context, metrics)
       .read()

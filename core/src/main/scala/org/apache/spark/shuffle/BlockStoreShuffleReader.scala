@@ -28,8 +28,12 @@ import org.apache.spark.util.collection.ExternalSorter
 /**
  * Fetches and reads the blocks from a shuffle by requesting them from other nodes' block stores.
  */
+//todo shuffle read核心类
 private[spark] class BlockStoreShuffleReader[K, C](
     handle: BaseShuffleHandle[K, _, C],
+    //todo shuffle中间数据的位置信息，一台机器上可能存在多个中间文件
+    //todo Iterator[(BlockManagerId, Seq[(BlockId, Long, Int)])] ===> Iterator[(BlockManagerId, Seq[(BlockId, size, mapidex)])]
+    //todo BlockId ===> ShuffleBlockId(shuffleId: Int, mapId: Long, reduceId: Int)
     blocksByAddress: Iterator[(BlockManagerId, Seq[(BlockId, Long, Int)])],
     context: TaskContext,
     readMetrics: ShuffleReadMetricsReporter,
@@ -67,7 +71,9 @@ private[spark] class BlockStoreShuffleReader[K, C](
   }
 
   /** Read the combined key-values for this reduce task */
+    //todo 读取数据！！！！！！
   override def read(): Iterator[Product2[K, C]] = {
+      //todo  [1] 初始化ShuffleBlockFetcherIterator，负责从executor中获取 shuffle 块
     val wrappedStreams = new ShuffleBlockFetcherIterator(
       context,
       blockManager.blockStoreClient,
@@ -91,6 +97,8 @@ private[spark] class BlockStoreShuffleReader[K, C](
     val serializerInstance = dep.serializer.newInstance()
 
     // Create a key/value iterator for each stream
+      //todo [2] 将shuffle 块反序列化为record迭代器
+      //todo recordIter中每一个next包含一个chunk的数据
     val recordIter = wrappedStreams.flatMap { case (blockId, wrappedStream) =>
       // Note: the asKeyValueIterator below wraps a key/value iterator inside of a
       // NextIterator. The NextIterator makes sure that close() is called on the
@@ -99,16 +107,18 @@ private[spark] class BlockStoreShuffleReader[K, C](
     }
 
     // Update the context task metrics for each record read.
+      //todo 包含所有的shuffle数据的迭代器
     val metricIter = CompletionIterator[(Any, Any), Iterator[(Any, Any)]](
       recordIter.map { record =>
         readMetrics.incRecordsRead(1)
         record
       },
+        //todo 迭代器执行完成后，执行该代码，用来合并metrics
       context.taskMetrics().mergeShuffleReadMetrics())
 
     // An interruptible iterator must be used here in order to support task cancellation
     val interruptibleIter = new InterruptibleIterator[(Any, Any)](context, metricIter)
-
+    //todo [3] reduce端聚合数据：如果map端已经聚合过了，则对读取到的聚合结果进行聚合。如果map端没有聚合，则针对未合并的<k,v>进行聚合。
     val aggregatedIter: Iterator[Product2[K, C]] = if (dep.aggregator.isDefined) {
       if (dep.mapSideCombine) {
         // We are reading values that are already combined
@@ -126,6 +136,8 @@ private[spark] class BlockStoreShuffleReader[K, C](
     }
 
     // Sort the output if there is a sort ordering defined.
+      //todo // [4] reduce端排序数据：如果需要对key排序，则进行排序。基于sort的shuffle实现过程中，默认只是按照partitionId排序。
+      // 在每一个partition内部并没有排序，因此添加了keyOrdering变量，提供是否需要对分区内部的key排序
     val resultIter: Iterator[Product2[K, C]] = dep.keyOrdering match {
       case Some(keyOrd: Ordering[K]) =>
         // Create an ExternalSorter to sort the data.
@@ -135,7 +147,7 @@ private[spark] class BlockStoreShuffleReader[K, C](
       case None =>
         aggregatedIter
     }
-
+    //todo [5] 返回结果集迭代器【InterruptibleIterator】
     resultIter match {
       case _: InterruptibleIterator[Product2[K, C]] => resultIter
       case _ =>

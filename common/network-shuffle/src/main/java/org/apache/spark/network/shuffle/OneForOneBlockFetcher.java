@@ -83,7 +83,7 @@ public class OneForOneBlockFetcher {
       TransportClient client,
       String appId,
       String execId,
-      String[] blockIds,
+      String[] blockIds,//todo 所有的blockids：shuffle_0_0_0,shuffle_0_1_0,shuffle_0_2_0
       BlockFetchingListener listener,
       TransportConf transportConf,
       DownloadFileManager downloadFileManager) {
@@ -96,7 +96,9 @@ public class OneForOneBlockFetcher {
       throw new IllegalArgumentException("Zero-sized blockIds array");
     }
     if (!transportConf.useOldFetchProtocol() && areShuffleBlocksOrChunks(blockIds)) {
+      //todo
       this.blockIds = new String[blockIds.length];
+      //todo 返回 FetchShuffleBlocks
       this.message = createFetchShuffleBlocksOrChunksMsg(appId, execId, blockIds);
     } else {
       this.blockIds = blockIds;
@@ -129,6 +131,7 @@ public class OneForOneBlockFetcher {
     if (blockIds[0].startsWith(SHUFFLE_CHUNK_PREFIX)) {
       return createFetchShuffleChunksMsg(appId, execId, blockIds);
     } else {
+      //todo shuffle
       return createFetchShuffleBlocksMsg(appId, execId, blockIds);
     }
   }
@@ -137,7 +140,9 @@ public class OneForOneBlockFetcher {
       String appId,
       String execId,
       String[] blockIds) {
+    //todo shuffle_0_0_0
     String[] firstBlock = splitBlockId(blockIds[0]);
+    //todo shuffleid:相同的
     int shuffleId = Integer.parseInt(firstBlock[1]);
     boolean batchFetchEnabled = firstBlock.length == 5;
     Map<Long, BlocksInfo> mapIdToBlocksInfo = new LinkedHashMap<>();
@@ -146,11 +151,12 @@ public class OneForOneBlockFetcher {
       if (Integer.parseInt(blockIdParts[1]) != shuffleId) {
         throw new IllegalArgumentException("Expected shuffleId=" + shuffleId + ", got:" + blockId);
       }
-
+      //todo mapid:不同的
       long mapId = Long.parseLong(blockIdParts[2]);
       BlocksInfo blocksInfoByMapId = mapIdToBlocksInfo.computeIfAbsent(mapId,
         id -> new BlocksInfo());
       blocksInfoByMapId.blockIds.add(blockId);
+      //todo blockIdParts[3]:reduceid
       blocksInfoByMapId.ids.add(Integer.parseInt(blockIdParts[3]));
 
       if (batchFetchEnabled) {
@@ -162,7 +168,7 @@ public class OneForOneBlockFetcher {
         blocksInfoByMapId.ids.add(Integer.parseInt(blockIdParts[4]));
       }
     }
-
+    //todo 获取reduceids
     int[][] reduceIdsArray = getSecondaryIds(mapIdToBlocksInfo);
     long[] mapIds = Longs.toArray(mapIdToBlocksInfo.keySet());
     return new FetchShuffleBlocks(
@@ -284,13 +290,15 @@ public class OneForOneBlockFetcher {
       @Override
       public void onSuccess(ByteBuffer response) {
         try {
+          //todo 返回streamHandle
           streamHandle = (StreamHandle) BlockTransferMessage.Decoder.fromByteBuffer(response);
           logger.trace("Successfully opened blocks {}, preparing to fetch chunks.", streamHandle);
 
           // Immediately request all chunks -- we expect that the total size of the request is
           // reasonable due to higher level chunking in [[ShuffleBlockFetcherIterator]].
+          //todo streamHandle.numChunks的值代表shuffle block的个数
           for (int i = 0; i < streamHandle.numChunks; i++) {
-            //todo chunks块的获取有两种模式，分别是流模式或批处理模式
+            //todo chunks块的获取有两种模式，分别是流模式或批处理模式【一个chunk一个chunk的拉取】
             if (downloadFileManager != null) {
               //todo 流模式读取chunk
               client.stream(OneForOneStreamManager.genStreamChunkId(streamHandle.streamId, i),
@@ -346,6 +354,7 @@ public class OneForOneBlockFetcher {
 
     @Override
     public void onComplete(String streamId) throws IOException {
+      //todo 回调 blockid + chunk数据
       listener.onBlockFetchSuccess(blockIds[chunkIndex], channel.closeAndRead());
       if (!downloadFileManager.registerTempFileToClean(targetFile)) {
         targetFile.delete();

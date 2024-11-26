@@ -491,6 +491,7 @@ private[spark] class DAGScheduler(
       // since we can't do it in the RDD constructor because # of partitions is unknown
       logInfo(s"Registering RDD ${rdd.id} (${rdd.getCreationSite}) as input to " +
         s"shuffle ${shuffleDep.shuffleId}")
+      //todo 在创建ShuffleMapStage会调用registerShuffle
       mapOutputTracker.registerShuffle(shuffleDep.shuffleId, rdd.partitions.length,
         shuffleDep.partitioner.numPartitions)
     }
@@ -1836,6 +1837,7 @@ private[spark] class DAGScheduler(
               // The epoch of the task is acceptable (i.e., the task was launched after the most
               // recent failure we're aware of for the executor), so mark the task's output as
               // available.
+              //todo maptask执行完成，注册MapStatus信息
               mapOutputTracker.registerMapOutput(
                 shuffleStage.shuffleDep.shuffleId, smt.partitionId, status)
             }

@@ -113,12 +113,13 @@ public class ExternalBlockStoreClient extends BlockStoreClient {
       String host,
       int port,
       String execId,
-      String[] blockIds,
+      String[] blockIds, //todo blockids
       BlockFetchingListener listener,
       DownloadFileManager downloadFileManager) {
     checkInit();
     logger.debug("External shuffle fetch from {}:{} (executor id {})", host, port, execId);
     try {
+      //todo [1] 首先创建并初始化RetryingBlockFetcher类，用它加载shuffle files
       int maxRetries = transportConf.maxIORetries();
       RetryingBlockTransferor.BlockTransferStarter blockFetchStarter =
           (inputBlockId, inputListener) -> {
@@ -128,6 +129,7 @@ public class ExternalBlockStoreClient extends BlockStoreClient {
                 "Expecting a BlockFetchingListener, but got " + inputListener.getClass();
               TransportClient client = clientFactory.createClient(host, port, maxRetries > 0);
               //todo 启动OneForOneBlockFetcher拉取shuffle data
+              //todo [2] 创建OneForOneBlockFetcher，用其进行下载shuffle Data
               new OneForOneBlockFetcher(client, appId, execId, inputBlockId,
                 (BlockFetchingListener) inputListener, transportConf, downloadFileManager).start();
             } else {
@@ -140,6 +142,7 @@ public class ExternalBlockStoreClient extends BlockStoreClient {
         // a bug in this code. We should remove the if statement once we're sure of the stability.
         new RetryingBlockTransferor(transportConf, blockFetchStarter, blockIds, listener).start();
       } else {
+        //todo [3] 调用OneForOneBlockFetcher的start方法
         blockFetchStarter.createAndStart(blockIds, listener);
       }
     } catch (Exception e) {

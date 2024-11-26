@@ -136,7 +136,7 @@ class CoalescedPartitioner(val parent: Partitioner, val partitionStartIndices: A
  * (i.e. the number of partitions of the map output).
  */
 class ShuffledRowRDD(
-    var dependency: ShuffleDependency[Int, InternalRow, InternalRow],
+    var dependency: ShuffleDependency[Int, InternalRow, InternalRow], //todo shuffle dependency
     metrics: Map[String, SQLMetric],
     partitionSpecs: Array[ShufflePartitionSpec])
   extends RDD[InternalRow](dependency.rdd.context, Nil) {
@@ -199,6 +199,7 @@ class ShuffledRowRDD(
     // as well as the `tempMetrics` for basic shuffle metrics.
     val sqlMetricsReporter = new SQLShuffleReadMetricsReporter(tempMetrics, metrics)
     val reader = split.asInstanceOf[ShuffledRowRDDPartition].spec match {
+      //todo // CoalescedPartitionSpec会读取map task为所有reducer所产生的shuffle file
       case CoalescedPartitionSpec(startReducerIndex, endReducerIndex, _) =>
         SparkEnv.get.shuffleManager.getReader(
           dependency.shuffleHandle,
@@ -206,7 +207,7 @@ class ShuffledRowRDD(
           endReducerIndex,
           context,
           sqlMetricsReporter)
-
+      //todo // PartialReducerPartitionSpec 读取map task为一个reducer产生的部分数据
       case PartialReducerPartitionSpec(reducerIndex, startMapIndex, endMapIndex, _) =>
         SparkEnv.get.shuffleManager.getReader(
           dependency.shuffleHandle,
@@ -216,7 +217,7 @@ class ShuffledRowRDD(
           reducerIndex + 1,
           context,
           sqlMetricsReporter)
-
+      //todo // PartialMapperPartitionSpec读取shuffle map文件的部分
       case PartialMapperPartitionSpec(mapIndex, startReducerIndex, endReducerIndex) =>
         SparkEnv.get.shuffleManager.getReader(
           dependency.shuffleHandle,
@@ -237,6 +238,7 @@ class ShuffledRowRDD(
           context,
           sqlMetricsReporter)
     }
+    //todo 读取shuffle 数据
     reader.read().asInstanceOf[Iterator[Product2[Int, InternalRow]]].map(_._2)
   }
 

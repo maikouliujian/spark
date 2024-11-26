@@ -162,6 +162,7 @@ public class ExternalShuffleBlockResolver {
   /**
    * Obtains a FileSegmentManagedBuffer from a single block (shuffleId, mapId, reduceId).
    */
+  //todo 拉取shuffle数据
   public ManagedBuffer getBlockData(
       String appId,
       String execId,
@@ -314,6 +315,7 @@ public class ExternalShuffleBlockResolver {
     try {
       //todo shuffle index
       ShuffleIndexInformation shuffleIndexInformation = shuffleIndexCache.get(indexFilePath);
+      //todo 返回offset + length
       ShuffleIndexRecord shuffleIndexRecord = shuffleIndexInformation.getIndex(
         startReduceId, endReduceId);
       return new FileSegmentManagedBuffer(

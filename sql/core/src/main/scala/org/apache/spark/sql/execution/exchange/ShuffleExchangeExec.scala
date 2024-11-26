@@ -147,7 +147,7 @@ case class ShuffleExchangeExec(
   override def numMappers: Int = shuffleDependency.rdd.getNumPartitions
 
   override def numPartitions: Int = shuffleDependency.partitioner.numPartitions
-
+  //todo 获取ShuffledRowRDD
   override def getShuffleRDD(partitionSpecs: Array[ShufflePartitionSpec]): RDD[InternalRow] = {
     new ShuffledRowRDD(shuffleDependency, readMetrics, partitionSpecs)
   }
@@ -163,6 +163,7 @@ case class ShuffleExchangeExec(
    * the partitioning scheme defined in `newPartitioning`. Those partitions of
    * the returned ShuffleDependency will be the input of shuffle.
    */
+  //todo 返回ShuffleDependency
   @transient
   lazy val shuffleDependency : ShuffleDependency[Int, InternalRow, InternalRow] = {
     val dep = ShuffleExchangeExec.prepareShuffleDependency(
@@ -397,7 +398,7 @@ object ShuffleExchangeExec {
         new PartitionIdPassthrough(part.numPartitions),
         serializer,
         shuffleWriterProcessor = createShuffleWriteProcessor(writeMetrics))
-
+    //todo 返回ShuffleDependency
     dependency
   }
 

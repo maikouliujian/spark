@@ -63,7 +63,7 @@ import org.apache.spark.network.util.TransportConf;
  * Blocks are registered with the "one-for-one" strategy, meaning each Transport-layer Chunk
  * is equivalent to one block.
  */
-//todo 处理ess逻辑的核心类
+//todo 处理shuffle blocks逻辑的核心类
 public class ExternalBlockHandler extends RpcHandler
     implements RpcHandler.MergedBlockMetaReqHandler {
   private static final Logger logger = LoggerFactory.getLogger(ExternalBlockHandler.class);
@@ -138,11 +138,12 @@ public class ExternalBlockHandler extends RpcHandler
       throw new UnsupportedOperationException("Unexpected message with #receiveStream: " + msgObj);
     }
   }
-  //todo 接收ess客户端的请求
+  //todo 接收shuffle客户端的请求
   protected void handleMessage(
       BlockTransferMessage msgObj,
       TransportClient client,
       RpcResponseCallback callback) {
+    //todo 拉取shuffle blocks
     if (msgObj instanceof AbstractFetchShuffleBlocks || msgObj instanceof OpenBlocks) {
       final Timer.Context responseDelayContext = metrics.openBlockRequestLatencyMillis.time();
       try {
@@ -154,10 +155,12 @@ public class ExternalBlockHandler extends RpcHandler
           numBlockIds = ((AbstractFetchShuffleBlocks) msgObj).getNumBlocks();
           Iterator<ManagedBuffer> iterator;
           if (msgObj instanceof  FetchShuffleBlocks) {
+            //todo 接收shuffle block请求
             iterator = new ShuffleManagedBufferIterator((FetchShuffleBlocks)msgObj);
           } else {
             iterator = new ShuffleChunkManagedBufferIterator((FetchShuffleBlockChunks) msgObj);
           }
+          //todo 注册
           streamId = streamManager.registerStream(client.getClientId(), iterator,
             client.getChannel());
         } else {
@@ -176,6 +179,7 @@ public class ExternalBlockHandler extends RpcHandler
             client.getClientId(),
             getRemoteAddress(client.getChannel()));
         }
+        //todo 将new StreamHandle(streamId, numBlockIds) 返回
         callback.onSuccess(new StreamHandle(streamId, numBlockIds).toByteBuffer());
       } finally {
         responseDelayContext.stop();
@@ -532,6 +536,7 @@ public class ExternalBlockHandler extends RpcHandler
     public ManagedBuffer next() {
       ManagedBuffer block;
       if (!batchFetchEnabled) {
+        //todo 获取shuffle block，将shuffle数据切成一个二维矩阵：reduceIds[mapIdx][reduceIdx]
         block = blockManager.getBlockData(
           appId, execId, shuffleId, mapIds[mapIdx], reduceIds[mapIdx][reduceIdx]);
         if (reduceIdx < reduceIds[mapIdx].length - 1) {

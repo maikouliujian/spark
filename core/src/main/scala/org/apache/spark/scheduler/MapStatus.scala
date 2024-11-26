@@ -41,7 +41,7 @@ private[spark] trait ShuffleOutputStatus
  */
 private[spark] sealed trait MapStatus extends ShuffleOutputStatus {
   /** Location where this task output is. */
-  def location: BlockManagerId
+  def location: BlockManagerId //todo shuffle文件所处的位置信息
 
   def updateLocation(newLoc: BlockManagerId): Unit
 
@@ -123,7 +123,7 @@ private[spark] object MapStatus {
  */
 private[spark] class CompressedMapStatus(
     private[this] var loc: BlockManagerId,
-    private[this] var compressedSizes: Array[Byte],
+    private[this] var compressedSizes: Array[Byte], //todo 记录每一个reduceid的大小
     private[this] var _mapTaskId: Long)
   extends MapStatus with Externalizable {
 
@@ -139,7 +139,7 @@ private[spark] class CompressedMapStatus(
   override def updateLocation(newLoc: BlockManagerId): Unit = {
     loc = newLoc
   }
-
+  //todo 获取每一个reduceId的block大小
   override def getSizeForBlock(reduceId: Int): Long = {
     MapStatus.decompressSize(compressedSizes(reduceId))
   }

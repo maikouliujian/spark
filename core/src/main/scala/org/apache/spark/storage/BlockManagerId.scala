@@ -36,14 +36,14 @@ import org.apache.spark.util.Utils
  */
 @DeveloperApi
 class BlockManagerId private (
-    private var executorId_ : String,
-    private var host_ : String,
+    private var executorId_ : String, //todo executor节点id【一台物理机上会启动多个executor】
+    private var host_ : String,//todo host,一台物理机对应一个host
     private var port_ : Int,
     private var topologyInfo_ : Option[String])
   extends Externalizable {
 
   private def this() = this(null, null, 0, None)  // For deserialization only
-
+  //todo executor节点id【一台物理机上会启动多个executor】
   def executorId: String = executorId_
 
   if (null != host_) {
