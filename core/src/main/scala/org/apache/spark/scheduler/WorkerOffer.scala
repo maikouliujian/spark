@@ -24,6 +24,7 @@ import org.apache.spark.resource.ResourceProfile
 /**
  * Represents free resources available on an executor.
  */
+//todo 一个executor上的空闲资源情况
 private[spark]
 case class WorkerOffer(
     executorId: String,

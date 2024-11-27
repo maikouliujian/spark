@@ -37,6 +37,7 @@ import org.apache.spark.util.Utils
  */
 @DeveloperApi
 abstract class Dependency[T] extends Serializable {
+  //todo 当前rdd的父rdd
   def rdd: RDD[T]
 }
 
@@ -76,7 +77,7 @@ abstract class NarrowDependency[T](_rdd: RDD[T]) extends Dependency[T] {
  */
 @DeveloperApi
 class ShuffleDependency[K: ClassTag, V: ClassTag, C: ClassTag](
-    @transient private val _rdd: RDD[_ <: Product2[K, V]],
+    @transient private val _rdd: RDD[_ <: Product2[K, V]],//todo 父rdd
     val partitioner: Partitioner,
     val serializer: Serializer = SparkEnv.get.serializer,
     val keyOrdering: Option[Ordering[K]] = None,
@@ -89,6 +90,7 @@ class ShuffleDependency[K: ClassTag, V: ClassTag, C: ClassTag](
   if (mapSideCombine) {
     require(aggregator.isDefined, "Map-side combine without Aggregator specified!")
   }
+  //todo 当前rdd的父rdd
   override def rdd: RDD[Product2[K, V]] = _rdd.asInstanceOf[RDD[Product2[K, V]]]
 
   private[spark] val keyClassName: String = reflect.classTag[K].runtimeClass.getName

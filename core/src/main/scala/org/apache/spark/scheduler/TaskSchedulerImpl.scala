@@ -375,14 +375,16 @@ private[spark] class TaskSchedulerImpl(
       shuffledOffers: Seq[WorkerOffer],
       availableCpus: Array[Int],
       availableResources: Array[Map[String, Buffer[String]]],
-      tasks: IndexedSeq[ArrayBuffer[TaskDescription]])
+      tasks: IndexedSeq[ArrayBuffer[TaskDescription]])//todo task总集合
     : (Boolean, Option[TaskLocality]) = {
     var noDelayScheduleRejects = true
     var minLaunchedLocality: Option[TaskLocality] = None
     // nodes and executors that are excluded for the entire application have already been
     // filtered out by this point
     for (i <- 0 until shuffledOffers.size) {
+      //todo executor id
       val execId = shuffledOffers(i).executorId
+      //todo host id
       val host = shuffledOffers(i).host
       val taskSetRpID = taskSet.taskSet.resourceProfileId
       // make the resource profile id a hard requirement for now - ie only put tasksets
@@ -394,8 +396,10 @@ private[spark] class TaskSchedulerImpl(
           try {
             val prof = sc.resourceProfileManager.resourceProfileFromId(taskSetRpID)
             val taskCpus = ResourceProfile.getTaskCpusOrDefaultForProfile(prof, conf)
-            val (taskDescOption, didReject, index) =
+            val (taskDescOption, didReject, index) = {
+              //todo 获取 taskDescription
               taskSet.resourceOffer(execId, host, maxLocality, taskCpus, taskResAssignments)
+            }
             noDelayScheduleRejects &= !didReject
             for (task <- taskDescOption) {
               val (locality, resources) = if (task != null) {
@@ -470,6 +474,7 @@ private[spark] class TaskSchedulerImpl(
       availWorkerResources.get(rName) match {
         case Some(workerRes) =>
           if (workerRes.size >= taskAmount) {
+            //todo task获取的资源信息
             localTaskReqAssign.put(rName, new ResourceInformation(rName,
               workerRes.take(taskAmount).toArray))
           } else {
@@ -500,12 +505,19 @@ private[spark] class TaskSchedulerImpl(
    * sets for tasks in order of priority. We fill each node with tasks in a round-robin manner so
    * that tasks are balanced across the cluster.
    */
+    //todo * // 这个方法由调度后端调用，调度后端会将可用的executor资源告诉TaskSchedulerImpl，
+    //   // TaskSchedulerImpl根据TaskSet优先级（调度池），黑名单，本地性等因素给出要实际运行的任务。
+    //   // 我们使用round-robin的方式将任务分配到各个executor上，以使得计算资源的 使用更均衡。
   def resourceOffers(
-      offers: IndexedSeq[WorkerOffer],
+      offers: IndexedSeq[WorkerOffer],//todo 所有executor的资源信息
       isAllFreeResources: Boolean = true): Seq[Seq[TaskDescription]] = synchronized {
     // Mark each worker as alive and remember its hostname
     // Also track if new executor is added
+    // todo 标记是否有新的可用executor加入
     var newExecAvail = false
+    //todo // 这个循环主要目的是两个：
+    //  // 1. 更新一些簿记量，如物理节点和executor的相互映射关系，机架和host的映射关系，host和executor上运行的任务信息等等
+    //  // 2. 检查是否有新的可用executor加入
     for (o <- offers) {
       if (!hostToExecutors.contains(o.host)) {
         hostToExecutors(o.host) = new HashSet[String]()
@@ -534,11 +546,12 @@ private[spark] class TaskSchedulerImpl(
           !healthTracker.isExecutorExcluded(offer.executorId)
       }
     }.getOrElse(offers)
-
+    //todo 将executors打散，对资源进行混洗，使得分配更加均匀，使用scala库的Random进行混洗
     val shuffledOffers = shuffleOffers(filteredOffers)
     // Build a list of tasks to assign to each worker.
     // Note the size estimate here might be off with different ResourceProfiles but should be
     // close estimate
+    //todo 每一个executor上可运行的task数【一对多】
     val tasks = shuffledOffers.map(o => new ArrayBuffer[TaskDescription](o.cores / CPUS_PER_TASK))
     val availableResources = shuffledOffers.map(_.resources).toArray
     val availableCpus = shuffledOffers.map(o => o.cores).toArray
@@ -555,6 +568,7 @@ private[spark] class TaskSchedulerImpl(
     // Take each TaskSet in our scheduling order, and then offer it to each node in increasing order
     // of locality levels so that it gets a chance to launch local tasks on all of them.
     // NOTE: the preferredLocality order: PROCESS_LOCAL, NODE_LOCAL, NO_PREF, RACK_LOCAL, ANY
+    //todo 遍历taskset
     for (taskSet <- sortedTaskSets) {
       // we only need to calculate available slots if using barrier scheduling, otherwise the
       // value is -1
@@ -585,6 +599,10 @@ private[spark] class TaskSchedulerImpl(
         for (currentMaxLocality <- taskSet.myLocalityLevels) {
           var launchedTaskAtCurrentMaxLocality = false
           do {
+            //todo 每个本地性级别会进行多轮分配，
+            //todo 每一轮依次轮询每个executor，每个executor分配一个task
+            //todo 这样一轮下来每个executor都会分配到一个任务，显然大多数情况下，executor的资源是不会被占满的
+            //todo 没关系，我们会接着进行第二轮分配，直到没有资源或者在当前的本地性级别下任务被分配完了，就跳出循环
             val (noDelayScheduleReject, minLocality) = resourceOfferSingleTaskSet(
               taskSet, currentMaxLocality, shuffledOffers, availableCpus,
               availableResources, tasks)

@@ -22,6 +22,7 @@ package org.apache.spark.scheduler
  * In the latter case, we will prefer to launch the task on that executorID, but our next level
  * of preference will be executors on the same host if this is not possible.
  */
+//todo task本地化位置
 private[spark] sealed trait TaskLocation {
   def host: String
 }

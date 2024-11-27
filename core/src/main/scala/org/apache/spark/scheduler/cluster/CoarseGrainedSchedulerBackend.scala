@@ -75,6 +75,10 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
   // protected by `CoarseGrainedSchedulerBackend.this`. Besides, `executorDataMap` should only
   // be modified in the inherited methods from ThreadSafeRpcEndpoint with protection by
   // `CoarseGrainedSchedulerBackend.this`.
+  //todo 问题：在分发任务之前，调度系统得先判断哪些节点的计算资源空闲，然后再 把任务分发过去。那么，调度系统是怎么判断节点是否空闲的呢？
+  //todo 动态记录每一个计算节点中 Executors 的资源状态,Key 是标记 Executor 的字符串，Value 是一种叫做 ExecutorData 的数 据结构，
+  // ExecutorData 用于封装 Executor 的资源状态，如 RPC 地址、主机地址、可用 CPU 核数和满配 CPU 核数等等，它相当于是对 Executor 做的“资源画像”
+  //todo 初始化来自于RegisterExecutor，后续StatusUpdate中每一个executor上的资源信息都是在动态变更的
   private val executorDataMap = new HashMap[String, ExecutorData]
 
   // Number of executors for each ResourceProfile requested by the cluster
@@ -146,8 +150,10 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     }
 
     override def receive: PartialFunction[Any, Unit] = {
+      //todo 随着executor信息的更新提交task
       case StatusUpdate(executorId, taskId, state, data, resources) =>
         scheduler.statusUpdate(taskId, state, data.value)
+        //todo 当executorId上的task执行完成后，更新其资源状态
         if (TaskState.isFinished(state)) {
           executorDataMap.get(executorId) match {
             case Some(executorInfo) =>
@@ -160,6 +166,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
                   r.release(v.addresses)
                 }
               }
+              //todo 给executorId分配待执行tasks
               makeOffers(executorId)
             case None =>
               // Ignoring the update since we don't know about the executor.
@@ -170,7 +177,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
 
       case ShufflePushCompletion(shuffleId, shuffleMergeId, mapIndex) =>
         scheduler.dagScheduler.shufflePushCompleted(shuffleId, shuffleMergeId, mapIndex)
-
+      //todo 第一次提交task
       case ReviveOffers =>
         makeOffers()
 
@@ -227,7 +234,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     }
 
     override def receiveAndReply(context: RpcCallContext): PartialFunction[Any, Unit] = {
-
+      //todo Executor 注册请求
       case RegisterExecutor(executorId, executorRef, hostname, cores, logUrls,
           attributes, resources, resourceProfileId) =>
         if (executorDataMap.contains(executorId)) {
@@ -260,12 +267,14 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
               .resourceProfileFromId(resourceProfileId).getNumSlotsPerAddress(rName, conf)
             (info.name, new ExecutorResourceInfo(info.name, info.addresses, numParts))
           }
+          //todo 新建ExecutorData
           val data = new ExecutorData(executorRef, executorAddress, hostname,
             0, cores, logUrlHandler.applyPattern(logUrls, attributes), attributes,
             resourcesInfo, resourceProfileId, registrationTs = System.currentTimeMillis())
           // This must be synchronized because variables mutated
           // in this block are read when requesting executors
           CoarseGrainedSchedulerBackend.this.synchronized {
+            //todo 维护
             executorDataMap.put(executorId, data)
             if (currentExecutorIdCounter < executorId.toInt) {
               currentExecutorIdCounter = executorId.toInt
@@ -331,9 +340,11 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
                 (rName, rInfo.availableAddrs.toBuffer)
               }, executorData.resourceProfileId)
         }.toIndexedSeq
+        //todo 为所有的executors分配task
         scheduler.resourceOffers(workOffers, true)
       }
       if (taskDescs.nonEmpty) {
+        //todo 提交task
         launchTasks(taskDescs)
       }
     }
@@ -350,27 +361,37 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     // Make fake resource offers on just one executor
     private def makeOffers(executorId: String): Unit = {
       // Make sure no executor is killed while some task is launching on it
+      //todo 返回TaskDescription
       val taskDescs = withLock {
         // Filter out executors under killing
+        //todo 过滤掉正在被杀死的executor
         if (isExecutorActive(executorId)) {
           val executorData = executorDataMap(executorId)
+          //todo executorId上的空闲资源
           val workOffers = IndexedSeq(
             new WorkerOffer(executorId, executorData.executorHost, executorData.freeCores,
               Some(executorData.executorAddress.hostPort),
               executorData.resourcesInfo.map { case (rName, rInfo) =>
                 (rName, rInfo.availableAddrs.toBuffer)
               }, executorData.resourceProfileId))
+          ////todo 给executor分配task【这是task调度最重要的一个方法，逻辑比较复杂】
+          //  todo  把这些可用的资源交给TaskSchedulerImpl进行调度
+          //   TaskSchedulerImpl会综合考虑任务本地性，黑名单，调度池的调度顺序等因素，返回TaskDescription集合
+          //   TaskDescription对象是对一个Task的完整描述，
+          //   包括序列化的任务数据，任务在哪个executor上运行，依赖文件和jar包等信息
           scheduler.resourceOffers(workOffers, false)
         } else {
           Seq.empty
         }
       }
       if (taskDescs.nonEmpty) {
+        //todo 启动task
         launchTasks(taskDescs)
       }
     }
 
     // Launch tasks returned by a set of resource offers
+    //todo 启动task
     private def launchTasks(tasks: Seq[Seq[TaskDescription]]): Unit = {
       for (task <- tasks.flatten) {
         val serializedTask = TaskDescription.encode(task)
@@ -402,7 +423,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
 
           logDebug(s"Launching task ${task.taskId} on executor id: ${task.executorId} hostname: " +
             s"${executorData.executorHost}.")
-
+          //todo 拿到execid对应的rpc引用，提交任务
           executorData.executorEndpoint.send(LaunchTask(new SerializableBuffer(serializedTask)))
         }
       }

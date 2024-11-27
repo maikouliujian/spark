@@ -74,7 +74,7 @@ class ShuffledRDD[K: ClassTag, V: ClassTag, C: ClassTag](
     this.mapSideCombine = mapSideCombine
     this
   }
-
+  //todo 获取Dependency
   override def getDependencies: Seq[Dependency[_]] = {
     val serializer = userSpecifiedSerializer.getOrElse {
       val serializerManager = SparkEnv.get.serializerManager
@@ -92,10 +92,14 @@ class ShuffledRDD[K: ClassTag, V: ClassTag, C: ClassTag](
   override def getPartitions: Array[Partition] = {
     Array.tabulate[Partition](part.numPartitions)(i => new ShuffledRDDPartition(i))
   }
-
+  //todo shuffle rdd的数据本地性：
+  //todo 1、通过shuffleid获取到array(mapstatus)
+  //todo 2、通过reduceid获取到每一个节点上的数据占比
+  //todo 3、返回占比大于0.2的那些节点
   override protected def getPreferredLocations(partition: Partition): Seq[String] = {
     val tracker = SparkEnv.get.mapOutputTracker.asInstanceOf[MapOutputTrackerMaster]
     val dep = dependencies.head.asInstanceOf[ShuffleDependency[K, V, C]]
+    //todo 数据本地性
     tracker.getPreferredLocationsForShuffle(dep, partition.index)
   }
 

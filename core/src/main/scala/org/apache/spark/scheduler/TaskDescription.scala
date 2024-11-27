@@ -46,10 +46,11 @@ import org.apache.spark.util.{ByteBufferInputStream, ByteBufferOutputStream, Uti
  *         serialized size because it avoids serializing unnecessary fields in the Map objects
  *         (which can introduce significant overhead when the maps are small).
  */
+//todo 一个task启动的完整描述信息
 private[spark] class TaskDescription(
     val taskId: Long,
     val attemptNumber: Int,
-    val executorId: String,
+    val executorId: String,//todo task要分发的executorId
     val name: String,
     val index: Int,    // Index within this task's TaskSet
     val partitionId: Int,

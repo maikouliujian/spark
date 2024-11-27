@@ -195,7 +195,7 @@ private[spark] class HighlyCompressedMapStatus private (
   override def updateLocation(newLoc: BlockManagerId): Unit = {
     loc = newLoc
   }
-
+  //todo 获取每一个reduceId的block大小
   override def getSizeForBlock(reduceId: Int): Long = {
     assert(hugeBlockSizes != null)
     if (emptyBlocks.contains(reduceId)) {

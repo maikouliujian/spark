@@ -111,6 +111,7 @@ abstract class RDD[T: ClassTag](
    * :: DeveloperApi ::
    * Implemented by subclasses to compute a given partition.
    */
+  //todo【分区级别】
   @DeveloperApi
   def compute(split: Partition, context: TaskContext): Iterator[T]
 
@@ -132,6 +133,12 @@ abstract class RDD[T: ClassTag](
   /**
    * Optionally overridden by subclasses to specify placement preferences.
    */
+  //todo 获取一个分区的数据本地性
+  //todo 窄依赖是由父rdd的分区的数据本地性决定的
+  //todo 宽依赖 //todo 1、通过shuffleid获取到array(mapstatus)
+  ////todo 2、通过reduceid获取到每一个节点上的数据占比
+  ////todo 3、返回占比大于0.2的那些节点
+  //todo 【分区级别】
   protected def getPreferredLocations(split: Partition): Seq[String] = Nil
 
   /** Optionally overridden by subclasses to specify how they are partitioned. */
@@ -313,6 +320,7 @@ abstract class RDD[T: ClassTag](
    */
   final def preferredLocations(split: Partition): Seq[String] = {
     checkpointRDD.map(_.getPreferredLocations(split)).getOrElse {
+      //todo 获取rdd 分区的本地优先位置
       getPreferredLocations(split)
     }
   }

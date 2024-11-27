@@ -1024,6 +1024,7 @@ private[spark] class MapOutputTrackerMaster(
       if (preferredLoc.nonEmpty) {
         preferredLoc
       } else {
+        //todo
         if (shuffleLocalityEnabled && dep.rdd.partitions.length < SHUFFLE_PREF_MAP_THRESHOLD &&
           dep.partitioner.numPartitions < SHUFFLE_PREF_REDUCE_THRESHOLD) {
           val blockManagerIds = getLocationsWithLargestOutputs(dep.shuffleId, partitionId,
@@ -1082,6 +1083,7 @@ private[spark] class MapOutputTrackerMaster(
             }
             mapIdx = mapIdx + 1
           }
+          //todo 选择数据量占比大于阈值的节点
           val topLocs = locs.filter { case (loc, size) =>
             size.toDouble / totalOutputSize >= fractionThreshold
           }

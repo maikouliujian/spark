@@ -24,11 +24,12 @@ import java.util.Properties
  * missing partitions of a particular stage.
  */
 private[spark] class TaskSet(
-    val tasks: Array[Task[_]],
+    val tasks: Array[Task[_]],//todo TaskSet的tasks
     val stageId: Int,
     val stageAttemptId: Int,
     val priority: Int,
     val properties: Properties,
+                            //todo TaskSet的ProfileId
     val resourceProfileId: Int) {
   val id: String = stageId + "." + stageAttemptId
 

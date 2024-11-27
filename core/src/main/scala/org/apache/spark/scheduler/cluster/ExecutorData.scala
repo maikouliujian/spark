@@ -32,8 +32,9 @@ import org.apache.spark.scheduler.ExecutorResourceInfo
  * @param resourceProfileId The id of the ResourceProfile being used by this executor
  * @param registrationTs The registration timestamp of this executor
  */
+//todo Executor资源封装
 private[cluster] class ExecutorData(
-    val executorEndpoint: RpcEndpointRef,
+    val executorEndpoint: RpcEndpointRef,//todo executor对应的rpc引用
     val executorAddress: RpcAddress,
     override val executorHost: String,
     var freeCores: Int,

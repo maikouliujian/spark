@@ -674,7 +674,7 @@ package object config {
     .version("3.1.0")
     .booleanConf
     .createWithDefault(false)
-
+  //todo 本地化调度等待时间，默认3s
   private[spark] val LOCALITY_WAIT = ConfigBuilder("spark.locality.wait")
     .version("0.5.0")
     .timeConf(TimeUnit.MILLISECONDS)

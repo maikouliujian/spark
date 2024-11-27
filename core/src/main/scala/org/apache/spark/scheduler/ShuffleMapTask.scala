@@ -54,7 +54,7 @@ private[spark] class ShuffleMapTask(
     stageAttemptId: Int,
     taskBinary: Broadcast[Array[Byte]],
     partition: Partition,
-    @transient private var locs: Seq[TaskLocation],
+    @transient private var locs: Seq[TaskLocation], //todo task的本地化信息
     localProperties: Properties,
     serializedTaskMetrics: Array[Byte],
     jobId: Option[Int] = None,
@@ -69,7 +69,7 @@ private[spark] class ShuffleMapTask(
   def this(partitionId: Int) = {
     this(0, 0, null, new Partition { override def index: Int = 0 }, null, new Properties, null)
   }
-
+  //todo task的本地优先位置
   @transient private val preferredLocs: Seq[TaskLocation] = {
     if (locs == null) Nil else locs.distinct
   }
