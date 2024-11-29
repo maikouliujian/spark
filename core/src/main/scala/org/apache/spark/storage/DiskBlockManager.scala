@@ -51,12 +51,13 @@ private[spark] class DiskBlockManager(
     var deleteFilesOnStop: Boolean,
     isDriver: Boolean)
   extends Logging {
-
+  //todo 默认64：为spark.local.dir下每一个目录划分64个二级目录
   private[spark] val subDirsPerLocalDir = conf.get(config.DISKSTORE_SUB_DIRECTORIES)
 
   /* Create one local directory for each path mentioned in spark.local.dir; then, inside this
    * directory, create multiple subdirectories that we will hash files into, in order to avoid
    * having really large inodes at the top level. */
+  //todo 所有的一级目录
   private[spark] val localDirs: Array[File] = createLocalDirs(conf)
   if (localDirs.isEmpty) {
     logError("Failed to create any local dir.")
@@ -67,6 +68,7 @@ private[spark] class DiskBlockManager(
 
   // The content of subDirs is immutable but the content of subDirs(i) is mutable. And the content
   // of subDirs(i) is protected by the lock of subDirs(i)
+  //todo 所有的二级目录
   private val subDirs = Array.fill(localDirs.length)(new Array[File](subDirsPerLocalDir))
 
   // Get merge directory name, append attemptId if there is any
@@ -90,6 +92,7 @@ private[spark] class DiskBlockManager(
   /** Looks up a file by hashing it into one of our local subdirectories. */
   // This method should be kept in sync with
   // org.apache.spark.network.shuffle.ExecutorDiskUtils#getFilePath().
+  //todo 根据文件名获取file
   def getFile(filename: String): File = {
     // Figure out which local directory it hashes to, and which subdirectory in that
     val hash = Utils.nonNegativeHash(filename)

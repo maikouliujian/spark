@@ -47,7 +47,7 @@ private sealed trait MemoryEntry[T] {
   def classTag: ClassTag[T]
 }
 private case class DeserializedMemoryEntry[T](
-    value: Array[T],
+    value: Array[T],//todo 连续对象
     size: Long,
     memoryMode: MemoryMode,
     classTag: ClassTag[T]) extends MemoryEntry[T] {
@@ -90,7 +90,8 @@ private[spark] class MemoryStore(
 
   // Note: all changes to memory allocations, notably putting blocks, evicting blocks, and
   // acquiring or releasing unroll memory, must be synchronized on `memoryManager`!
-
+  //todo MemoryEntry 有两个实现类：DeserializedMemoryEntry 和 SerializedMemoryEntry， 分别用于封装原始对象值和序列化之后的字节数组。
+  // DeserializedMemoryEntry 用 Array[T]来存储对象值序列，其中 T 是对象类型，而 SerializedMemoryEntry 使用 ByteBuffer 来存储序列化后的字节序列。
   private val entries = new LinkedHashMap[BlockId, MemoryEntry[_]](32, 0.75f, true)
 
   // A mapping from taskAttemptId to amount of memory used for unrolling a block (in bytes)
@@ -221,11 +222,14 @@ private[spark] class MemoryStore(
 
     // Unroll this block safely, checking whether we have exceeded our threshold periodically
     while (values.hasNext && keepUnrolling) {
+      //todo 将rdd分区的每一条数据都存到数组中
       valuesHolder.storeValue(values.next())
       if (elementsUnrolled % memoryCheckPeriod == 0) {
+        //todo 获取此时数组大小
         val currentSize = valuesHolder.estimatedSize()
         // If our vector's size has exceeded the threshold, request more memory
         if (currentSize >= memoryThreshold) {
+          //todo 内存大于阈值就要去申请
           val amountToRequest = (currentSize * memoryGrowthFactor - memoryThreshold).toLong
           keepUnrolling =
             reserveUnrollMemoryForThisTask(blockId, amountToRequest, memoryMode)
@@ -254,6 +258,7 @@ private[spark] class MemoryStore(
       }
 
       if (keepUnrolling) {
+        //todo 构建memoryEntry
         val entry = entryBuilder.build()
         // Synchronize so that transfer is atomic
         memoryManager.synchronized {
@@ -263,6 +268,7 @@ private[spark] class MemoryStore(
         }
 
         entries.synchronized {
+          //todo 放到链表中！！！！！！
           entries.put(blockId, entry)
         }
 
@@ -272,11 +278,13 @@ private[spark] class MemoryStore(
       } else {
         // We ran out of space while unrolling the values for this block
         logUnrollFailureMessage(blockId, entryBuilder.preciseSize)
+        //todo unroll内存空间不足
         Left(unrollMemoryUsedByThisBlock)
       }
     } else {
       // We ran out of space while unrolling the values for this block
       logUnrollFailureMessage(blockId, valuesHolder.estimatedSize())
+      //todo unroll内存空间不足
       Left(unrollMemoryUsedByThisBlock)
     }
   }
@@ -291,23 +299,25 @@ private[spark] class MemoryStore(
    *         `close()` on it in order to free the storage memory consumed by the partially-unrolled
    *         block.
    */
+  //todo 写入到memory store
   private[storage] def putIteratorAsValues[T](
       blockId: BlockId,
       values: Iterator[T],
       memoryMode: MemoryMode,
       classTag: ClassTag[T]): Either[PartiallyUnrolledIterator[T], Long] = {
-
+    //todo 构建DeserializedValuesHolder
     val valuesHolder = new DeserializedValuesHolder[T](classTag, memoryMode)
-
+    //todo 核心逻辑！！！！！！！
     putIterator(blockId, values, classTag, memoryMode, valuesHolder) match {
       case Right(storedSize) => Right(storedSize)
+      //todo 没有全部成功unroll
       case Left(unrollMemoryUsedByThisBlock) =>
         val unrolledIterator = if (valuesHolder.vector != null) {
           valuesHolder.vector.iterator
         } else {
           valuesHolder.arrayValues.iterator
         }
-
+        //todo 返回部分已经unroll的数据的迭代器
         Left(new PartiallyUnrolledIterator(
           this,
           memoryMode,

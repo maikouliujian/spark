@@ -43,7 +43,7 @@ import org.apache.spark.util.io.ChunkedByteBuffer
  */
 private[spark] class DiskStore(
     conf: SparkConf,
-    diskManager: DiskBlockManager,
+    diskManager: DiskBlockManager,//todo 帮助DiskStore管理元数据
     securityManager: SecurityManager) extends Logging {
 
   private val minMemoryMapBytes = conf.get(config.STORAGE_MEMORY_MAP_THRESHOLD)
@@ -73,6 +73,7 @@ private[spark] class DiskStore(
     }
     logDebug(s"Attempting to put block $blockId")
     val startTimeNs = System.nanoTime()
+    //todo 获取要写入的文件
     val file = diskManager.getFile(blockId)
 
     // SPARK-37618: If fetching cached RDDs from the shuffle service is enabled, we must make
@@ -84,6 +85,7 @@ private[spark] class DiskStore(
     val out = new CountingWritableChannel(openForWrite(file))
     var threwException: Boolean = true
     try {
+      //todo 写数据
       writeFunc(out)
       blockSizes.put(blockId, out.getCount)
       threwException = false
@@ -105,13 +107,13 @@ private[spark] class DiskStore(
     logDebug(s"Block ${file.getName} stored as ${Utils.bytesToString(file.length())} file" +
       s" on disk in ${TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTimeNs)} ms")
   }
-
+  //todo 写数据，如shuffle
   def putBytes(blockId: BlockId, bytes: ChunkedByteBuffer): Unit = {
     put(blockId) { channel =>
       bytes.writeFully(channel)
     }
   }
-
+  //todo 读数据，如shuffle
   def getBytes(blockId: BlockId): BlockData = {
     getBytes(diskManager.getFile(blockId.name), getSize(blockId))
   }

@@ -54,6 +54,7 @@ class StorageLevel private(
   def useDisk: Boolean = _useDisk
   def useMemory: Boolean = _useMemory
   def useOffHeap: Boolean = _useOffHeap
+  //todo 是否为反序列化
   def deserialized: Boolean = _deserialized
   def replication: Int = _replication
 

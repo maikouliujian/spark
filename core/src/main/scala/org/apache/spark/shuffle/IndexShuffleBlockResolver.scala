@@ -99,6 +99,7 @@ private[spark] class IndexShuffleBlockResolver(
     val blockId = ShuffleDataBlockId(shuffleId, mapId, NOOP_REDUCE_ID)
     dirs
       .map(d =>
+        //todo shuffle数据的文件
         new File(ExecutorDiskUtils.getFilePath(d, blockManager.subDirsPerLocalDir, blockId.name)))
       .getOrElse(blockManager.diskBlockManager.getFile(blockId))
   }

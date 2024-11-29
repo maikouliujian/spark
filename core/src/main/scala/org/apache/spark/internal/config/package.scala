@@ -395,7 +395,7 @@ package object config {
     .version("1.6.0")
     .doubleConf
     .createWithDefault(0.6)
-
+  //todo 初始化unroll内存：1m
   private[spark] val STORAGE_UNROLL_MEMORY_THRESHOLD =
     ConfigBuilder("spark.storage.unrollMemoryThreshold")
       .doc("Initial memory to request before unrolling any block")
@@ -565,7 +565,7 @@ package object config {
       .version("2.4.0")
       .booleanConf
       .createWithDefault(true)
-
+  //todo 为spark.local.dir下每一个目录划分64个二级目录
   private[spark] val DISKSTORE_SUB_DIRECTORIES =
     ConfigBuilder("spark.diskStore.subDirectories")
       .doc("Number of subdirectories inside each path listed in spark.local.dir for " +

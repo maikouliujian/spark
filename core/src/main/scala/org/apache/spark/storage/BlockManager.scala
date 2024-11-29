@@ -192,7 +192,8 @@ private[spark] class BlockManager(
     conf.get(Network.NETWORK_REMOTE_READ_NIO_BUFFER_CONVERSION)
 
   private[spark] val subDirsPerLocalDir = conf.get(config.DISKSTORE_SUB_DIRECTORIES)
-
+  //todo DiskBlockManager 的主要职责就是，记录逻辑数据块 Block 与磁盘文件系统中物理文 件的对应关系，每个 Block 都对应一个磁盘文件。
+  //todo 帮助DiskStore管理元数据
   val diskBlockManager = {
     // Only perform cleanup if an external service is not serving our shuffle files.
     val deleteFilesOnStop =
@@ -207,8 +208,10 @@ private[spark] class BlockManager(
     ThreadUtils.newDaemonCachedThreadPool("block-manager-future", 128))
 
   // Actual storage of where blocks are kept
+  //todo 内存存储
   private[spark] val memoryStore =
     new MemoryStore(conf, blockInfoManager, serializerManager, memoryManager, this)
+  //todo 磁盘存储
   private[spark] val diskStore = new DiskStore(conf, diskBlockManager, securityManager)
   memoryManager.setMemoryStore(memoryStore)
 
@@ -336,10 +339,12 @@ private[spark] class BlockManager(
         val values = serializerManager.dataDeserializeStream(blockId, inputStream)(classTag)
         memoryStore.putIteratorAsValues(blockId, values, level.memoryMode, classTag) match {
           case Right(_) => true
+          //todo 如果没有全部unroll成功，则会将block直接存入磁盘，将迭代器中的数据释放存储内存资源
           case Left(iter) =>
             // If putting deserialized values in memory failed, we will put the bytes directly
             // to disk, so we don't need this iterator and can close it to free resources
             // earlier.
+            //todo 释放资源
             iter.close()
             false
         }
@@ -376,6 +381,7 @@ private[spark] class BlockManager(
      *
      * @return true if the block was already present or if the put succeeded, false otherwise.
      */
+     //todo 存储数据
      def save(): Boolean = {
       doPut(blockId, level, classTag, tellMaster, keepReadLock) { info =>
         val startTimeNs = System.nanoTime()
@@ -395,8 +401,10 @@ private[spark] class BlockManager(
           // Put it in memory first, even if it also has useDisk set to true;
           // We will drop it to disk later if the memory store can't hold it.
           val putSucceeded = if (level.deserialized) {
+            //todo 反序列化为对象
             saveDeserializedValuesToMemoryStore(blockData().toInputStream())
           } else {
+            //todo 序列化为二进制对象
             saveSerializedValuesToMemoryStore(readToByteBuffer())
           }
           if (!putSucceeded && level.useDisk) {
@@ -1408,6 +1416,7 @@ private[spark] class BlockManager(
    * @param putBody a function which attempts the actual put() and returns None on success
    *                or Some on failure.
    */
+  //todo 写block数据
   private def doPut[T](
       blockId: BlockId,
       level: StorageLevel,
@@ -1436,6 +1445,7 @@ private[spark] class BlockManager(
     val startTimeNs = System.nanoTime()
     var exceptionWasThrown: Boolean = true
     val result: Option[T] = try {
+      //todo 真正写数据的位置！！！！！！
       val res = putBody(putBlockInfo)
       exceptionWasThrown = false
       if (res.isEmpty) {

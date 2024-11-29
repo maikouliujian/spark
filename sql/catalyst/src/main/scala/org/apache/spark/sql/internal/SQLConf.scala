@@ -703,7 +703,7 @@ object SQLConf {
       .version("3.0.0")
       .bytesConf(ByteUnit.BYTE)
       .createWithDefaultString("256MB")
-
+  //todo
   val NON_EMPTY_PARTITION_RATIO_FOR_BROADCAST_JOIN =
     buildConf("spark.sql.adaptive.nonEmptyPartitionRatioForBroadcastJoin")
       .internal()
@@ -734,7 +734,7 @@ object SQLConf {
       .version("3.2.0")
       .bytesConf(ByteUnit.BYTE)
       .createOptional
-
+  //todo
   val ADAPTIVE_MAX_SHUFFLE_HASH_JOIN_LOCAL_MAP_THRESHOLD =
     buildConf("spark.sql.adaptive.maxShuffledHashJoinLocalMapThreshold")
       .doc("Configures the maximum size in bytes per partition that can be allowed to build " +

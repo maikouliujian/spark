@@ -27,6 +27,7 @@ public class ExecutorDiskUtils {
    * Hashes a filename into the corresponding local directory, in a manner consistent with
    * Spark's DiskBlockManager.getFile().
    */
+  //todo shuffle数据的文件
   public static String getFilePath(String[] localDirs, int subDirsPerLocalDir, String filename) {
     int hash = JavaUtils.nonNegativeHash(filename);
     String localDir = localDirs[hash % localDirs.length];
