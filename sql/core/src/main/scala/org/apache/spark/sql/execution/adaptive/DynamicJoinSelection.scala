@@ -35,11 +35,13 @@ import org.apache.spark.sql.internal.SQLConf
  *   3. if a join satisfies both NO_BROADCAST_HASH and PREFER_SHUFFLE_HASH,
  *      then add a SHUFFLE_HASH hint.
  */
+//todo 动态join策略
 object DynamicJoinSelection extends Rule[LogicalPlan] with JoinSelectionHelper {
 
   private def hasManyEmptyPartitions(mapStats: MapOutputStatistics): Boolean = {
     val partitionCnt = mapStats.bytesByPartitionId.length
     val nonZeroCnt = mapStats.bytesByPartitionId.count(_ > 0)
+    //todo nonEmptyPartitionRatioForBroadcastJoin：默认0.2
     partitionCnt > 0 && nonZeroCnt > 0 &&
       (nonZeroCnt * 1.0 / partitionCnt) < conf.nonEmptyPartitionRatioForBroadcastJoin
   }
@@ -59,16 +61,18 @@ object DynamicJoinSelection extends Rule[LogicalPlan] with JoinSelectionHelper {
     plan match {
       case LogicalQueryStage(_, stage: ShuffleQueryStageExec) if stage.isMaterialized
         && stage.mapStats.isDefined =>
-
+        //todo 自己有较多空分区【空分区大于80%】
         val manyEmptyInPlan = hasManyEmptyPartitions(stage.mapStats.get)
+        //todo 是否可以广播
         val canBroadcastPlan = (isLeft && canBuildBroadcastLeft(join.joinType)) ||
           (!isLeft && canBuildBroadcastRight(join.joinType))
+        //todo 另一侧有较多空分区【空分区大于80%】
         val manyEmptyInOther = (if (isLeft) join.right else join.left) match {
           case LogicalQueryStage(_, stage: ShuffleQueryStageExec) if stage.isMaterialized
             && stage.mapStats.isDefined => hasManyEmptyPartitions(stage.mapStats.get)
           case _ => false
         }
-
+        //todo 是否降级为BroadcastHash
         val demoteBroadcastHash = if (manyEmptyInPlan && canBroadcastPlan) {
           join.joinType match {
             // don't demote BHJ since you cannot short circuit local join if inner (null-filled)
@@ -105,21 +109,27 @@ object DynamicJoinSelection extends Rule[LogicalPlan] with JoinSelectionHelper {
   }
 
   def apply(plan: LogicalPlan): LogicalPlan = plan.transformDown {
+    //todo 等值join
     case j @ ExtractEquiJoinKeys(_, _, _, _, _, _, _, hint) =>
       var newHint = hint
+      //todo join的左侧不存在join strategy
       if (!hint.leftHint.exists(_.strategy.isDefined)) {
+        //todo 选择join策略
         selectJoinStrategy(j, true).foreach { strategy =>
           newHint = newHint.copy(leftHint =
             Some(hint.leftHint.getOrElse(HintInfo()).copy(strategy = Some(strategy))))
         }
       }
+      //todo join的右侧不存在join strategy
       if (!hint.rightHint.exists(_.strategy.isDefined)) {
+        //todo 选择join策略
         selectJoinStrategy(j, false).foreach { strategy =>
           newHint = newHint.copy(rightHint =
             Some(hint.rightHint.getOrElse(HintInfo()).copy(strategy = Some(strategy))))
         }
       }
       if (newHint.ne(hint)) {
+        //todo 修改join策略
         j.copy(hint = newHint)
       } else {
         j
