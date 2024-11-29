@@ -375,7 +375,7 @@ private[spark] class MemoryStore(
           classTag))
     }
   }
-
+  //todo 获取序列化类型的数据
   def getBytes(blockId: BlockId): Option[ChunkedByteBuffer] = {
     val entry = entries.synchronized { entries.get(blockId) }
     entry match {
@@ -385,7 +385,7 @@ private[spark] class MemoryStore(
       case SerializedMemoryEntry(bytes, _, _) => Some(bytes)
     }
   }
-
+  //todo 获取反序列化类型的数据
   def getValues(blockId: BlockId): Option[Iterator[_]] = {
     val entry = entries.synchronized { entries.get(blockId) }
     entry match {

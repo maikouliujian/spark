@@ -173,7 +173,7 @@ private[spark] class HostLocalDirManager(
 private[spark] class BlockManager(
     val executorId: String,
     rpcEnv: RpcEnv,
-    val master: BlockManagerMaster,
+    val master: BlockManagerMaster, //todo master，存放元信息
     val serializerManager: SerializerManager,
     val conf: SparkConf,
     memoryManager: MemoryManager,
@@ -1065,6 +1065,7 @@ private[spark] class BlockManager(
    *                          file by this it is guaranteed the whole content can be loaded
    * @tparam T result type
    */
+  //todo 先去同一台机器上找，找不到再跨网络找
   private[spark] def getRemoteBlock[T](
       blockId: BlockId,
       bufferTransformer: ManagedBuffer => T): Option[T] = {

@@ -72,6 +72,7 @@ private[spark] class BroadcastManager(
 
       case _ => // do nothing
     }
+    //todo 存储广播数据
     broadcastFactory.newBroadcast[T](value_, isLocal, bid)
   }
 
