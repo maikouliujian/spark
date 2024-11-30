@@ -48,7 +48,7 @@ private[spark] abstract class MemoryManager(
   require(onHeapExecutionMemory > 0, "onHeapExecutionMemory must be > 0")
 
   // -- Methods related to memory allocation policies and bookkeeping ------------------------------
-
+  //todo 四个池子来管理内存
   @GuardedBy("this")
   protected val onHeapStorageMemoryPool = new StorageMemoryPool(this, MemoryMode.ON_HEAP)
   @GuardedBy("this")

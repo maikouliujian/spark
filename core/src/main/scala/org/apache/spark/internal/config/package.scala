@@ -589,7 +589,7 @@ package object config {
       .version("1.5.0")
       .booleanConf
       .createWithDefault(false)
-
+  //todo 默认是1
   private[spark] val CPUS_PER_TASK =
     ConfigBuilder("spark.task.cpus").version("0.5.0").intConf.createWithDefault(1)
   //todo 是否开启dynamicAllocation
