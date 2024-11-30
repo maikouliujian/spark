@@ -123,7 +123,7 @@ public final class Platform {
   public static boolean unaligned() {
     return unaligned;
   }
-
+  //todo 从对象object中按照offset取值
   public static int getInt(Object object, long offset) {
     return _UNSAFE.getInt(object, offset);
   }

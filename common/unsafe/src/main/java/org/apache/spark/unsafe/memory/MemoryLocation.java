@@ -28,7 +28,7 @@ import javax.annotation.Nullable;
 public class MemoryLocation {
 
   @Nullable
-  Object obj; //todo 64位，如果是Off Heap，则为null
+  Object obj; //todo 堆内对象，如果是Off Heap，则为null
 
   long offset; //todo 64位，baseoffset
 

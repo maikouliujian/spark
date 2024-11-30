@@ -56,6 +56,7 @@ import org.apache.spark.util.Utils;
  * maximum size of a long[] array, allowing us to address 8192 * (2^31 - 1) * 8 bytes, which is
  * approximately 140 terabytes of memory.
  */
+//todo 为每一个task管理内存
 public class TaskMemoryManager {
 
   private static final Logger logger = LoggerFactory.getLogger(TaskMemoryManager.class);
@@ -101,7 +102,7 @@ public class TaskMemoryManager {
    * Bitmap for tracking free pages.
    */
   private final BitSet allocatedPages = new BitSet(PAGE_TABLE_SIZE);
-
+  //todo 内存管理核心类
   private final MemoryManager memoryManager;
 
   private final long taskAttemptId;
@@ -413,6 +414,7 @@ public class TaskMemoryManager {
    * Get the page associated with an address encoded by
    * {@link TaskMemoryManager#encodePageNumberAndOffset(MemoryBlock, long)}
    */
+  //todo 获取堆内对象
   public Object getPage(long pagePlusOffsetAddress) {
     if (tungstenMemoryMode == MemoryMode.ON_HEAP) {
       final int pageNumber = decodePageNumber(pagePlusOffsetAddress);
@@ -420,8 +422,10 @@ public class TaskMemoryManager {
       final MemoryBlock page = pageTable[pageNumber];
       assert (page != null);
       assert (page.getBaseObject() != null);
+      //todo 堆内
       return page.getBaseObject();
     } else {
+      //todo 堆外
       return null;
     }
   }
@@ -433,6 +437,7 @@ public class TaskMemoryManager {
   //todo 获取内存对象的offset
   public long getOffsetInPage(long pagePlusOffsetAddress) {
     final long offsetInPage = decodeOffset(pagePlusOffsetAddress);
+    //todo 堆内
     if (tungstenMemoryMode == MemoryMode.ON_HEAP) {
       return offsetInPage;
     } else {
@@ -442,6 +447,7 @@ public class TaskMemoryManager {
       assert (pageNumber >= 0 && pageNumber < PAGE_TABLE_SIZE);
       final MemoryBlock page = pageTable[pageNumber];
       assert (page != null);
+      //todo 堆外
       return page.getBaseOffset() + offsetInPage;
     }
   }
