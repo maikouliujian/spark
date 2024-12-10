@@ -58,11 +58,11 @@ public final class UnsafeInMemorySorter {
 
     @Override
     public int compare(RecordPointerAndKeyPrefix r1, RecordPointerAndKeyPrefix r2) {
-      //todo  1、先按照prefix key排序
+      //todo  1、先按照prefix key排序【这样不用读取数据】
       final int prefixComparisonResult = prefixComparator.compare(r1.keyPrefix, r2.keyPrefix);
       int uaoSize = UnsafeAlignedOffset.getUaoSize();
       if (prefixComparisonResult == 0) {
-        //todo 2、如果prefix key相等，再按照真实的数据进行排序
+        //todo 2、如果prefix key相等，再按照真实的数据对index进行排序
         final Object baseObject1 = memoryManager.getPage(r1.recordPointer);
         final long baseOffset1 = memoryManager.getOffsetInPage(r1.recordPointer) + uaoSize;
         final int baseLength1 = UnsafeAlignedOffset.getSize(baseObject1, baseOffset1 - uaoSize);
@@ -248,6 +248,7 @@ public final class UnsafeInMemorySorter {
    * @param recordPointer pointer to a record in a data page, encoded by {@link TaskMemoryManager}.
    * @param keyPrefix a user-defined key prefix
    */
+  //todo 维护longarray
   public void insertRecord(long recordPointer, long keyPrefix, boolean prefixIsNull) {
     if (!hasSpaceForAnotherRecord()) {
       throw new IllegalStateException("There is no space for new record");

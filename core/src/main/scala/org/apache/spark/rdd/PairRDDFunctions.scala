@@ -47,6 +47,7 @@ import org.apache.spark.util.random.StratifiedSamplingUtils
 /**
  * Extra functions available on RDDs of (key, value) pairs through an implicit conversion.
  */
+//todo rdd中带key的算子
 class PairRDDFunctions[K, V](self: RDD[(K, V)])
     (implicit kt: ClassTag[K], vt: ClassTag[V], ord: Ordering[K] = null)
   extends Logging with Serializable {
@@ -93,6 +94,7 @@ class PairRDDFunctions[K, V](self: RDD[(K, V)])
         new InterruptibleIterator(context, aggregator.combineValuesByKey(iter, context))
       }, preservesPartitioning = true)
     } else {
+      //todo self->父rdd
       new ShuffledRDD[K, V, C](self, partitioner)
         .setSerializer(serializer)
         .setAggregator(aggregator)

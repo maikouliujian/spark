@@ -1633,6 +1633,7 @@ object SQLConf {
     .longConf
     .createWithDefault(0)
   //todo plan重用
+  //todo 从数据复用的角度来说，ReuseExchange 和 DISK_ONLY 模式的 DataFrame Cache 能起到的作用完全等价。
   val EXCHANGE_REUSE_ENABLED = buildConf("spark.sql.exchange.reuse")
     .internal()
     .doc("When true, the planner will try to find out duplicated exchanges and re-use them.")

@@ -38,10 +38,10 @@ private[spark] class ShuffleMapStage(
     id: Int,
     rdd: RDD[_],
     numTasks: Int,
-    parents: List[Stage],
+    parents: List[Stage],//todo 上一个ShuffleMapStage
     firstJobId: Int,
     callSite: CallSite,
-    val shuffleDep: ShuffleDependency[_, _, _],
+    val shuffleDep: ShuffleDependency[_, _, _],//todo ShuffleMapStage对应的shuffleDep，在下一个stage中
     mapOutputTrackerMaster: MapOutputTrackerMaster,
     resourceProfileId: Int)
   extends Stage(id, rdd, numTasks, parents, firstJobId, callSite, resourceProfileId) {

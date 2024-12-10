@@ -39,12 +39,15 @@ sealed abstract class BlockId {
 
   // convenience methods
   def asRDDId: Option[RDDBlockId] = if (isRDD) Some(asInstanceOf[RDDBlockId]) else None
+  //todo 是否为rdd
   def isRDD: Boolean = isInstanceOf[RDDBlockId]
+  //todo 是否为shuffle
   def isShuffle: Boolean = {
     (isInstanceOf[ShuffleBlockId] || isInstanceOf[ShuffleBlockBatchId] ||
      isInstanceOf[ShuffleDataBlockId] || isInstanceOf[ShuffleIndexBlockId])
   }
   def isShuffleChunk: Boolean = isInstanceOf[ShuffleBlockChunkId]
+  //todo 是否为广播
   def isBroadcast: Boolean = isInstanceOf[BroadcastBlockId]
 
   override def toString: String = name

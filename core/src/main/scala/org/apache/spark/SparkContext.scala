@@ -2213,8 +2213,9 @@ class SparkContext(config: SparkConf) extends Logging {
    * partitions of the target RDD, e.g. for operations like `first()`
    * @param resultHandler callback to pass each result to
    */
+  //todo 遇到action算子会触发runJob
   def runJob[T, U: ClassTag](
-      rdd: RDD[T],
+      rdd: RDD[T], //todo 持有最后一个rdd的引用
       func: (TaskContext, Iterator[T]) => U,
       partitions: Seq[Int],
       resultHandler: (Int, U) => Unit): Unit = {
@@ -2227,6 +2228,7 @@ class SparkContext(config: SparkConf) extends Logging {
     if (conf.getBoolean("spark.logLineage", false)) {
       logInfo("RDD's recursive dependencies:\n" + rdd.toDebugString)
     }
+    //todo 提交job
     dagScheduler.runJob(rdd, cleanedFunc, partitions, callSite, resultHandler, localProperties.get)
     progressBar.foreach(_.finishAll())
     rdd.doCheckpoint()

@@ -327,6 +327,7 @@ public class TaskMemoryManager {
     }
     MemoryBlock page = null;
     try {
+      //todo 申请内存
       page = memoryManager.tungstenMemoryAllocator().allocate(acquired);
     } catch (OutOfMemoryError e) {
       logger.warn("Failed to allocate a page ({} bytes), try again.", acquired);

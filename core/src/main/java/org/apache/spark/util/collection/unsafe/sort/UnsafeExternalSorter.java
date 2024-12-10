@@ -95,6 +95,7 @@ public final class UnsafeExternalSorter extends MemoryConsumer {
   @Nullable private volatile UnsafeInMemorySorter inMemSorter;
 
   private MemoryBlock currentPage = null;
+  //todo 内存页的绝对位置
   private long pageCursor = -1;
   private long peakMemoryUsedBytes = 0;
   private long totalSpillBytes = 0L;
@@ -509,7 +510,7 @@ public final class UnsafeExternalSorter extends MemoryConsumer {
     //todo 把内存从入参里面复制到 MemoryBlock 里面去
     Platform.copyMemory(recordBase, recordOffset, base, pageCursor, length);
     pageCursor += length;
-    //todo 对数据排序！！！！！！
+    //todo 插入数据指针
     inMemSorter.insertRecord(recordAddress, prefix, prefixIsNull);
   }
 

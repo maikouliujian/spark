@@ -884,6 +884,7 @@ case class WholeStageCodegenExec(child: SparkPlan)(val codegenStageId: Int)
  * is created, e.g. for special fallback handling when an existing WholeStageCodegenExec
  * failed to generate/compile code.
  */
+//todo Whole Stage Code Generation，在一个 Stage 内部生成手写代码
 case class CollapseCodegenStages(
     codegenStageCounter: AtomicInteger = new AtomicInteger(0))
   extends Rule[SparkPlan] {
