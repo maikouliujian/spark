@@ -30,13 +30,23 @@ private[spark] object SamplingUtils {
    * @param seed random seed
    * @return (samples, input size)
    */
+    //todo 采样
+
+  /***
+   * 从S中抽取首k项放入「水塘」中
+   * 对于每一个S[j]项（j ≥ k）：
+   *    随机产生一个范围0到j的整数r
+   *    若 r < k 则把水塘中的第r项换成S[j]项
+   *
+   */
   def reservoirSampleAndCount[T: ClassTag](
-      input: Iterator[T],
-      k: Int,
+      input: Iterator[T], //todo 一个分区内的所有key
+      k: Int,//todo 一个分区内采样数
       seed: Long = Random.nextLong())
     : (Array[T], Long) = {
     val reservoir = new Array[T](k)
     // Put the first k elements in the reservoir.
+    //todo 把k个元素放入数组reservoir中，k为设置的每一个分区的样本数：sampleSizePerPartition
     var i = 0
     while (i < k && input.hasNext) {
       val item = input.next()
@@ -45,6 +55,8 @@ private[spark] object SamplingUtils {
     }
 
     // If we have consumed all the elements, return them. Otherwise do the replacement.
+      // todo 如果分区记录数少于设置的分区样本数，则直接返回
+      //    否则使用迭代器，每次迭代出的数据，为其生成一个0至 l 的随机数，如果随机数小于K，则把reservoir数组中的对应记录替换
     if (i < k) {
       // If input size < k, trim the array to return only an array of input size.
       val trimReservoir = new Array[T](i)
@@ -56,11 +68,13 @@ private[spark] object SamplingUtils {
       val rand = new XORShiftRandom(seed)
       while (input.hasNext) {
         val item = input.next()
+        //todo l 的值不断迭代的
         l += 1
         // There are k elements in the reservoir, and the l-th element has been
         // consumed. It should be chosen with probability k/l. The expression
         // below is a random long chosen uniformly from [0,l)
         val replacementIndex = (rand.nextDouble() * l).toLong
+        //todo 如果随机数小于K，则把reservoir数组中的对应记录替换
         if (replacementIndex < k) {
           reservoir(replacementIndex.toInt) = item
         }

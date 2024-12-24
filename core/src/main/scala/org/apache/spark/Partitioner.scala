@@ -137,8 +137,9 @@ class HashPartitioner(partitions: Int) extends Partitioner {
  * as the `partitions` parameter, in the case where the number of sampled records is less than
  * the value of `partitions`.
  */
+//todo RangePartitioner！！！！！！
 class RangePartitioner[K : Ordering : ClassTag, V](
-    partitions: Int,
+    partitions: Int, //todo 参数中的分区数
     rdd: RDD[_ <: Product2[K, V]],
     private var ascending: Boolean = true,
     val samplePointsPerPartitionHint: Int = 20)
@@ -155,66 +156,92 @@ class RangePartitioner[K : Ordering : ClassTag, V](
   require(partitions >= 0, s"Number of partitions cannot be negative but found $partitions.")
   require(samplePointsPerPartitionHint > 0,
     s"Sample points per partition must be greater than 0 but found $samplePointsPerPartitionHint")
-
+  //todo 获取RDD中key类型数据的排序器
   private var ordering = implicitly[Ordering[K]]
 
   // An array of upper bounds for the first (partitions - 1) partitions
+  //todo 分桶边界的计算！！！！！！！
   private var rangeBounds: Array[K] = {
     if (partitions <= 1) {
+      //todo 如果给定的分区数是一个的情况下，直接返回一个空的集合，表示数据不进行分区
       Array.empty
     } else {
       // This is the sample size we need to have roughly balanced output partitions, capped at 1M.
       // Cast to double to avoid overflowing ints or longs
+      //todo 采样大小
+      //todo 给定总的数据抽样大小，最多1M的数据量(10^6)，最少20倍的RDD分区数量，也就是每个RDD分区至少抽取20条数据
       val sampleSize = math.min(samplePointsPerPartitionHint.toDouble * partitions, 1e6)
       // Assume the input partitions are roughly balanced and over-sample a little bit.
+      //todo // 计算每个分区抽取的数据量大小， 假设输入数据每个分区分布的比较均匀
+      //   对于超大数据集(分区数超过5万的)乘以3会让数据稍微增大一点，对于分区数低于5万的数据集，每个分区抽取数据量为60条也不算多
       val sampleSizePerPartition = math.ceil(3.0 * sampleSize / rdd.partitions.length).toInt
+      //todo sketch 草图！！！！！！
+      //todo 从rdd中抽取数据，返回值:(总rdd数据量， Array[分区id，当前分区的数据量，当前分区抽取的数据]) ！！！！！！
       val (numItems, sketched) = RangePartitioner.sketch(rdd.map(_._1), sampleSizePerPartition)
       if (numItems == 0L) {
+        //todo 如果总的数据量为0(RDD为空)，那么直接返回一个空的数组
         Array.empty
       } else {
         // If a partition contains much more than the average number of items, we re-sample from it
         // to ensure that enough items are collected from that partition.
+        //todo 计算总样本数量和总记录数的占比，占比最大为1.0
         val fraction = math.min(sampleSize / math.max(numItems, 1L), 1.0)
+        //todo 保存样本数据的集合buffer
         val candidates = ArrayBuffer.empty[(K, Float)]
+        //todo 保存数据分布不均衡的分区id(数据量超过fraction比率的分区)
         val imbalancedPartitions = mutable.Set.empty[Int]
+        //todo 计算抽取出来的样本数据
         sketched.foreach { case (idx, n, sample) =>
+          //todo 如果fraction乘以当前分区中的数据量大于之前计算的每个分区的抽象数据大小，
+          // 那么表示当前分区抽取的数据太少了，该分区数据分布不均衡，需要重新抽取
           if (fraction * n > sampleSizePerPartition) {
             imbalancedPartitions += idx
           } else {
             // The weight is 1 over the sampling probability.
+            //todo 当前分区不属于数据分布不均衡的分区，计算占比权重，并添加到candidates集合中
+            //todo weight为分区总数 / 采样数
             val weight = (n.toDouble / sample.length).toFloat
             for (key <- sample) {
               candidates += ((key, weight))
             }
           }
         }
+        //todo 对于数据分布不均衡的RDD分区，重新进行数据抽样
         if (imbalancedPartitions.nonEmpty) {
           // Re-sample imbalanced partitions with the desired sampling probability.
+          //todo 获取数据分布不均衡的RDD分区，并构成RDD，过滤出 imbalancedPartitions.contains 对应的分区
           val imbalanced = new PartitionPruningRDD(rdd.map(_._1), imbalancedPartitions.contains)
+          //todo 随机种子
           val seed = byteswap32(-rdd.id - 1)
+          //todo 利用rdd的sample抽样函数API进行数据抽样
           val reSampled = imbalanced.sample(withReplacement = false, fraction, seed).collect()
           val weight = (1.0 / fraction).toFloat
           candidates ++= reSampled.map(x => (x, weight))
         }
+        //todo 根据(key, weight)选择边界
         RangePartitioner.determineBounds(candidates, math.min(partitions, candidates.size))
       }
     }
   }
 
   def numPartitions: Int = rangeBounds.length + 1
-
+  //todo 二分查找器，内部使用java中的Arrays类提供的二分查找方法
   private var binarySearch: ((Array[K], K) => Int) = CollectionsUtils.makeBinarySearch[K]
-
+  //todo 获取分区！！！！！！！
   def getPartition(key: Any): Int = {
+    //todo 强制转换key类型为RDD中原本的数据类型
     val k = key.asInstanceOf[K]
     var partition = 0
     if (rangeBounds.length <= 128) {
       // If we have less than 128 partitions naive search
+      //todo 如果分区数据小于等于128个，那么直接本地循环寻找当前k所属的分区下标
       while (partition < rangeBounds.length && ordering.gt(k, rangeBounds(partition))) {
         partition += 1
       }
     } else {
       // Determine which binary search method to use only once.
+      //todo // 如果分区数量大于128个，那么使用二分查找方法寻找对应k所属的下标;
+      //  但是如果k在rangeBounds中没有出现，实质上返回的是一个负数(范围)或者是一个超过rangeBounds大小的数(最后一个分区，比所有数据都大)
       partition = binarySearch(rangeBounds, k)
       // binarySearch either returns the match location or -[insertion point]-1
       if (partition < 0) {
@@ -224,6 +251,7 @@ class RangePartitioner[K : Ordering : ClassTag, V](
         partition = rangeBounds.length
       }
     }
+    //todo 根据数据排序是升序还是降序进行数据的排列，默认为升序
     if (ascending) {
       partition
     } else {
@@ -296,13 +324,20 @@ private[spark] object RangePartitioner {
    * @param sampleSizePerPartition max sample size per partition
    * @return (total number of items, an array of (partitionId, number of items, sample))
    */
+    //todo 在大规模数据处理和排序中，Sketch 是一种高效的近似算法，用于处理海量数据的统计、采样或分布估计问题。
+    // 它可以帮助快速采样热点数据或估算全局数据分布，而无需对所有数据进行完整扫描。
+    // 以下是 Sketch 在数据排序和采样中的应用及其相关概念。
+    //todo 返回值:(总rdd数据量， Array[分区id，当前分区的数据量，当前分区抽取的数据])
   def sketch[K : ClassTag](
       rdd: RDD[K],
+                          //todo sampleSizePerPartition：每个分区的采样数，比如60
       sampleSizePerPartition: Int): (Long, Array[(Int, Long, Array[K])]) = {
     val shift = rdd.id
     // val classTagK = classTag[K] // to avoid serializing the entire partitioner object
     val sketched = rdd.mapPartitionsWithIndex { (idx, iter) =>
       val seed = byteswap32(idx ^ (shift << 16))
+      //todo 算法核心！！！！！！对每一个分区的数据进行采样
+      //todo 返回(idx, n, sample)===> (分区id, 分区内元素个数, 采样的数据)
       val (sample, n) = SamplingUtils.reservoirSampleAndCount(
         iter, sampleSizePerPartition, seed)
       Iterator((idx, n, sample))
@@ -319,25 +354,35 @@ private[spark] object RangePartitioner {
    * @param partitions number of partitions
    * @return selected bounds
    */
+    //todo 水塘抽样！！！！！！
+    //todo 根据样本权重解决分区边界问题
   def determineBounds[K : Ordering : ClassTag](
       candidates: ArrayBuffer[(K, Float)],
       partitions: Int): Array[K] = {
     val ordering = implicitly[Ordering[K]]
+    //todo 按照数据key进行数据排序，默认升序排列
     val ordered = candidates.sortBy(_._1)
+    //todo 获取总的样本数量大小
     val numCandidates = ordered.size
+    //todo 计算总的权重大小
     val sumWeights = ordered.map(_._2.toDouble).sum
+    //todo 计算步长
     val step = sumWeights / partitions
     var cumWeight = 0.0
     var target = step
+    //todo 分区边界
     val bounds = ArrayBuffer.empty[K]
     var i = 0
     var j = 0
     var previousBound = Option.empty[K]
     while ((i < numCandidates) && (j < partitions - 1)) {
+      //todo 获取排序后的第i个数据及权重
       val (key, weight) = ordered(i)
+      //todo 累计权重
       cumWeight += weight
       if (cumWeight >= target) {
         // Skip duplicate values.
+        //todo 权重已经达到一个步长的范围，计算出一个分区id的值
         if (previousBound.isEmpty || ordering.gt(key, previousBound.get)) {
           bounds += key
           target += step
