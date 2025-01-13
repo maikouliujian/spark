@@ -33,6 +33,7 @@ import org.apache.spark.sql.internal.SQLConf
  * @param output      The output Schema
  * @param child       Child operator
  */
+//todo Expand 对应的执行计划
 case class ExpandExec(
     projections: Seq[Seq[Expression]],
     output: Seq[Attribute],
@@ -71,11 +72,12 @@ case class ExpandExec(
             input = iter.next()
             idx = 0
           }
-
+          //todo 膨胀多次！！！！！！
           result = groups(idx)(input)
           idx += 1
 
           if (idx == groups.length && iter.hasNext) {
+            //todo 重置
             idx = 0
           }
 

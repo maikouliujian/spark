@@ -205,6 +205,7 @@ object RewriteDistinctAggregates extends Rule[LogicalPlan] {
     // clause for this rule because aggregation strategy can handle a single distinct aggregate
     // group without filter clause.
     // This check can produce false-positives, e.g., SUM(DISTINCT a) & COUNT(DISTINCT a).
+    //todo 具有多个count(distinct xxxx)函数时
     distinctAggs.size > 1 || distinctAggs.exists(_.filter.isDefined)
   }
 
@@ -236,8 +237,10 @@ object RewriteDistinctAggregates extends Rule[LogicalPlan] {
     }
 
     // Aggregation strategy can handle queries with a single distinct group without filter clause.
+    //todo 所有count(distinct xxxx)的字段
     if (distinctAggGroups.size > 1 || distinctAggs.exists(_.filter.isDefined)) {
       // Create the attributes for the grouping id and the group by clause.
+      //todo 为每一个count(distinct xxxx)中的xxxx添加一列gid
       val gid = AttributeReference("gid", IntegerType, nullable = false)()
       val groupByMap = a.groupingExpressions.collect {
         case ne: NamedExpression => ne -> ne.toAttribute
@@ -253,6 +256,7 @@ object RewriteDistinctAggregates extends Rule[LogicalPlan] {
       }
 
       // Setup unique distinct aggregate children.
+      //todo 所有的xxxx字段
       val distinctAggChildren = distinctAggGroups.keySet.flatten.toSeq.distinct
       val distinctAggChildAttrMap = distinctAggChildren.map(expressionAttributePair)
       val distinctAggChildAttrs = distinctAggChildAttrMap.map(_._2)
@@ -267,8 +271,10 @@ object RewriteDistinctAggregates extends Rule[LogicalPlan] {
       // Setup expand & aggregate operators for distinct aggregate expressions.
       val distinctAggChildAttrLookup = distinctAggChildAttrMap.toMap
       val distinctAggFilterAttrLookup = distinctAggFilters.zip(maxConds.map(_.toAttribute)).toMap
+      //todo distinct的xxxx膨胀的逻辑！！！！！！
       val distinctAggOperatorMap = distinctAggGroups.toSeq.zipWithIndex.map {
         case ((group, expressions), i) =>
+          //todo 添加gid
           val id = Literal(i + 1)
 
           // Expand projection for filter
@@ -279,6 +285,7 @@ object RewriteDistinctAggregates extends Rule[LogicalPlan] {
           }
 
           // Expand projection
+          //todo 膨胀的逻辑，如：group为uq_id,distinctAggChildren为[uq_id,user_id,os],则projection为：[uq_id,null,null,gid]
           val projection = distinctAggChildren.map {
             case e if group.contains(e) => e
             case e => nullify(e)
@@ -300,7 +307,7 @@ object RewriteDistinctAggregates extends Rule[LogicalPlan] {
             } else {
               EqualTo(gid, id)
             }
-
+            //todo count(distinct XXXX) ===> count(XXXX)
             (e, e.copy(aggregateFunction = naf, isDistinct = false, filter = Some(newCondition)))
           }
 
@@ -309,11 +316,13 @@ object RewriteDistinctAggregates extends Rule[LogicalPlan] {
 
       // Setup expand for the 'regular' aggregate expressions.
       // only expand unfoldable children
+      //todo 非count(distinct xxxx)的expr
       val regularAggExprs = aggExpressions
         .filter(e => !e.isDistinct && e.children.exists(!_.foldable))
       val regularAggFunChildren = regularAggExprs
         .flatMap(_.aggregateFunction.children.filter(!_.foldable))
       val regularAggFilterAttrs = regularAggExprs.flatMap(_.filterAttributes)
+      //todo 非distinct的
       val regularAggChildren = (regularAggFunChildren ++ regularAggFilterAttrs).distinct
       val regularAggChildAttrMap = regularAggChildren.map(expressionAttributePair)
 
@@ -372,6 +381,7 @@ object RewriteDistinctAggregates extends Rule[LogicalPlan] {
       }
 
       // Construct the expand operator.
+      //todo 数据膨胀！！！！！！！
       val expand = Expand(
         regularAggProjection ++ distinctAggProjections,
         groupByAttrs ++ distinctAggChildAttrs ++ Seq(gid) ++ distinctAggFilterAttrs ++
